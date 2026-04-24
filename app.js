@@ -98,19 +98,19 @@ module.exports = { requireAdmin, requireAuth, pool, upload };
 
 // Import routes - wrap in try/catch to show errors clearly
 try {
-  require('./api/auth')(app, pool, requireAdmin, requireAuth, bcrypt);
-  require('./api/admin')(app, pool, requireAdmin, upload);
-  require('./api/categories')(app, pool, requireAdmin);
-  require('./api/brands')(app, pool, requireAdmin);
-  require('./api/products')(app, pool, requireAdmin);
-  require('./api/products-full')(app, pool);
-  require('./api/cart')(app, pool, requireAuth);
-  require('./api/orders')(app, pool, requireAuth, requireAdmin);
-  require('./api/members')(app, pool);
-  require('./api/marketing')(app, pool);
-  require('./api/shipping')(app, pool);
-  require('./api/logistics')(app, pool);
-  require('./api/reports')(app, pool);
+  require('./routes/auth')(app, pool, requireAdmin, requireAuth, bcrypt);
+  require('./routes/admin')(app, pool, requireAdmin, upload);
+  require('./routes/categories')(app, pool, requireAdmin);
+  require('./routes/brands')(app, pool, requireAdmin);
+  require('./routes/products')(app, pool, requireAdmin);
+  require('./routes/products-full')(app, pool);
+  require('./routes/cart')(app, pool, requireAuth);
+  require('./routes/orders')(app, pool, requireAuth, requireAdmin);
+  require('./routes/members')(app, pool);
+  require('./routes/marketing')(app, pool);
+  require('./routes/shipping')(app, pool);
+  require('./routes/logistics')(app, pool);
+  require('./routes/reports')(app, pool);
 } catch (error) {
   console.error('Error loading routes:', error);
   app.use('/api/*', (req, res) => {
