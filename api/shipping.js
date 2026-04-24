@@ -354,7 +354,7 @@ module.exports = function(app, pool) {
         'Tsuen Wan', 'Kwai Chung', 'Tsing Yi', 'Tuen Mun', 'Yuen Long',
         'Hung Shui Kiu', 'Tin Shui Wai', 'Kam Tin',
         'Tung Chung', 'Discovery Bay', 'Lantau', 'Cheung Chau', 'Lamma Island', 'Peng Chau'
-      };
+      ];
 
       res.json({
         grouped: districts,
