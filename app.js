@@ -11,18 +11,21 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Database connection - configured for Vercel serverless
-const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
+// Database connection - Vercel serverless compatible
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
 if (!connectionString) {
-  console.error('⚠️  DATABASE_URL/POSTGRES_URL not set in environment');
-  // Don't exit immediately for Vercel, let it handle error response
+  console.error('DATABASE_URL is not set');
 }
 
 const pool = new Pool({
   connectionString,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-  max: 1, // Vercel serverless uses one connection per invocation
+  ssl: process.env.NODE_ENV === 'production' 
+    ? { rejectUnauthorized: false } 
+    : undefined,
+  max: 1,
   idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
 // Middleware
@@ -35,22 +38,27 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 // Session configuration
-app.use(session({
-  store: new pgSession({
-    pool: pool,
-    tableName: 'session',
-    createTableIfMissing: true,
-  }),
-  secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : undefined,
-  },
-}));
+if (connectionString) {
+  app.use(session({
+    store: new pgSession({
+      pool: pool,
+      tableName: 'session',
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : undefined,
+    },
+  }));
+} else {
+  // Fallback for when DB not configured - still boot so we can see error
+  console.warn('No DATABASE_URL, session will not work');
+}
 
 // Multer for file uploads
 const storage = multer.memoryStorage();
@@ -58,6 +66,9 @@ const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 1
 
 // Auth middleware
 function requireAdmin(req, res, next) {
+  if (!connectionString) {
+    return res.status(500).json({ error: 'Database not configured' });
+  }
   if (req.session && req.session.userId && req.session.isAdmin) {
     return next();
   }
@@ -65,6 +76,9 @@ function requireAdmin(req, res, next) {
 }
 
 function requireAuth(req, res, next) {
+  if (!connectionString) {
+    return res.status(500).json({ error: 'Database not configured' });
+  }
   if (req.session && req.session.userId) {
     return next();
   }
@@ -73,26 +87,36 @@ function requireAuth(req, res, next) {
 
 // Health check
 app.get('/api/health', (req, res) => {
+  if (!connectionString) {
+    return res.status(500).json({ status: 'error', error: 'DATABASE_URL not configured' });
+  }
   res.json({ status: 'ok', message: 'Mzakka E-Commerce API is running' });
 });
 
 // Export middleware for other routes
-module.exports = { requireAdmin, requireAuth };
+module.exports = { requireAdmin, requireAuth, pool };
 
-// Import routes
-require('./api/auth')(app, pool, requireAdmin, requireAuth, bcrypt);
-require('./api/admin')(app, pool, requireAdmin);
-require('./api/categories')(app, pool, requireAdmin);
-require('./api/brands')(app, pool, requireAdmin);
-require('./api/products')(app, pool, requireAdmin);
-require('./api/products-full')(app, pool);
-require('./api/cart')(app, pool, requireAuth);
-require('./api/orders')(app, pool, requireAuth, requireAdmin);
-require('./api/members')(app, pool);
-require('./api/marketing')(app, pool);
-require('./api/shipping')(app, pool);
-require('./api/logistics')(app, pool);
-require('./api/reports')(app, pool);
+// Import routes - wrap in try/catch to show errors clearly
+try {
+  require('./api/auth')(app, pool, requireAdmin, requireAuth, bcrypt);
+  require('./api/admin')(app, pool, requireAdmin);
+  require('./api/categories')(app, pool, requireAdmin);
+  require('./api/brands')(app, pool, requireAdmin);
+  require('./api/products')(app, pool, requireAdmin);
+  require('./api/products-full')(app, pool);
+  require('./api/cart')(app, pool, requireAuth);
+  require('./api/orders')(app, pool, requireAuth, requireAdmin);
+  require('./api/members')(app, pool);
+  require('./api/marketing')(app, pool);
+  require('./api/shipping')(app, pool);
+  require('./api/logistics')(app, pool);
+  require('./api/reports')(app, pool);
+} catch (error) {
+  console.error('Error loading routes:', error);
+  app.use('/api/*', (req, res) => {
+    res.status(500).json({ error: 'Failed to load routes', details: error.message });
+  });
+}
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
@@ -102,8 +126,8 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Start server (only for local development)
-if (process.env.NODE_ENV !== 'production' || require.main === module) {
+// Start server for local development
+if (require.main === module) {
   app.listen(port, () => {
     console.log(`🚀 Mzakka E-Commerce API running on port ${port}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
