@@ -11,28 +11,19 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Database connection - lazy connect for Vercel serverless
+// Database connection - configured for Vercel serverless
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
 if (!connectionString) {
   console.error('⚠️  DATABASE_URL/POSTGRES_URL not set in environment');
   // Don't exit immediately for Vercel, let it handle error response
 }
 
-let pool;
-function getPool() {
-  if (!pool) {
-    pool = new Pool({
-      connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-      max: 1, // Vercel serverless uses one connection per invocation
-      idleTimeoutMillis: 30000,
-    });
-  }
-  return pool;
-}
-
-// Initialize immediately
-const pool = getPool();
+const pool = new Pool({
+  connectionString,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  max: 1, // Vercel serverless uses one connection per invocation
+  idleTimeoutMillis: 30000,
+});
 
 // Middleware
 app.use(cors({
