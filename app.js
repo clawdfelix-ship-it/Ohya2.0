@@ -11,6 +11,12 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Add custom header to verify Express is handling the request
+app.use((req, res, next) => {
+  res.setHeader('X-Custom-Express', 'true');
+  next();
+});
+
 // Database connection - Vercel serverless compatible
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
