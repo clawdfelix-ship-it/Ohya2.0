@@ -1,12 +1,6 @@
 {
   "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
-  "functions": {
-    "app.js": {
-      "runtime": "@vercel/node@3",
-      "maxDuration": 10
-    }
-  },
   "routes": [
     {
       "src": "/api/(.*)",
