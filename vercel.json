@@ -8,13 +8,6 @@
   },
   "routes": [
     {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|map|json))$",
-      "dest": "/frontend/dist/$1"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
       "src": "/(.*)",
       "dest": "app.js"
     }
