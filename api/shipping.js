@@ -315,7 +315,7 @@ module.exports = function(app, pool) {
 
   app.get('/api/hong-kong/district-list', async (req, res) => {
     try {
-      const districts = [
+      const districts = {
         'Hong Kong Island': [
           'Central', 'Admiralty', 'Mid-Levels', 'Sheung Wan', 'Wan Chai',
           'Causeway Bay', 'North Point', 'Quarry Bay', 'Tai Koo', 'Shau Kei Wan',
@@ -354,7 +354,7 @@ module.exports = function(app, pool) {
         'Tsuen Wan', 'Kwai Chung', 'Tsing Yi', 'Tuen Mun', 'Yuen Long',
         'Hung Shui Kiu', 'Tin Shui Wai', 'Kam Tin',
         'Tung Chung', 'Discovery Bay', 'Lantau', 'Cheung Chau', 'Lamma Island', 'Peng Chau'
-      ];
+      };
 
       res.json({
         grouped: districts,

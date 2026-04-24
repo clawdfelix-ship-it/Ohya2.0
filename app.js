@@ -118,11 +118,26 @@ try {
   });
 }
 
-// Serve frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'frontend/dist')));
+// Serve frontend in production if it exists (needs to be built)
+const frontendDist = path.join(__dirname, 'frontend/dist');
+if (process.env.NODE_ENV === 'production' && require('fs').existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
+    // Only serve index.html for non-API requests
+    if (!req.path.startsWith('/api/') && !req.path.startsWith('/webhooks/')) {
+      res.sendFile(path.join(frontendDist, 'index.html'));
+    } else {
+      res.status(404).json({ error: 'API endpoint not found' });
+    }
+  });
+} else {
+  // No frontend built yet, just return API info for root
+  app.get('/', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      message: 'Mzakka E-Commerce API is running',
+      frontend: 'not built yet'
+    });
   });
 }
 
