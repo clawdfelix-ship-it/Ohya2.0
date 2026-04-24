@@ -1,7 +1,14 @@
 {
   "version": 2,
+  "public": false,
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
+  "functions": {
+    "app.js": {
+      "runtime": "nodejs22.x",
+      "maxDuration": 10
+    }
+  },
   "routes": [
     {
       "src": "/api/(.*)",
