@@ -93,6 +93,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Mzakka E-Commerce API is running' });
 });
 
+// Test route to confirm routing works
+app.get('/test/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Test route working!' });
+});
+
 // Export middleware and utilities for other routes
 module.exports = { requireAdmin, requireAuth, pool, upload };
 
