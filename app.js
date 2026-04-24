@@ -100,8 +100,13 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Start server
-app.listen(port, () => {
-  console.log(`🚀 Mzakka E-Commerce API running on port ${port}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+// Start server (only for local development)
+if (process.env.NODE_ENV !== 'production' || require.main === module) {
+  app.listen(port, () => {
+    console.log(`🚀 Mzakka E-Commerce API running on port ${port}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+}
+
+// Export for Vercel serverless
+module.exports = app;
