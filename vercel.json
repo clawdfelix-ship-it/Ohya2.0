@@ -1,8 +1,6 @@
 {
   "version": 2,
-  "public": false,
   "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
   "functions": {
     "app.js": {
       "runtime": "nodejs22.x",
@@ -17,6 +15,9 @@
     {
       "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|map|json))$",
       "dest": "/frontend/dist/$1"
+    },
+    {
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
