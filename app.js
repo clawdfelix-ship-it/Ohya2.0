@@ -93,13 +93,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Mzakka E-Commerce API is running' });
 });
 
-// Export middleware for other routes
-module.exports = { requireAdmin, requireAuth, pool };
+// Export middleware and utilities for other routes
+module.exports = { requireAdmin, requireAuth, pool, upload };
 
 // Import routes - wrap in try/catch to show errors clearly
 try {
   require('./api/auth')(app, pool, requireAdmin, requireAuth, bcrypt);
-  require('./api/admin')(app, pool, requireAdmin);
+  require('./api/admin')(app, pool, requireAdmin, upload);
   require('./api/categories')(app, pool, requireAdmin);
   require('./api/brands')(app, pool, requireAdmin);
   require('./api/products')(app, pool, requireAdmin);

@@ -1,4 +1,4 @@
-module.exports = function(app, pool, requireAdmin) {
+module.exports = function(app, pool, requireAdmin, upload) {
 
   // Dashboard statistics
   app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
