@@ -3,7 +3,7 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "functions": {
     "app.js": {
-      "runtime": "nodejs22.x",
+      "runtime": "vercel-node@22",
       "maxDuration": 10
     }
   },
