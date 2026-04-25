@@ -1,10 +1,19 @@
 {
   "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
-  "routes": [
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/api/index.js"
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/test/(.*)",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
