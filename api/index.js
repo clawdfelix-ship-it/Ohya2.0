@@ -1,1 +1,1 @@
-const app = require('../_app.js'); module.exports = app;
+const app = require('../app.js'); module.exports = app;
