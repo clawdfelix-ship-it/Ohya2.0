@@ -1,4 +1,4 @@
 {
   "version": 2,
-  "buildCommand": "mkdir -p public && cp index.html public/"
+  "buildCommand": "mkdir -p public && cat index.html > public/index.html"
 }
