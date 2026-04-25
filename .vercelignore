@@ -1,3 +1,11 @@
-frontend/node_modules
+# 忽略所有 JS 檔，除咗 api 目錄入面嘅
+*.js
+!api/*.js
+
+# 其他唔需要嘅
+routes
+frontend
 node_modules
 .git
+*.md
+*.json
