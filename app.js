@@ -34,6 +34,10 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000,
 });
 
+// EJS 模板引擎配置
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 // Middleware
 app.use(cors({
   credentials: true,
@@ -41,7 +45,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Session configuration
 if (connectionString) {
@@ -174,41 +178,114 @@ if (fs.existsSync(frontendDist)) {
     }
   });
 } else {
-  app.get('/', (req, res) => {
-    res.send(`
-<!DOCTYPE html>
-<html lang="zh-HK">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🛍️</text></svg>" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ohya2.0 電商平台</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module">
-      // 前端應用程式碼
-      window.addEventListener('load', () => {
-        document.getElementById('app').innerHTML = \`
-          <div style="min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-family: system-ui, -apple-system, sans-serif;">
-            <div style="background: white; padding: 48px; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; max-width: 400px;">
-              <h1 style="color: #1a1a2e; margin-bottom: 16px; font-size: 32px;">🛍️ Ohya2.0</h1>
-              <p style="color: #666; margin-bottom: 24px; line-height: 1.6;">全功能電商平台已經上線！</p>
-              <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                <span style="background: #e3f2fd; color: #1976d2; padding: 8px 16px; border-radius: 20px; font-size: 14px;">✅ 後端 API 正常</span>
-                <span style="background: #e8f5e9; color: #388e3c; padding: 8px 16px; border-radius: 20px; font-size: 14px;">✅ 前端已部署</span>
-              </div>
-              <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #eee;">
-                <p style="color: #999; font-size: 13px;">即將推出更多功能</p>
-              </div>
-            </div>
-          </div>
-        \`;
+  // 首頁 - 電商首頁
+  app.get('/', async (req, res) => {
+    try {
+      // 獲取精選商品
+      let featuredProducts = [];
+      let categories = [];
+      
+      if (connectionString) {
+        const productsResult = await pool.query('SELECT * FROM products ORDER BY id DESC LIMIT 8');
+        featuredProducts = productsResult.rows;
+        const categoriesResult = await pool.query('SELECT * FROM categories ORDER BY name');
+        categories = categoriesResult.rows;
+      }
+      
+      res.render('index', {
+        title: 'Ohya2.0 電商平台',
+        products: featuredProducts,
+        categories: categories,
+        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null
       });
-    </script>
-  </body>
-</html>
-    `);
+    } catch (err) {
+      console.error('Homepage error:', err);
+      res.render('index', {
+        title: 'Ohya2.0 電商平台',
+        products: [],
+        categories: [],
+        user: null
+      });
+    }
+  });
+  
+  // 商品列表頁
+  app.get('/products', async (req, res) => {
+    try {
+      let products = [];
+      let categories = [];
+      
+      if (connectionString) {
+        const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
+        products = result.rows;
+        const categoriesResult = await pool.query('SELECT * FROM categories ORDER BY name');
+        categories = categoriesResult.rows;
+      }
+      
+      res.render('products', {
+        title: '全部商品 - Ohya2.0',
+        products: products,
+        categories: categories,
+        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null
+      });
+    } catch (err) {
+      console.error('Products page error:', err);
+      res.render('products', {
+        title: '全部商品 - Ohya2.0',
+        products: [],
+        categories: [],
+        user: null
+      });
+    }
+  });
+  
+  // 商品詳情頁
+  app.get('/product/:id', async (req, res) => {
+    try {
+      let product = null;
+      
+      if (connectionString) {
+        const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
+        product = result.rows[0];
+      }
+      
+      if (!product) {
+        return res.status(404).send('商品不存在');
+      }
+      
+      res.render('product', {
+        title: product.name + ' - Ohya2.0',
+        product: product,
+        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null
+      });
+    } catch (err) {
+      console.error('Product page error:', err);
+      res.status(500).send('伺服器錯誤');
+    }
+  });
+  
+  // 登入頁
+  app.get('/login', (req, res) => {
+    res.render('login', {
+      title: '登入 - Ohya2.0',
+      user: null
+    });
+  });
+  
+  // 註冊頁
+  app.get('/register', (req, res) => {
+    res.render('register', {
+      title: '註冊 - Ohya2.0',
+      user: null
+    });
+  });
+  
+  // 購物車頁
+  app.get('/cart', (req, res) => {
+    res.render('cart', {
+      title: '購物車 - Ohya2.0',
+      user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null
+    });
   });
 }
 

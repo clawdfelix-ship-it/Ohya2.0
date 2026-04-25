@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- 導航欄 -->
+  <nav class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16 items-center">
+        <a href="/" class="flex items-center space-x-2">
+          <span class="text-2xl">🛍️</span>
+          <span class="text-xl font-bold text-gray-900">Ohya2.0</span>
+        </a>
+        
+        <div class="flex items-center space-x-8">
+          <a href="/" class="text-gray-700 hover:text-blue-600 font-medium">首頁</a>
+          <a href="/products" class="text-blue-600 font-medium border-b-2 border-blue-600">全部商品</a>
+          <a href="/cart" class="text-gray-700 hover:text-blue-600 font-medium flex items-center gap-1">
+            🛒 購物車 <span class="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full" id="cart-count">0</span>
+          </a>
+          
+          <% if (user) { %>
+            <a href="/logout" class="text-red-600 hover:text-red-700 font-medium">登出</a>
+          <% } else { %>
+            <a href="/login" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">登入</a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">🛒 全部商品</h1>
+    
+    <!-- 分類篩選 -->
+    <% if (categories && categories.length > 0) { %>
+      <div class="flex flex-wrap gap-3 mb-8">
+        <a href="/products" class="bg-blue-600 text-white px-5 py-2 rounded-full font-medium">
+          全部
+        </a>
+        <% categories.forEach(category => { %>
+          <a href="/products?category=<%= category.id %>" class="bg-white px-5 py-2 rounded-full shadow-sm hover:shadow-md transition text-gray-700 font-medium">
+            <%= category.name %>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+    
+    <% if (products && products.length > 0) { %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <% products.forEach(product => { %>
+          <a href="/product/<%= product.id %>" class="bg-white rounded-xl shadow-sm hover:shadow-lg transition duration-300 overflow-hidden group">
+            <div class="aspect-square bg-gray-100 flex items-center justify-center">
+              <% if (product.image_url) { %>
+                <img src="<%= product.image_url %>" alt="<%= product.name %>" class="w-full h-full object-cover">
+              <% } else { %>
+                <span class="text-6xl">📦</span>
+              <% } %>
+            </div>
+            <div class="p-4">
+              <h3 class="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition"><%= product.name %></h3>
+              <p class="text-sm text-gray-500 mb-3 line-clamp-2"><%= product.description || '優質商品' %></p>
+              <div class="flex items-center justify-between">
+                <span class="text-xl font-bold text-blue-600">$<%= (product.price / 100).toFixed(2) %></span>
+                <span class="text-xs text-gray-400">庫存: <%= product.stock %></span>
+              </div>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="text-center py-16 bg-white rounded-xl">
+        <span class="text-6xl mb-4 block">📦</span>
+        <p class="text-gray-500">暫未有商品，敬請期待！</p>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- 頁腳 -->
+  <footer class="bg-gray-900 text-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="border-t border-gray-800 pt-8 text-center text-gray-500">
+        © 2026 Ohya2.0. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function updateCartCount() {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+      document.getElementById('cart-count').textContent = count;
+    }
+    updateCartCount();
+  </script>
+</body>
+</html>

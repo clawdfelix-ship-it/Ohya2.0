@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- 導航欄 -->
+  <nav class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16 items-center">
+        <a href="/" class="flex items-center space-x-2">
+          <span class="text-2xl">🛍️</span>
+          <span class="text-xl font-bold text-gray-900">Ohya2.0</span>
+        </a>
+        
+        <div class="flex items-center space-x-8">
+          <a href="/" class="text-gray-700 hover:text-blue-600 font-medium">首頁</a>
+          <a href="/products" class="text-gray-700 hover:text-blue-600 font-medium">全部商品</a>
+          <a href="/cart" class="text-gray-700 hover:text-blue-600 font-medium flex items-center gap-1">
+            🛒 購物車 <span class="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full" id="cart-count">0</span>
+          </a>
+          
+          <% if (user) { %>
+            <a href="/logout" class="text-red-600 hover:text-red-700 font-medium">登出</a>
+          <% } else { %>
+            <a href="/login" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">登入</a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
+        <!-- 商品圖片 -->
+        <div class="aspect-square bg-gray-100 rounded-xl flex items-center justify-center">
+          <% if (product.image_url) { %>
+            <img src="<%= product.image_url %>" alt="<%= product.name %>" class="w-full h-full object-contain rounded-xl">
+          <% } else { %>
+            <span class="text-9xl">📦</span>
+          <% } %>
+        </div>
+        
+        <!-- 商品資訊 -->
+        <div class="flex flex-col">
+          <h1 class="text-3xl font-bold text-gray-900 mb-4"><%= product.name %></h1>
+          
+          <div class="mb-6">
+            <span class="text-4xl font-bold text-blue-600">$<%= (product.price / 100).toFixed(2) %></span>
+            <span class="text-gray-400 ml-4">庫存: <%= product.stock %> 件</span>
+          </div>
+          
+          <p class="text-gray-600 mb-8 leading-relaxed">
+            <%= product.description || '這是一件優質商品，品質保證。' %>
+          </p>
+          
+          <!-- 加入購物車 -->
+          <div class="mt-auto space-y-4">
+            <div class="flex items-center gap-4">
+              <label class="text-gray-700 font-medium">數量：</label>
+              <div class="flex items-center border rounded-lg">
+                <button onclick="changeQuantity(-1)" class="px-4 py-2 hover:bg-gray-100 transition">-</button>
+                <input type="number" id="quantity" value="1" min="1" max="<%= product.stock %>" class="w-16 text-center border-x py-2 focus:outline-none">
+                <button onclick="changeQuantity(1)" class="px-4 py-2 hover:bg-gray-100 transition">+</button>
+              </div>
+            </div>
+            
+            <button onclick="addToCart()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+              🛒 加入購物車
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 返回按鈕 -->
+    <div class="mt-8">
+      <a href="/products" class="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2">
+        ← 返回商品列表
+      </a>
+    </div>
+  </div>
+
+  <!-- 頁腳 -->
+  <footer class="bg-gray-900 text-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="border-t border-gray-800 pt-8 text-center text-gray-500">
+        © 2026 Ohya2.0. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const product = {
+      id: <%= product.id %>,
+      name: "<%= product.name %>",
+      price: <%= product.price %>,
+      image: "<%= product.image_url || '' %>"
+    };
+
+    function changeQuantity(delta) {
+      const input = document.getElementById('quantity');
+      let value = parseInt(input.value) + delta;
+      value = Math.max(1, Math.min(value, <%= product.stock %>));
+      input.value = value;
+    }
+
+    function addToCart() {
+      const quantity = parseInt(document.getElementById('quantity').value);
+      let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      
+      const existingItem = cart.find(item => item.id === product.id);
+      if (existingItem) {
+        existingItem.quantity += quantity;
+      } else {
+        cart.push({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          quantity: quantity
+        });
+      }
+      
+      localStorage.setItem('cart', JSON.stringify(cart));
+      updateCartCount();
+      
+      // 顯示成功提示
+      alert('✅ 已加入購物車！');
+    }
+
+    function updateCartCount() {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+      document.getElementById('cart-count').textContent = count;
+    }
+    updateCartCount();
+  </script>
+</body>
+</html>

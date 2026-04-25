@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- 導航欄 -->
+  <nav class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16 items-center">
+        <a href="/" class="flex items-center space-x-2">
+          <span class="text-2xl">🛍️</span>
+          <span class="text-xl font-bold text-gray-900">Ohya2.0</span>
+        </a>
+        
+        <div class="flex items-center space-x-8">
+          <a href="/" class="text-gray-700 hover:text-blue-600 font-medium">首頁</a>
+          <a href="/products" class="text-gray-700 hover:text-blue-600 font-medium">全部商品</a>
+          <a href="/cart" class="text-blue-600 font-medium border-b-2 border-blue-600 flex items-center gap-1">
+            🛒 購物車 <span class="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full" id="cart-count">0</span>
+          </a>
+          
+          <% if (user) { %>
+            <a href="/logout" class="text-red-600 hover:text-red-700 font-medium">登出</a>
+          <% } else { %>
+            <a href="/login" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">登入</a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">🛒 我的購物車</h1>
+    
+    <div id="cart-items" class="space-y-4">
+      <!-- 動態加載 -->
+    </div>
+    
+    <div id="empty-cart" class="text-center py-16 bg-white rounded-xl">
+      <span class="text-6xl mb-4 block">🛒</span>
+      <p class="text-gray-500 mb-6">購物車仲係空嘅</p>
+      <a href="/products" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition inline-block">
+        去購物 →
+      </a>
+    </div>
+    
+    <div id="cart-summary" class="mt-8 bg-white rounded-xl p-6 hidden">
+      <div class="flex justify-between items-center mb-4">
+        <span class="text-xl font-bold text-gray-900">總計</span>
+        <span class="text-2xl font-bold text-blue-600" id="total-price">$0.00</span>
+      </div>
+      <button onclick="checkout()" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-700 transition">
+        📦 結帳
+      </button>
+    </div>
+  </div>
+
+  <!-- 頁腳 -->
+  <footer class="bg-gray-900 text-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="border-t border-gray-800 pt-8 text-center text-gray-500">
+        © 2026 Ohya2.0. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    
+    function renderCart() {
+      const container = document.getElementById('cart-items');
+      const emptyCart = document.getElementById('empty-cart');
+      const summary = document.getElementById('cart-summary');
+      const cartCount = document.getElementById('cart-count');
+      
+      const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+      cartCount.textContent = totalItems;
+      
+      if (cart.length === 0) {
+        emptyCart.classList.remove('hidden');
+        summary.classList.add('hidden');
+        container.innerHTML = '';
+        return;
+      }
+      
+      emptyCart.classList.add('hidden');
+      summary.classList.remove('hidden');
+      
+      let total = 0;
+      container.innerHTML = cart.map(item => {
+        const itemTotal = (item.price / 100 * item.quantity;
+        total += itemTotal;
+        
+        return `
+          <div class="bg-white rounded-xl shadow-sm p-4 flex items-center gap-4">
+          <div class="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover rounded-lg">` : '📦'}
+          </div>
+          <div class="flex-grow">
+            <h3 class="font-semibold text-gray-900">${item.name}</h3>
+            <p class="text-blue-600 font-bold">$${(item.price / 100).toFixed(2)}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="updateQuantity(${item.id}, -1)" class="w-8 h-8 bg-gray-100 rounded-lg hover:bg-gray-200 transition">-</button>
+            <span class="w-8 text-center font-medium">${item.quantity}</span>
+            <button onclick="updateQuantity(${item.id}, 1)" class="w-8 h-8 bg-gray-100 rounded-lg hover:bg-gray-200 transition">+</button>
+          </div>
+          <div class="text-right">
+            <p class="font-bold text-gray-900">$${itemTotal.toFixed(2)}</p>
+            <button onclick="removeItem(${item.id})" class="text-red-500 text-sm hover:text-red-600">移除</button>
+          </div>
+        </div>
+        `;
+      }).join('');
+      
+      document.getElementById('total-price').textContent = '$' + total.toFixed(2);
+    }
+    
+    function updateQuantity(id, delta) {
+      const item = cart.find(i => i.id === id);
+      if (item) {
+        item.quantity += delta;
+        if (item.quantity <= 0) {
+          cart = cart.filter(i => i.id !== id);
+        }
+        localStorage.setItem('cart', JSON.stringify(cart));
+        renderCart();
+      }
+    }
+    
+    function removeItem(id) {
+      cart = cart.filter(i => i.id !== id);
+      localStorage.setItem('cart', JSON.stringify(cart));
+      renderCart();
+    }
+    
+    function checkout() {
+      <% if (user) { %>
+        alert('✅ 訂單已提交！');
+        cart = [];
+        localStorage.setItem('cart', JSON.stringify(cart));
+        renderCart();
+      <% } else { %>
+        alert('請先登入！');
+        window.location.href = '/login';
+      <% } %>
+    }
+    
+    renderCart();
+  </script>
+</body>
+</html>
