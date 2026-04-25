@@ -1,3 +1,4 @@
 {
-  "version": 2
+  "version": 2,
+  "buildCommand": "echo 'Building...' && ls -la && rm -rf dist && mkdir -p public && cp index.html public/index.html && echo 'Done: ' && ls -la public"
 }
