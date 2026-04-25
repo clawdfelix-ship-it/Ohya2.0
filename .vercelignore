@@ -1,5 +1,6 @@
-# 忽略所有 JS 檔，除咗 api 目錄入面嘅
+# 忽略所有 JS 檔，除咗 app.js 同 api 目錄入面嘅
 *.js
+!app.js
 !api/*.js
 
 # 其他唔需要嘅
@@ -8,4 +9,3 @@ frontend
 node_modules
 .git
 *.md
-*.json
