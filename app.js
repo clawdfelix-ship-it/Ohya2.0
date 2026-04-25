@@ -129,25 +129,37 @@ try {
   });
 }
 
-// Serve frontend in production if it exists (needs to be built)
+// Serve frontend if it exists (Vercel will build it during deployment)
+const fs = require('fs');
 const frontendDist = path.join(__dirname, 'frontend/dist');
-if (process.env.NODE_ENV === 'production' && require('fs').existsSync(frontendDist)) {
+
+console.log('Checking frontend dist at:', frontendDist);
+console.log('Directory exists:', fs.existsSync(frontendDist));
+
+if (fs.existsSync(frontendDist)) {
+  console.log('Serving frontend from:', frontendDist);
   app.use(express.static(frontendDist));
+  
+  // SPA catch-all route - serve index.html for all non-API requests
   app.get('*', (req, res) => {
-    // Only serve index.html for non-API requests
-    if (!req.path.startsWith('/api/') && !req.path.startsWith('/webhooks/')) {
-      res.sendFile(path.join(frontendDist, 'index.html'));
+    if (!req.path.startsWith('/api/') && !req.path.startsWith('/webhooks/') && !req.path.startsWith('/test/')) {
+      const indexPath = path.join(frontendDist, 'index.html');
+      console.log('Serving index.html from:', indexPath);
+      res.sendFile(indexPath);
     } else {
-      res.status(404).json({ error: 'API endpoint not found' });
+      // Let API routes handle their own 404
+      res.status(404).json({ error: 'Endpoint not found' });
     }
   });
 } else {
-  // No frontend built yet, just return API info for root
+  // No frontend built yet - show diagnostic info
   app.get('/', (req, res) => {
     res.json({ 
       status: 'ok', 
       message: 'Mzakka E-Commerce API is running',
-      frontend: 'not built yet'
+      frontendDist: frontendDist,
+      frontendExists: fs.existsSync(frontendDist),
+      nodeEnv: process.env.NODE_ENV || 'not set'
     });
   });
 }
