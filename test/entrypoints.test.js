@@ -17,6 +17,12 @@ test('Vercel entrypoint exports the full backend app (has /api/health route)', (
   assert.ok(paths.includes('/api/health'));
 });
 
+test('stray Vite dev client route is handled (no noisy 404 in production)', () => {
+  const app = require(path.join('..', 'api', 'index.js'));
+  const paths = getRoutePaths(app);
+  assert.ok(paths.includes('/@vite/*'));
+});
+
 test('DB pool getter is a singleton within the process', () => {
   const modulePath = path.join(__dirname, '..', 'utils', 'getPool.js');
   assert.ok(fs.existsSync(modulePath));

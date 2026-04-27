@@ -63,6 +63,10 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/@vite/*', (req, res) => {
+  res.status(204).end();
+});
+
 // Session configuration
 if (connectionString) {
   app.use(session({
