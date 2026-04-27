@@ -6,7 +6,7 @@
   <title><%= title %></title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen" data-logged-in="<%= user ? '1' : '0' %>">
   <!-- 導航欄 -->
   <nav class="bg-white shadow-sm sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -63,7 +63,7 @@
   <footer class="bg-gray-900 text-white py-12">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="border-t border-gray-800 pt-8 text-center text-gray-500">
-        © 2026 Ohya2.0. All rights reserved.
+        © 2026 Ohya2.0. 版權所有。
       </div>
     </div>
   </footer>
@@ -92,7 +92,7 @@
       
       let total = 0;
       container.innerHTML = cart.map(item => {
-        const itemTotal = (item.price / 100 * item.quantity;
+        const itemTotal = (item.price / 100) * item.quantity;
         total += itemTotal;
         
         return `
@@ -139,15 +139,16 @@
     }
     
     function checkout() {
-      <% if (user) { %>
+      const isLoggedIn = document.body.dataset.loggedIn === '1';
+      if (isLoggedIn) {
         alert('✅ 訂單已提交！');
         cart = [];
         localStorage.setItem('cart', JSON.stringify(cart));
         renderCart();
-      <% } else { %>
+      } else {
         alert('請先登入！');
         window.location.href = '/login';
-      <% } %>
+      }
     }
     
     renderCart();

@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: 'Noto Sans JP', sans-serif;
+      font-family: 'Noto Sans TC', sans-serif;
     }
     .jpn-bracket::before { content: '【'; }
     .jpn-bracket::after { content: '】'; }
@@ -26,39 +26,36 @@
 </head>
 <body class="bg-white text-black min-h-screen">
 
-  <!-- 年齢確認モーダル / Age Verification Modal -->
+  <!-- 年齡確認 -->
   <div id="ageModal" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center hidden">
     <div class="modal-animate bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center shadow-2xl">
       <div class="text-5xl mb-4">🔞</div>
-      <h2 class="text-2xl font-bold mb-4">年齢確認</h2>
-      <p class="text-gray-600 mb-6">
-        このサイトには成人向けの商品が含まれています。<br>
-        18歳以上ですか？
-      </p>
+      <h2 class="text-2xl font-bold mb-4"><%= t('age.title') %></h2>
+      <p class="text-gray-600 mb-6 whitespace-pre-line"><%= t('age.desc') %></p>
       <div class="flex gap-4 justify-center">
         <button onclick="verifyAge(true)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg transition text-lg">
-          はい
+          <%= t('common.yes') %>
         </button>
         <button onclick="verifyAge(false)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-10 rounded-lg transition text-lg">
-          いいえ
+          <%= t('common.no') %>
         </button>
       </div>
       <p class="text-xs text-gray-400 mt-6">
-        ※「いいえ」をクリックすると、このサイトを閲覧できません。
+        選擇「否」將無法繼續瀏覽本網站。
       </p>
     </div>
   </div>
 
-  <!-- ヘッダー / Header -->
+  <!-- 頁首 -->
   <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-    <!-- Top Bar -->
+    <!-- 頂部提示 -->
     <div class="bg-gray-900 text-white text-xs py-1">
       <div class="max-w-7xl mx-auto px-2 flex justify-between items-center">
-        <span class="text-orange-400 font-bold">【ポイント5倍】会員登録でさらにお得！</span>
+        <span class="text-orange-400 font-bold">【積分 5 倍】註冊會員更抵！</span>
         <div class="flex gap-4">
-          <a href="#" class="hover:text-orange-400">マイページ</a>
-          <a href="#" class="hover:text-orange-400">よくある質問</a>
-          <a href="#" class="hover:text-orange-400">お問い合わせ</a>
+          <a href="#" class="hover:text-orange-400"><%= t('nav.myAccount') %></a>
+          <a href="#" class="hover:text-orange-400"><%= t('nav.faq') %></a>
+          <a href="#" class="hover:text-orange-400"><%= t('nav.contact') %></a>
         </div>
       </div>
     </div>
@@ -72,37 +69,37 @@
           <span class="text-xl font-black text-red-600">M-ZAKKA</span>
         </a>
         
-        <!-- Search -->
+        <!-- 搜尋 -->
         <div class="flex-1 max-w-xl">
           <div class="flex">
-            <input type="text" placeholder="商品名・ブランドで検索" class="flex-1 border-2 border-gray-300 rounded-l-lg px-4 py-2 text-sm focus:border-red-500 focus:outline-none">
+            <input type="text" placeholder="<%= t('nav.searchPlaceholder') %>" class="flex-1 border-2 border-gray-300 rounded-l-lg px-4 py-2 text-sm focus:border-red-500 focus:outline-none">
             <button class="bg-red-600 text-white px-6 rounded-r-lg hover:bg-red-700 transition font-bold">
-              検索
+              <%= t('nav.search') %>
             </button>
           </div>
         </div>
         
-        <!-- Cart & Account -->
+        <!-- 購物車與帳戶 -->
         <div class="flex items-center gap-4 flex-shrink-0">
           <a href="/cart" class="flex items-center gap-1 text-sm hover:text-red-600 transition">
             <span class="text-xl">🛒</span>
-            <span>カート</span>
+            <span><%= t('nav.cart') %></span>
             <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full font-bold" id="cart-count">0</span>
           </a>
           <% if (user) { %>
             <div class="text-sm">
-              <span class="text-gray-600">ようこそ</span>
-              <a href="/logout" class="text-red-600 hover:underline ml-2">ログアウト</a>
+              <span class="text-gray-600">歡迎</span>
+              <a href="/logout" class="text-red-600 hover:underline ml-2">登出</a>
             </div>
           <% } else { %>
-            <a href="/login" class="text-sm hover:text-red-600 transition">ログイン</a>
-            <a href="/register" class="bg-red-600 text-white text-sm px-4 py-1.5 rounded hover:bg-red-700 transition font-bold">新規登録</a>
+            <a href="/login" class="text-sm hover:text-red-600 transition"><%= t('nav.login') %></a>
+            <a href="/register" class="bg-red-600 text-white text-sm px-4 py-1.5 rounded hover:bg-red-700 transition font-bold"><%= t('nav.register') %></a>
           <% } %>
         </div>
       </div>
     </div>
     
-    <!-- Category Navigation - Japanese Style Dense -->
+    <!-- 分類導航 -->
     <nav class="bg-gray-100 border-t border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-2">
         <div class="flex items-center gap-0">
@@ -110,7 +107,7 @@
           <div class="relative group">
             <button class="bg-red-600 text-white px-4 py-2.5 font-bold text-sm flex items-center gap-2 hover:bg-red-700 transition">
               <span>☰</span>
-              商品カテゴリー
+              商品分類
               <span>▼</span>
             </button>
             <div class="absolute left-0 top-full bg-white shadow-xl border border-gray-200 w-64 hidden group-hover:block z-50">
@@ -124,27 +121,27 @@
           
           <!-- Quick Category Links -->
           <div class="flex overflow-x-auto no-scrollbar flex-1">
-            <a href="/products?category=男士護理" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">メンズケア</a>
-            <a href="/products?category=護理配件" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">アクセサリー</a>
-            <a href="/products?category=進階系列" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">アドバンス</a>
-            <a href="/products?category=頂級系列" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">プレミアム</a>
-            <a href="/products?category=優惠套裝" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">お得セット</a>
-            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">新着商品</a>
-            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">人気ランキング</a>
-            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">タイムセール</a>
-            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">ブランド一覧</a>
+            <a href="/products?category=男士護理" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">男士護理</a>
+            <a href="/products?category=護理配件" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">護理配件</a>
+            <a href="/products?category=進階系列" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">進階系列</a>
+            <a href="/products?category=頂級系列" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">頂級系列</a>
+            <a href="/products?category=優惠套裝" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">優惠套裝</a>
+            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">最新上架</a>
+            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">人氣排行榜</a>
+            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">限時優惠</a>
+            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">品牌一覽</a>
           </div>
         </div>
       </div>
     </nav>
   </header>
 
-  <!-- パンくずリスト / Breadcrumb -->
+  <!-- 導覽路徑 -->
   <div class="max-w-7xl mx-auto px-2 py-3">
     <nav class="text-xs text-gray-500">
-      <a href="/" class="hover:text-red-600">ホーム</a>
+      <a href="/" class="hover:text-red-600">首頁</a>
       <span class="mx-2">›</span>
-      <span class="text-gray-700 font-medium">商品一覧</span>
+      <span class="text-gray-700 font-medium">商品列表</span>
       <% if (selectedCategory && selectedCategory !== '全部商品') { %>
         <span class="mx-2">›</span>
         <span class="text-red-600 font-medium"><%= selectedCategory %></span>
@@ -152,24 +149,22 @@
     </nav>
   </div>
 
-  <!-- 商品リスト / Products List -->
+  <!-- 商品列表 -->
   <div class="max-w-7xl mx-auto px-2 py-4">
     <!-- Page Title -->
     <div class="mb-6">
-      <h1 class="text-2xl font-black jpn-bracket inline-block">
-        <%= selectedCategory && selectedCategory !== '全部商品' ? selectedCategory : '全商品' %>
-      </h1>
-      <span class="text-sm text-gray-500 ml-3">全 <%= products.length %> 件</span>
+      <h1 class="text-2xl font-black jpn-bracket inline-block"><%= selectedCategory && selectedCategory !== '全部商品' ? selectedCategory : '全部商品' %></h1>
+      <span class="text-sm text-gray-500 ml-3">共 <%= products.length %> 件</span>
     </div>
     
     <!-- Category Filters -->
     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
       <div class="flex items-center gap-2 mb-3">
-        <span class="text-sm font-bold text-gray-700">カテゴリー：</span>
+        <span class="text-sm font-bold text-gray-700">分類：</span>
       </div>
       <div class="flex flex-wrap gap-2">
         <a href="/products" class="<%= selectedCategory === '全部商品' || !selectedCategory ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300' %> text-xs px-4 py-2 rounded font-medium hover:opacity-80 transition">
-          全商品 (<%= products.length %>)
+          全部商品 (<%= products.length %>)
         </a>
         <% categories.slice(1).forEach(category => { %>
           <a href="/products?category=<%= category.name %>" class="<%= selectedCategory === category.name ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300' %> text-xs px-4 py-2 rounded font-medium hover:opacity-80 transition">
@@ -182,19 +177,19 @@
     <!-- Sort Options -->
     <div class="flex justify-between items-center mb-4">
       <div class="text-sm text-gray-500">
-        <span class="font-bold text-black"><%= products.length %></span> 件の商品が見つかりました
+        已找到 <span class="font-bold text-black"><%= products.length %></span> 件商品
       </div>
       <div class="flex gap-2">
         <select class="border border-gray-300 rounded px-3 py-1.5 text-sm focus:border-red-500 focus:outline-none">
-          <option>おすすめ順</option>
-          <option>価格の安い順</option>
-          <option>価格の高い順</option>
-          <option>新着順</option>
-          <option>人気順</option>
+          <option>推介排序</option>
+          <option>價格由低至高</option>
+          <option>價格由高至低</option>
+          <option>最新上架</option>
+          <option>人氣排序</option>
         </select>
         <div class="flex border border-gray-300 rounded overflow-hidden">
-          <button class="px-3 py-1.5 text-sm bg-red-600 text-white">4列</button>
-          <button class="px-3 py-1.5 text-sm bg-white text-gray-700 hover:bg-gray-100">リスト</button>
+          <button class="px-3 py-1.5 text-sm bg-red-600 text-white">4 欄</button>
+          <button class="px-3 py-1.5 text-sm bg-white text-gray-700 hover:bg-gray-100">清單</button>
         </div>
       </div>
     </div>
@@ -210,7 +205,7 @@
                 <div class="absolute top-2 left-2 z-10 flex flex-col gap-1">
                   <% if (product.originalPrice && product.originalPrice > product.price) { %>
                     <span class="bg-red-600 text-white text-xs px-2 py-1 rounded font-bold">
-                      お買い得
+                      <%= t('product.badge.deal') %>
                     </span>
                     <span class="bg-orange-500 text-white text-xs px-2 py-1 rounded font-bold">
                       -<%= Math.round((1 - product.price / product.originalPrice) * 100) %>%OFF
@@ -218,7 +213,7 @@
                   <% } %>
                   <% if (product.stock <= 20) { %>
                     <span class="bg-yellow-500 text-black text-xs px-2 py-1 rounded font-bold">
-                      残りわずか
+                      <%= t('product.badge.lowStock') %>
                     </span>
                   <% } %>
                 </div>
@@ -242,16 +237,16 @@
                 
                 <!-- Points Display -->
                 <div class="text-xs text-red-600 mb-3">
-                  <span class="font-bold">ポイント：<%= Math.floor(product.price / 100) %>pt</span>
-                  <span class="text-gray-400">(1倍)</span>
+                  <span class="font-bold">積分：<%= Math.floor(product.price / 100) %>pt</span>
+                  <span class="text-gray-400">（1 倍）</span>
                 </div>
                 
                 <!-- CTAs -->
                 <div class="flex gap-2">
                   <a href="/product/<%= product.id %>" class="flex-1 bg-red-600 hover:bg-red-700 text-white text-center py-2 rounded font-bold text-xs transition">
-                    詳細を見る
+                    <%= t('product.cta.details') %>
                   </a>
-                  <button onclick="addToCart(<%= product.id %>)" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded font-bold text-xs transition">
+                  <button onclick="addToCart(this)" data-product-id="<%= product.id %>" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded font-bold text-xs transition">
                     🛒
                   </button>
                 </div>
@@ -275,81 +270,81 @@
     <% } else { %>
       <div class="text-center py-20 bg-gray-50 rounded-lg border border-gray-200">
         <span class="text-6xl mb-4 block">📦</span>
-        <p class="text-gray-500 mb-4">該当する商品が見つかりませんでした</p>
+        <p class="text-gray-500 mb-4">未找到相關商品</p>
         <a href="/products" class="inline-block bg-red-600 text-white font-bold py-2 px-8 rounded-lg hover:bg-red-700 transition">
-          全商品を見る
+          查看全部商品
         </a>
       </div>
     <% } %>
   </div>
 
-  <!-- フッター / Footer -->
+  <!-- 頁尾 -->
   <footer class="bg-gray-900 text-white mt-8">
     <div class="max-w-7xl mx-auto px-2 py-10">
-      <!-- Footer Links -->
+      <!-- 連結 -->
       <div class="grid grid-cols-5 gap-8 mb-8">
         <div>
-          <h4 class="font-bold mb-4 text-sm">【ご利用ガイド】</h4>
+          <h4 class="font-bold mb-4 text-sm">【使用指南】</h4>
           <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">ご注文方法</a></li>
-            <li><a href="#" class="hover:text-white transition">お支払い方法</a></li>
-            <li><a href="#" class="hover:text-white transition">配送について</a></li>
-            <li><a href="#" class="hover:text-white transition">返品・交換</a></li>
-            <li><a href="#" class="hover:text-white transition">プライバシーポリシー</a></li>
+            <li><a href="#" class="hover:text-white transition">訂購方法</a></li>
+            <li><a href="#" class="hover:text-white transition">付款方式</a></li>
+            <li><a href="#" class="hover:text-white transition">配送安排</a></li>
+            <li><a href="#" class="hover:text-white transition">退換貨</a></li>
+            <li><a href="#" class="hover:text-white transition">私隱政策</a></li>
           </ul>
         </div>
         <div>
-          <h4 class="font-bold mb-4 text-sm">【会員サービス】</h4>
+          <h4 class="font-bold mb-4 text-sm">【會員服務】</h4>
           <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">会員登録</a></li>
-            <li><a href="#" class="hover:text-white transition">ログイン</a></li>
-            <li><a href="#" class="hover:text-white transition">マイページ</a></li>
-            <li><a href="#" class="hover:text-white transition">ポイントについて</a></li>
-            <li><a href="#" class="hover:text-white transition">会員ランク</a></li>
+            <li><a href="#" class="hover:text-white transition">會員註冊</a></li>
+            <li><a href="#" class="hover:text-white transition">登入</a></li>
+            <li><a href="#" class="hover:text-white transition">我的帳戶</a></li>
+            <li><a href="#" class="hover:text-white transition">關於積分</a></li>
+            <li><a href="#" class="hover:text-white transition">會員等級</a></li>
           </ul>
         </div>
         <div>
-          <h4 class="font-bold mb-4 text-sm">【サポート】</h4>
+          <h4 class="font-bold mb-4 text-sm">【支援】</h4>
           <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">よくある質問</a></li>
-            <li><a href="#" class="hover:text-white transition">お問い合わせ</a></li>
-            <li><a href="#" class="hover:text-white transition">店舗情報</a></li>
-            <li><a href="#" class="hover:text-white transition">採用情報</a></li>
+            <li><a href="#" class="hover:text-white transition">常見問題</a></li>
+            <li><a href="#" class="hover:text-white transition">聯絡我們</a></li>
+            <li><a href="#" class="hover:text-white transition">店舖資料</a></li>
+            <li><a href="#" class="hover:text-white transition">招聘資訊</a></li>
           </ul>
         </div>
         <div>
-          <h4 class="font-bold mb-4 text-sm">【企業情報】</h4>
+          <h4 class="font-bold mb-4 text-sm">【公司資訊】</h4>
           <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">会社概要</a></li>
-            <li><a href="#" class="hover:text-white transition">利用規約</a></li>
-            <li><a href="#" class="hover:text-white transition">特定商取引法</a></li>
-            <li><a href="#" class="hover:text-white transition">プレスリリース</a></li>
+            <li><a href="#" class="hover:text-white transition">公司簡介</a></li>
+            <li><a href="#" class="hover:text-white transition">使用條款</a></li>
+            <li><a href="#" class="hover:text-white transition">銷售條款</a></li>
+            <li><a href="#" class="hover:text-white transition">新聞稿</a></li>
           </ul>
         </div>
         <div>
-          <h4 class="font-bold mb-4 text-sm">【お問い合わせ】</h4>
+          <h4 class="font-bold mb-4 text-sm">【聯絡方式】</h4>
           <div class="text-xs text-gray-400 space-y-2">
             <p>📞 0120-XXX-XXX</p>
-            <p>受付時間：10:00〜18:00</p>
-            <p>（土日祝日を除く）</p>
+            <p>服務時間：10:00–18:00</p>
+            <p>（公眾假期除外）</p>
             <p class="mt-3">📧 support@mzakka.com</p>
           </div>
         </div>
       </div>
       
-      <!-- 18+ Disclaimer -->
+      <!-- 年齡限制 -->
       <div class="border-t border-gray-700 pt-6 mb-6">
         <div class="bg-red-900/30 border border-red-800 rounded-lg p-4 text-center">
-          <p class="text-red-400 font-bold text-sm mb-1">🔞 年齢制限について</p>
+          <p class="text-red-400 font-bold text-sm mb-1">🔞 <%= t('footer.ageRestrictionTitle') %></p>
           <p class="text-xs text-gray-400">
-            当サイトは成人向け商品を販売しております。18歳未満の方のご利用は固くお断りしております。
+            <%= t('footer.ageRestrictionDesc') %>
           </p>
         </div>
       </div>
       
-      <!-- Payment Methods -->
+      <!-- 付款方式 -->
       <div class="text-center mb-6">
-        <p class="text-xs text-gray-500 mb-3">対応決済方法</p>
+        <p class="text-xs text-gray-500 mb-3"><%= t('footer.payments') %></p>
         <div class="flex justify-center gap-4 text-2xl text-gray-400">
           <span>💳</span>
           <span>🏦</span>
@@ -362,15 +357,17 @@
       
       <!-- Copyright -->
       <div class="border-t border-gray-700 pt-6 text-center text-xs text-gray-500">
-        <p>© 2026 M-ZAKKA. All rights reserved. 当サイトの無断転載を禁じます。</p>
+        <p>© 2026 M-ZAKKA. 版權所有。未經授權不得轉載。</p>
       </div>
     </div>
   </footer>
 
+  <script id="page-products" type="application/json"><%- JSON.stringify(products) %></script>
+
   <script>
-    const productsData = <%- JSON.stringify(products) %>;
+    const productsData = JSON.parse(document.getElementById('page-products').textContent || '[]');
     
-    // Age Verification
+    // 年齡確認
     function checkAgeVerification() {
       const verified = localStorage.getItem('ageVerified');
       if (!verified) {
@@ -389,14 +386,15 @@
       }
     }
     
-    // Cart functions
+    // 購物車
     function updateCartCount() {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]');
       const count = cart.reduce((sum, item) => sum + item.quantity, 0);
       document.getElementById('cart-count').textContent = count;
     }
     
-    function addToCart(productId) {
+    function addToCart(btn) {
+      const productId = parseInt(btn.dataset.productId);
       const product = productsData.find(p => p.id === productId);
       if (!product) return;
       
@@ -418,8 +416,7 @@
       localStorage.setItem('cart', JSON.stringify(cart));
       updateCartCount();
       
-      // Simple feedback
-      const btn = event.target;
+      // 提示
       const originalText = btn.textContent;
       btn.textContent = '✓';
       btn.classList.add('bg-green-600');
