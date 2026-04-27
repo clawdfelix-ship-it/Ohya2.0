@@ -50,7 +50,7 @@ module.exports = function(app, pool, requireAdmin) {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '伺服器錯誤' });
     }
   });
 
@@ -72,7 +72,7 @@ module.exports = function(app, pool, requireAdmin) {
       res.json({ product: result.rows[0] });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '伺服器錯誤' });
     }
   });
 
@@ -124,7 +124,7 @@ module.exports = function(app, pool, requireAdmin) {
       res.json({ success: true, product: result.rows[0] });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '伺服器錯誤' });
     }
   });
 
@@ -179,7 +179,7 @@ module.exports = function(app, pool, requireAdmin) {
       res.json({ success: true, product: result.rows[0] });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '伺服器錯誤' });
     }
   });
 
@@ -196,7 +196,7 @@ module.exports = function(app, pool, requireAdmin) {
       res.json({ success: true });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '伺服器錯誤' });
     }
   });
 
@@ -248,7 +248,7 @@ module.exports = function(app, pool, requireAdmin) {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '伺服器錯誤' });
     }
   });
 
