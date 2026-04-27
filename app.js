@@ -5,7 +5,6 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const multer = require('multer');
 const path = require('path');
-const sharp = require('sharp');
 const fs = require('fs');
 const https = require('https');
 require('dotenv').config();
@@ -13,6 +12,18 @@ require('dotenv').config();
 // Image utilities
 const { findLocalImage, generatePlaceholder, getRemoteUrl, toProxyUrl } = require('./utils/imageUtils');
 const { getConnectionString, getPool } = require('./utils/getPool');
+
+let cachedSharp;
+function getSharp() {
+  if (cachedSharp !== undefined) return cachedSharp;
+  try {
+    cachedSharp = require('sharp');
+  } catch (error) {
+    console.error('sharp unavailable:', error && error.message ? error.message : String(error));
+    cachedSharp = null;
+  }
+  return cachedSharp;
+}
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -125,7 +136,8 @@ app.get('/image/:hash', async (req, res) => {
     }
     
     // 3. Resize if requested using sharp
-    if ((w || h) && imageBuffer) {
+    const sharp = (w || h) && imageBuffer ? getSharp() : null;
+    if (sharp) {
       const width = w ? parseInt(w) : undefined;
       const height = h ? parseInt(h) : undefined;
       
