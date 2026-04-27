@@ -148,8 +148,10 @@ CREATE TABLE IF NOT EXISTS login_logs (
 CREATE TABLE IF NOT EXISTS brands (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
+  name_zh_hk VARCHAR(100),
   slug VARCHAR(100) UNIQUE NOT NULL,
   description TEXT,
+  description_zh_hk TEXT,
   image_url VARCHAR(500),
   website VARCHAR(500),
   sort_order INTEGER DEFAULT 0,
@@ -170,8 +172,10 @@ CREATE TABLE IF NOT EXISTS product_tags (
 CREATE TABLE IF NOT EXISTS categories (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
+  name_zh_hk VARCHAR(100),
   slug VARCHAR(100) UNIQUE NOT NULL,
   description TEXT,
+  description_zh_hk TEXT,
   parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
   sort_order INTEGER DEFAULT 0,
   status VARCHAR(20) DEFAULT 'active' NOT NULL, -- active, inactive
@@ -191,9 +195,12 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
+  name_zh_hk VARCHAR(255),
   slug VARCHAR(255) UNIQUE NOT NULL,
   description TEXT, -- main description
+  description_zh_hk TEXT,
   short_description TEXT,
+  short_description_zh_hk TEXT,
   -- Brand & Category & Tags
   brand_id INTEGER REFERENCES brands(id) ON DELETE SET NULL,
   category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,

@@ -9,7 +9,7 @@ module.exports = function(app, pool, requireAdmin) {
       const search = req.query.search || '';
       const offset = (page - 1) * perPage;
 
-      let where = 'p.status = \'active\'';
+      let where = 'p.status = \'active\' AND p.name_zh_hk IS NOT NULL AND p.description_zh_hk IS NOT NULL';
       let params = [];
       let paramIndex = 1;
 
@@ -20,7 +20,7 @@ module.exports = function(app, pool, requireAdmin) {
       }
 
       if (search) {
-        where += ` AND (p.name ILIKE $${paramIndex} OR p.description ILIKE $${paramIndex})`;
+        where += ` AND (p.name_zh_hk ILIKE $${paramIndex} OR p.description_zh_hk ILIKE $${paramIndex})`;
         params.push(`%${search}%`);
         paramIndex++;
       }
@@ -31,7 +31,7 @@ module.exports = function(app, pool, requireAdmin) {
 
       // Get products
       const result = await pool.query(`
-        SELECT p.*, c.name as category_name
+        SELECT p.*, p.name_zh_hk as name, p.description_zh_hk as description, c.name_zh_hk as category_name
         FROM products p
         LEFT JOIN categories c ON p.category_id = c.id
         WHERE ${where}
@@ -59,10 +59,10 @@ module.exports = function(app, pool, requireAdmin) {
     try {
       const { id } = req.params;
       const result = await pool.query(`
-        SELECT p.*, c.name as category_name
+        SELECT p.*, p.name_zh_hk as name, p.description_zh_hk as description, c.name_zh_hk as category_name
         FROM products p
         LEFT JOIN categories c ON p.category_id = c.id
-        WHERE p.id = $1 AND p.status = 'active'
+        WHERE p.id = $1 AND p.status = 'active' AND p.name_zh_hk IS NOT NULL AND p.description_zh_hk IS NOT NULL
       `, [id]);
 
       if (result.rows.length === 0) {
@@ -81,8 +81,11 @@ module.exports = function(app, pool, requireAdmin) {
     try {
       const {
         name,
+        name_zh_hk,
         slug,
         description,
+        description_zh_hk,
+        short_description_zh_hk,
         price,
         original_price,
         stock,
@@ -98,14 +101,17 @@ module.exports = function(app, pool, requireAdmin) {
 
       const result = await pool.query(`
         INSERT INTO products (
-          name, slug, description, price, original_price, stock,
+          name, name_zh_hk, slug, description, description_zh_hk, short_description_zh_hk, price, original_price, stock,
           category_id, image_url, gallery_images, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
       `, [
         name,
+        name_zh_hk || name,
         slug || name.toLowerCase().replace(/\s+/g, '-'),
         description || null,
+        description_zh_hk || description || null,
+        short_description_zh_hk || null,
         parseFloat(price),
         original_price ? parseFloat(original_price) : null,
         parseInt(stock) || 0,
@@ -128,8 +134,11 @@ module.exports = function(app, pool, requireAdmin) {
       const { id } = req.params;
       const {
         name,
+        name_zh_hk,
         slug,
         description,
+        description_zh_hk,
+        short_description_zh_hk,
         price,
         original_price,
         stock,
@@ -141,15 +150,18 @@ module.exports = function(app, pool, requireAdmin) {
 
       const result = await pool.query(`
         UPDATE products
-        SET name = $1, slug = $2, description = $3, price = $4, original_price = $5,
-            stock = $6, category_id = $7, image_url = $8, gallery_images = $9,
-            status = $10, updated_at = NOW()
-        WHERE id = $11
+        SET name = $1, name_zh_hk = $2, slug = $3, description = $4, description_zh_hk = $5, short_description_zh_hk = $6,
+            price = $7, original_price = $8, stock = $9, category_id = $10, image_url = $11, gallery_images = $12,
+            status = $13, updated_at = NOW()
+        WHERE id = $14
         RETURNING *
       `, [
         name,
+        name_zh_hk || name,
         slug || name.toLowerCase().replace(/\s+/g, '-'),
         description || null,
+        description_zh_hk || description || null,
+        short_description_zh_hk || null,
         parseFloat(price),
         original_price ? parseFloat(original_price) : null,
         parseInt(stock) || 0,
@@ -208,7 +220,7 @@ module.exports = function(app, pool, requireAdmin) {
       }
 
       if (search) {
-        where += ` AND (name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+        where += ` AND (name ILIKE $${paramIndex} OR name_zh_hk ILIKE $${paramIndex} OR description ILIKE $${paramIndex} OR description_zh_hk ILIKE $${paramIndex})`;
         params.push(`%${search}%`);
         paramIndex++;
       }
@@ -217,7 +229,7 @@ module.exports = function(app, pool, requireAdmin) {
       const total = parseInt(countResult.rows[0].total);
 
       const result = await pool.query(`
-        SELECT p.*, c.name as category_name
+        SELECT p.*, COALESCE(c.name_zh_hk, c.name) as category_name
         FROM products p
         LEFT JOIN categories c ON p.category_id = c.id
         WHERE ${where}
