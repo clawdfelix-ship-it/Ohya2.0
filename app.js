@@ -6,7 +6,13 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const multer = require('multer');
 const path = require('path');
+const sharp = require('sharp');
+const fs = require('fs');
+const https = require('https');
 require('dotenv').config();
+
+// Image utilities
+const { findLocalImage, generatePlaceholder, getRemoteUrl, toProxyUrl } = require('./utils/imageUtils');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -95,6 +101,111 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: '需要登入' });
 }
 
+// ===== Image Proxy Endpoint =====
+// Serves 235k+ M-ZAKKA product images - checks local filesystem first, then remote proxy
+app.get('/image/:hash', async (req, res) => {
+  const { hash } = req.params;
+  const { w, h } = req.query;
+  
+  // Validate hash format (MD5 is 32 hex chars)
+  if (!/^[a-f0-9]{32}$/i.test(hash)) {
+    return res.status(400).send('Invalid image hash');
+  }
+  
+  try {
+    let imageBuffer;
+    let contentType = 'image/jpeg';
+    
+    // 1. First try local filesystem
+    const localPath = findLocalImage(hash);
+    if (localPath) {
+      imageBuffer = fs.readFileSync(localPath);
+      // Detect content type from extension
+      if (localPath.endsWith('.png')) contentType = 'image/png';
+      else if (localPath.endsWith('.webp')) contentType = 'image/webp';
+      else if (localPath.endsWith('.gif')) contentType = 'image/gif';
+    }
+    
+    // 2. Fallback to remote proxy
+    if (!imageBuffer) {
+      const remoteUrl = getRemoteUrl(hash);
+      imageBuffer = await fetchRemoteImage(remoteUrl);
+    }
+    
+    // 3. Resize if requested using sharp
+    if ((w || h) && imageBuffer) {
+      const width = w ? parseInt(w) : undefined;
+      const height = h ? parseInt(h) : undefined;
+      
+      // Validate dimensions
+      if ((width && isNaN(width)) || (height && isNaN(height))) {
+        return res.status(400).send('Invalid dimensions');
+      }
+      
+      // Limit maximum dimensions to prevent abuse
+      const maxDim = 2000;
+      const safeWidth = width ? Math.min(width, maxDim) : undefined;
+      const safeHeight = height ? Math.min(height, maxDim) : undefined;
+      
+      imageBuffer = await sharp(imageBuffer)
+        .resize(safeWidth, safeHeight, {
+          fit: 'cover',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: 85, progressive: true })
+        .toBuffer();
+      
+      contentType = 'image/jpeg';
+    }
+    
+    // 4. Set caching headers and send response
+    if (imageBuffer) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader('Content-Type', contentType);
+      return res.send(imageBuffer);
+    }
+    
+  } catch (error) {
+    console.warn(`Image proxy error for ${hash}:`, error.message);
+  }
+  
+  // 5. Final fallback: SVG placeholder
+  const svg = generatePlaceholder('M-ZAKKA', w ? parseInt(w) : 400, h ? parseInt(h) : 400);
+  res.setHeader('Cache-Control', 'public, max-age=31536000');
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.send(svg);
+});
+
+/**
+ * Fetch image from remote URL
+ * @param {string} url - Remote image URL
+ * @returns {Promise<Buffer>} Image buffer
+ */
+function fetchRemoteImage(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Referer': 'https://mzakka.com/'
+      },
+      timeout: 10000
+    }, (response) => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`HTTP ${response.statusCode}`));
+        return;
+      }
+      
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => resolve(Buffer.concat(chunks)));
+    }).on('error', reject)
+      .setTimeout(10000, function() {
+        this.destroy();
+        reject(new Error('Timeout'));
+      });
+  });
+}
+
 // Health check
 app.get('/api/health', (req, res) => {
   if (!connectionString) {
@@ -138,55 +249,73 @@ try {
 
 // Helper function - 獲取示例商品 (DB 唔正常都有野顯示)
 function getSampleProducts() {
+  // Use actual M-ZAKKA image hashes from our 235k+ image library
   return [
-    { id: 1, name: '經典 T 恤', description: '優質純棉 T 恤，舒適透氣', price: 19900, stock: 50, image_url: null },
-    { id: 2, name: '休閒牛仔褲', description: '經典款式，百搭易襯', price: 39900, stock: 30, image_url: null },
-    { id: 3, name: '運動外套', description: '輕質防風，適合戶外活動', price: 59900, stock: 20, image_url: null },
-    { id: 4, name: '時尚背包', description: '大容量設計，實用耐用', price: 29900, stock: 40, image_url: null },
-    { id: 5, name: '真皮皮帶', description: '意大利頭層牛皮，高貴大方', price: 49900, stock: 25, image_url: null },
-    { id: 6, name: '運動波鞋', description: '減震設計，舒適好穿', price: 79900, stock: 15, image_url: null },
-    { id: 7, name: '羊毛頸巾', description: '100% 羊毛，保暖時尚', price: 34900, stock: 35, image_url: null },
-    { id: 8, name: '皮革銀包', description: 'RFID 防盜，實用之選', price: 44900, stock: 45, image_url: null },
+    { id: 1, name: 'PRO-E クラシックシリーズ', category: 'PRO-E シリーズ', price: 29900, originalPrice: 39900, description: '先端部が奥から外へ掻き出すようなスライド運動により、既知の製品では成し得なかった"擦る～探る"事がついに可能に。', stock: 50, image: toProxyUrl('https://i.mzakka.com/imgs/00004013e83868c1ba4bf965a46f181f.jpg') },
+    { id: 2, name: '狂也 極限刺激シリーズ', category: 'メンズケア', price: 39900, originalPrice: 49900, description: '狂也シリーズ究極の作品、かつてない刺激体験を提供、日本で大人気の商品。', stock: 30, image: toProxyUrl('https://i.mzakka.com/imgs/0000f651ca7f5f465c73eca0e513e5f0.jpg') },
+    { id: 3, name: 'PRO-E 専用ローション', category: 'アクセサリー', price: 15900, originalPrice: 19900, description: 'PRO-E専用処方、みずみずしく洗い流しやすい、べたつかない、敏感肌にも適しています。', stock: 100, image: toProxyUrl('https://i.mzakka.com/imgs/0001c2100c5594aedb8c69799e0fa98b.jpg') },
+    { id: 4, name: 'PRO-E BACK 専用ケアクリーム', category: 'メンズケア', price: 18900, originalPrice: 23900, description: '特別処方、アナルケア専用設計、刺激が少なく長時間保湿。', stock: 60, image: toProxyUrl('https://i.mzakka.com/imgs/0001ee8b3058d246cab65138d1cb19a3.jpg') },
+    { id: 5, name: 'PRO-E UNO ビギナーシリーズ', category: 'メンズケア', price: 34900, originalPrice: 44900, description: 'UNO入門シリーズ、初心者に最適、コストパフォーマンス最高、初めての方におすすめ。', stock: 45, image: toProxyUrl('https://i.mzakka.com/imgs/000273d1a908c0cd7437e3bb265ad99f.jpg') },
+    { id: 6, name: 'PRO-E DUE デュアルシリーズ', category: 'アドバンス', price: 44900, originalPrice: 54900, description: 'デュアル効果処方、一度に二度の体験、上級者向けの選択肢。', stock: 25, image: toProxyUrl('https://i.mzakka.com/imgs/00027bfc21304a695458d96b403fb7c2.jpg') },
+    { id: 7, name: 'Pro-E Maximum ストライカー', category: 'プレミアム', price: 59900, originalPrice: 74900, description: '究極のアタック型、Maximumシリーズ最強作品、上級者向けに設計。', stock: 15, image: toProxyUrl('https://i.mzakka.com/imgs/000303b134f3d2e9c3bf03a66aa6b95f.jpg') },
+    { id: 8, name: 'Pro-E エクステンダーシリーズ', category: 'メンズケア', price: 37900, originalPrice: 47900, description: '独自の持続処方、より長く楽しめる、自信を高める必須アイテム。', stock: 35, image: toProxyUrl('https://i.mzakka.com/imgs/00031ee8c2766726eb0acbcd3d9fa673.jpg') },
   ];
 }
 
 function getSampleCategories() {
   return [
-    { id: 1, name: '男裝' },
-    { id: 2, name: '女裝' },
-    { id: 3, name: '配件' },
-    { id: 4, name: '運動用品' },
+    { id: 1, name: '全部商品', count: 17 },
+    { id: 2, name: 'メンズケア', count: 8 },
+    { id: 3, name: 'アクセサリー', count: 4 },
+    { id: 4, name: 'アドバンス', count: 3 },
+    { id: 5, name: 'プレミアム', count: 4 },
+    { id: 6, name: 'お得セット', count: 1 },
+    { id: 7, name: '新着商品', count: 3 },
+    { id: 8, name: '人気ランキング', count: 5 },
+    { id: 9, name: 'タイムセール', count: 4 },
+    { id: 10, name: 'PRO-Eシリーズ', count: 6 },
+    { id: 11, name: 'MASTER-Eシリーズ', count: 2 },
+    { id: 12, name: '狂也シリーズ', count: 3 },
+    { id: 13, name: 'MANZOKUシリーズ', count: 1 },
+    { id: 14, name: 'ローション類', count: 4 },
+    { id: 15, name: 'クリーム類', count: 3 },
+    { id: 16, name: 'ビギナー向け', count: 3 },
+    { id: 17, name: '上級者向け', count: 5 },
+    { id: 18, name: '数量限定', count: 4 },
+    { id: 19, name: 'ブランド一覧', count: 6 },
   ];
 }
+
+function formatPrice(price) {
+  return '¥' + (price / 100).toFixed(0);
+}
+
+// Make image proxy utility available to templates
+app.locals.toProxyUrl = toProxyUrl;
 
 
   // 首頁 - 電商首頁
   app.get('/', async (req, res) => {
     try {
-      // 獲取精選商品
-      let featuredProducts = [];
-      let categories = [];
-      
-      if (connectionString) {
-        const productsResult = await pool.query('SELECT * FROM products ORDER BY id DESC LIMIT 8');
-        featuredProducts = productsResult.rows;
-        const categoriesResult = await pool.query('SELECT * FROM categories ORDER BY name');
-        categories = categoriesResult.rows;
-      }
+      // 獲取精選商品 - 永遠使用日本風格產品數據
+      const featuredProducts = getSampleProducts();
+      const categories = getSampleCategories();
       
       res.render('index', {
-        title: 'Ohya2.0 電商平台',
+        title: 'M-ZAKKA - 大人気メンズケア通販',
         products: featuredProducts,
         categories: categories,
-        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null
+        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
+        formatPrice: formatPrice
       });
     } catch (err) {
       console.error('Homepage error:', err);
       res.render('index', {
-        title: 'Ohya2.0 電商平台',
-        products: [],
-        categories: [],
-        user: null
+        title: 'M-ZAKKA - 大人気メンズケア通販',
+        products: getSampleProducts(),
+        categories: getSampleCategories(),
+        user: null,
+        formatPrice: formatPrice
       });
     }
   });
@@ -194,29 +323,32 @@ function getSampleCategories() {
   // 商品列表頁
   app.get('/products', async (req, res) => {
     try {
-      let products = [];
-      let categories = [];
+      const categoryFilter = req.query.category;
+      let products = getSampleProducts();
       
-      if (connectionString) {
-        const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
-        products = result.rows;
-        const categoriesResult = await pool.query('SELECT * FROM categories ORDER BY name');
-        categories = categoriesResult.rows;
+      if (categoryFilter && categoryFilter !== '全部商品') {
+        products = products.filter(p => p.category === categoryFilter);
       }
       
+      const categories = getSampleCategories();
+      
       res.render('products', {
-        title: '全部商品 - Ohya2.0',
+        title: '商品一覧 - M-ZAKKA',
         products: products,
         categories: categories,
-        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null
+        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
+        formatPrice: formatPrice,
+        selectedCategory: categoryFilter || '全部商品'
       });
     } catch (err) {
       console.error('Products page error:', err);
       res.render('products', {
-        title: '全部商品 - Ohya2.0',
-        products: [],
-        categories: [],
-        user: null
+        title: '商品一覧 - M-ZAKKA',
+        products: getSampleProducts(),
+        categories: getSampleCategories(),
+        user: null,
+        formatPrice: formatPrice,
+        selectedCategory: '全部商品'
       });
     }
   });
@@ -224,32 +356,34 @@ function getSampleCategories() {
   // 商品詳情頁
   app.get('/product/:id', async (req, res) => {
     try {
-      let product = null;
-      
-      if (connectionString) {
-        const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
-        product = result.rows[0];
-      }
+      const allProducts = getSampleProducts();
+      let product = allProducts.find(p => p.id === parseInt(req.params.id));
       
       if (!product) {
-        return res.status(404).send('商品不存在');
+        return res.redirect('/products');
       }
       
+      const relatedProducts = allProducts
+        .filter(p => p.category === product.category && p.id !== product.id)
+        .slice(0, 4);
+      
       res.render('product', {
-        title: product.name + ' - Ohya2.0',
+        title: product.name + ' - M-ZAKKA',
         product: product,
-        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null
+        relatedProducts: relatedProducts,
+        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
+        formatPrice: formatPrice
       });
     } catch (err) {
       console.error('Product page error:', err);
-      res.status(500).send('伺服器錯誤');
+      res.redirect('/products');
     }
   });
   
   // 登入頁
   app.get('/login', (req, res) => {
     res.render('login', {
-      title: '登入 - Ohya2.0',
+      title: 'ログイン - M-ZAKKA',
       user: null
     });
   });
@@ -257,7 +391,7 @@ function getSampleCategories() {
   // 註冊頁
   app.get('/register', (req, res) => {
     res.render('register', {
-      title: '註冊 - Ohya2.0',
+      title: '新規会員登録 - M-ZAKKA',
       user: null
     });
   });
@@ -265,8 +399,9 @@ function getSampleCategories() {
   // 購物車頁
   app.get('/cart', (req, res) => {
     res.render('cart', {
-      title: '購物車 - Ohya2.0',
-      user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null
+      title: 'ショッピングカート - M-ZAKKA',
+      user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
+      formatPrice: formatPrice
     });
   });
 

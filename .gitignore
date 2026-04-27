@@ -26,3 +26,6 @@ frontend/node_modules
 *.swp
 *.swo
 *~
+data/*.db
+data/*.db-shm
+data/*.db-wal
