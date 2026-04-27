@@ -12,6 +12,7 @@ require('dotenv').config();
 // Image utilities
 const { findLocalImage, generatePlaceholder, getRemoteUrl, toProxyUrl } = require('./utils/imageUtils');
 const { getConnectionString, getPool } = require('./utils/getPool');
+const { createTranslator } = require('./utils/i18n');
 
 let cachedSharp;
 function getSharp() {
@@ -27,6 +28,8 @@ function getSharp() {
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const dictZhHK = JSON.parse(fs.readFileSync(path.join(__dirname, 'locales', 'zh-HK.json'), 'utf8'));
 
 // Add custom header to verify Express is handling the request
 app.use((req, res, next) => {
@@ -55,6 +58,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use((req, res, next) => {
+  res.locals.t = createTranslator({ locale: 'zh-HK', dict: dictZhHK });
+  next();
+});
 
 // Session configuration
 if (connectionString) {
