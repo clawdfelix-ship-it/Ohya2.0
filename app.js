@@ -1,5 +1,4 @@
 const express = require('express');
-const { Pool } = require('pg');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
@@ -13,6 +12,7 @@ require('dotenv').config();
 
 // Image utilities
 const { findLocalImage, generatePlaceholder, getRemoteUrl, toProxyUrl } = require('./utils/imageUtils');
+const { getConnectionString, getPool } = require('./utils/getPool');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -24,21 +24,13 @@ app.use((req, res, next) => {
 });
 
 // Database connection - Vercel serverless compatible
-const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const connectionString = getConnectionString();
 
 if (!connectionString) {
   console.error('DATABASE_URL is not set');
 }
 
-const pool = new Pool({
-  connectionString,
-  ssl: process.env.NODE_ENV === 'production' 
-    ? { rejectUnauthorized: false } 
-    : undefined,
-  max: 1,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-});
+const pool = getPool();
 
 // EJS 模板引擎配置
 app.set('view engine', 'ejs');
@@ -218,9 +210,6 @@ app.get('/api/health', (req, res) => {
 app.get('/test/health', (req, res) => {
   res.json({ status: 'ok', message: 'Test route working!' });
 });
-
-// Export middleware and utilities for other routes
-module.exports = { requireAdmin, requireAuth, pool, upload };
 
 // Import routes - wrap in try/catch to show errors clearly
 try {
