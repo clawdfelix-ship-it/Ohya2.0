@@ -133,51 +133,33 @@ try {
   });
 }
 
-// Serve frontend static files - absolute path for Vercel
-const fs = require('fs');
-const frontendDist = path.resolve(__dirname, 'frontend/dist');
+// ===== E-Commerce EJS 頁面路由 =====
+// 永遠優先使用 EJS 模板，確保唔會有空白頁
 
-console.log('=== FRONTEND DEBUG ===');
-console.log('__dirname:', __dirname);
-console.log('frontendDist:', frontendDist);
-console.log('exists:', fs.existsSync(frontendDist));
+// Helper function - 獲取示例商品 (DB 唔正常都有野顯示)
+function getSampleProducts() {
+  return [
+    { id: 1, name: '經典 T 恤', description: '優質純棉 T 恤，舒適透氣', price: 19900, stock: 50, image_url: null },
+    { id: 2, name: '休閒牛仔褲', description: '經典款式，百搭易襯', price: 39900, stock: 30, image_url: null },
+    { id: 3, name: '運動外套', description: '輕質防風，適合戶外活動', price: 59900, stock: 20, image_url: null },
+    { id: 4, name: '時尚背包', description: '大容量設計，實用耐用', price: 29900, stock: 40, image_url: null },
+    { id: 5, name: '真皮皮帶', description: '意大利頭層牛皮，高貴大方', price: 49900, stock: 25, image_url: null },
+    { id: 6, name: '運動波鞋', description: '減震設計，舒適好穿', price: 79900, stock: 15, image_url: null },
+    { id: 7, name: '羊毛頸巾', description: '100% 羊毛，保暖時尚', price: 34900, stock: 35, image_url: null },
+    { id: 8, name: '皮革銀包', description: 'RFID 防盜，實用之選', price: 44900, stock: 45, image_url: null },
+  ];
+}
 
-if (fs.existsSync(frontendDist)) {
-  try {
-    const files = fs.readdirSync(frontendDist);
-    console.log('Files in dist:', files);
-    const indexPath = path.join(frontendDist, 'index.html');
-    console.log('index.html exists:', fs.existsSync(indexPath));
-    if (fs.existsSync(indexPath)) {
-      console.log('index.html content length:', fs.readFileSync(indexPath, 'utf8').length);
-    }
-  } catch (e) {
-    console.error('Error reading dist:', e);
-  }
-  
-  // Serve static assets first
-  app.use(express.static(frontendDist, {
-    index: false,
-    dotfiles: 'allow',
-  }));
-  
-  // SPA catch-all - explicitly send index.html for all non-API routes
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api/') || req.path.startsWith('/webhooks/') || req.path.startsWith('/test/')) {
-      return next();
-    }
-    
-    const indexPath = path.join(frontendDist, 'index.html');
-    console.log('Serving:', req.path, '->', indexPath);
-    
-    if (fs.existsSync(indexPath)) {
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.sendFile(indexPath);
-    } else {
-      res.status(404).send('Frontend index.html not found at: ' + indexPath);
-    }
-  });
-} else {
+function getSampleCategories() {
+  return [
+    { id: 1, name: '男裝' },
+    { id: 2, name: '女裝' },
+    { id: 3, name: '配件' },
+    { id: 4, name: '運動用品' },
+  ];
+}
+
+
   // 首頁 - 電商首頁
   app.get('/', async (req, res) => {
     try {
@@ -287,7 +269,6 @@ if (fs.existsSync(frontendDist)) {
       user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null
     });
   });
-}
 
 // Start server for local development
 if (require.main === module) {
