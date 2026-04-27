@@ -37,9 +37,9 @@
     <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
         <!-- 商品圖片 -->
-        <div class="aspect-square bg-gray-100 rounded-xl flex items-center justify-center">
-          <% if (product.image_url) { %>
-            <img src="<%= product.image_url %>" alt="<%= product.name %>" class="w-full h-full object-contain rounded-xl">
+        <div class="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center p-8">
+          <% if (product.image) { %>
+            <img src="<%= product.image %>" alt="<%= product.name %>" class="w-full h-full object-contain rounded-xl">
           <% } else { %>
             <span class="text-9xl">📦</span>
           <% } %>
@@ -47,16 +47,28 @@
         
         <!-- 商品資訊 -->
         <div class="flex flex-col">
+          <span class="text-sm text-blue-600 font-semibold bg-blue-50 px-3 py-1 rounded-full w-fit mb-3"><%= product.category %></span>
           <h1 class="text-3xl font-bold text-gray-900 mb-4"><%= product.name %></h1>
           
           <div class="mb-6">
-            <span class="text-4xl font-bold text-blue-600">$<%= (product.price / 100).toFixed(2) %></span>
-            <span class="text-gray-400 ml-4">庫存: <%= product.stock %> 件</span>
+            <span class="text-4xl font-bold text-blue-600"><%= formatPrice(product.price) %></span>
+            <% if (product.originalPrice && product.originalPrice > product.price) { %>
+              <span class="text-xl text-gray-400 line-through ml-3"><%= formatPrice(product.originalPrice) %></span>
+              <span class="ml-3 bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm font-bold">
+                慳 <%= formatPrice(product.originalPrice - product.price) %>
+              </span>
+            <% } %>
+            <div class="mt-3 text-gray-500">
+              📦 庫存: <span class="font-semibold text-green-600"><%= product.stock %> 件</span>
+            </div>
           </div>
           
-          <p class="text-gray-600 mb-8 leading-relaxed">
-            <%= product.description || '這是一件優質商品，品質保證。' %>
-          </p>
+          <div class="border-t border-b py-4 mb-6">
+            <h3 class="font-semibold text-gray-900 mb-2">📝 商品描述</h3>
+            <p class="text-gray-600 leading-relaxed">
+              <%= product.description || '這是一件優質商品，品質保證。' %>
+            </p>
+          </div>
           
           <!-- 加入購物車 -->
           <div class="mt-auto space-y-4">

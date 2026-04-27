@@ -68,19 +68,29 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         <% products.forEach(product => { %>
           <a href="/product/<%= product.id %>" class="bg-white rounded-xl shadow-sm hover:shadow-lg transition duration-300 overflow-hidden group">
-            <div class="aspect-square bg-gray-100 flex items-center justify-center">
-              <% if (product.image_url) { %>
-                <img src="<%= product.image_url %>" alt="<%= product.name %>" class="w-full h-full object-cover">
+            <div class="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative overflow-hidden">
+              <% if (product.originalPrice && product.originalPrice > product.price) { %>
+                <span class="absolute top-3 left-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-bold z-10">
+                  -<%= Math.round((1 - product.price / product.originalPrice) * 100) %>%
+                </span>
+              <% } %>
+              <% if (product.image) { %>
+                <img src="<%= product.image %>" alt="<%= product.name %>" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
               <% } else { %>
-                <span class="text-6xl">📦</span>
+                <span class="text-6xl group-hover:scale-110 transition duration-300">📦</span>
               <% } %>
             </div>
             <div class="p-4">
-              <h3 class="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition"><%= product.name %></h3>
-              <p class="text-sm text-gray-500 mb-3 line-clamp-2"><%= product.description || '優質商品' %></p>
+              <span class="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded-full"><%= product.category %></span>
+              <h3 class="font-semibold text-gray-900 mt-2 mb-2 group-hover:text-blue-600 transition line-clamp-2 h-12"><%= product.name %></h3>
+              <p class="text-sm text-gray-500 mb-3 line-clamp-2 h-10"><%= product.description || '優質商品' %></p>
               <div class="flex items-center justify-between">
-                <span class="text-xl font-bold text-blue-600">$<%= (product.price / 100).toFixed(2) %></span>
-                <span class="text-xs text-gray-400">庫存: <%= product.stock %></span>
+                <div>
+                  <span class="text-xl font-bold text-blue-600"><%= formatPrice(product.price) %></span>
+                  <% if (product.originalPrice && product.originalPrice > product.price) { %>
+                    <span class="text-sm text-gray-400 line-through ml-2"><%= formatPrice(product.originalPrice) %></span>
+                  <% } %>
+                </div>
               </div>
             </div>
           </a>
