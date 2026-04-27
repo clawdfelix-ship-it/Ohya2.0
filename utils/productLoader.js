@@ -7,44 +7,76 @@ const PRODUCTS_FILE = path.join(__dirname, '../data/sample-products.jsonl');
 let products = [];
 let categories = new Map();
 
-// Load products on startup
-function loadProducts() {
-  if (!fs.existsSync(PRODUCTS_FILE)) {
-    console.warn('Sample products file not found, using fallback');
-    return getFallbackProducts();
+function normalizeProduct(item, index) {
+  const name = typeof item.name_zh_hk === 'string' ? item.name_zh_hk.trim() : '';
+  const category = typeof item.category_zh_hk === 'string' ? item.category_zh_hk.trim() : '';
+  const description = typeof item.description_zh_hk === 'string' ? item.description_zh_hk.trim() : '';
+  if (!name || !category || !description) return null;
+
+  const priceYen = typeof item.price === 'number' ? item.price : 29900;
+  const originalPriceYen = typeof item.originalPrice === 'number' ? item.originalPrice : 39900;
+
+  return {
+    id: index + 1,
+    name,
+    category,
+    price: Math.round(priceYen * 0.01),
+    originalPrice: Math.round(originalPriceYen * 0.01),
+    priceYen,
+    originalPriceYen,
+    description,
+    stock: typeof item.stock === 'number' ? item.stock : Math.floor(Math.random() * 100) + 10,
+    images: (item.images || []).map(url => toProxyUrl(url)),
+    image: (item.images && item.images[0]) ? toProxyUrl(item.images[0]) : null,
+    points: Math.floor(priceYen * 0.1),
+    isSale: originalPriceYen > priceYen,
+    isLimited: typeof item.isLimited === 'boolean' ? item.isLimited : Math.random() > 0.7
+  };
+}
+
+function buildCategoryMap(list) {
+  const map = new Map();
+  list.forEach(p => {
+    const count = map.get(p.category) || 0;
+    map.set(p.category, count + 1);
+  });
+  return map;
+}
+
+function loadProductsFromFile(filePath) {
+  if (!fs.existsSync(filePath)) {
+    const fallback = getFallbackProducts();
+    return { products: fallback, categories: buildCategoryMap(fallback) };
   }
 
-  const lines = fs.readFileSync(PRODUCTS_FILE, 'utf8').trim().split('\n');
-  products = lines.map((line, index) => {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    const fallback = getFallbackProducts();
+    return { products: fallback, categories: buildCategoryMap(fallback) };
+  }
+
+  const lines = trimmed.split('\n');
+  const loaded = lines.map((line, index) => {
     try {
-      const item = JSON.parse(line);
-      return {
-        id: index + 1,
-        name: item.name || 'Unknown Product',
-        category: item.category || 'メンズケア',
-        price: Math.round((item.price || 29900) * 0.01), // Convert cents to HKD approx
-        originalPrice: Math.round((item.originalPrice || 39900) * 0.01),
-        priceYen: item.price || 29900,
-        originalPriceYen: item.originalPrice || 39900,
-        description: item.description || '日本 M-ZAKKA 原裝進口高品質產品。',
-        stock: Math.floor(Math.random() * 100) + 10,
-        images: (item.images || []).map(url => toProxyUrl(url)),
-        image: (item.images && item.images[0]) ? toProxyUrl(item.images[0]) : null,
-        points: Math.floor((item.price || 29900) * 0.1),
-        isSale: (item.originalPrice || 0) > (item.price || 0),
-        isLimited: Math.random() > 0.7
-      };
+      return normalizeProduct(JSON.parse(line), index);
     } catch (e) {
       return null;
     }
-  }).filter(p => p !== null);
+  }).filter(Boolean);
 
-  // Build categories
-  products.forEach(p => {
-    const count = categories.get(p.category) || 0;
-    categories.set(p.category, count + 1);
-  });
+  if (loaded.length === 0) {
+    const fallback = getFallbackProducts();
+    return { products: fallback, categories: buildCategoryMap(fallback) };
+  }
 
+  return { products: loaded, categories: buildCategoryMap(loaded) };
+}
+
+function loadProducts() {
+  const result = loadProductsFromFile(PRODUCTS_FILE);
+  products = result.products;
+  categories = result.categories;
   console.log(`✅ Loaded ${products.length} products, ${categories.size} categories`);
   return products;
 }
@@ -53,17 +85,33 @@ function getFallbackProducts() {
   return [
     {
       id: 1,
-      name: 'PRO-E クラシックシリーズ',
-      category: 'PRO-E シリーズ',
+      name: 'PRO-E 經典系列',
+      category: 'PRO-E 系列',
       price: 299,
       originalPrice: 399,
       priceYen: 29900,
       originalPriceYen: 39900,
-      description: '先端部が奥から外へ掻き出すようなスライド運動により、既知の製品では成し得なかった"擦る～探る"事がついに可能に。',
+      description: '獨特滑動設計，帶來更細緻的觸感體驗；適合追求層次感的用家。',
       stock: 50,
       images: [],
       image: 'https://placehold.co/400x400/222/fff?text=PRO-E',
       points: 2990,
+      isSale: true,
+      isLimited: false
+    },
+    {
+      id: 2,
+      name: 'PRO-E 專用潤滑液',
+      category: '護理配件',
+      price: 159,
+      originalPrice: 199,
+      priceYen: 15900,
+      originalPriceYen: 19900,
+      description: '清爽易沖，黏膩感較低；日常搭配使用更順暢。',
+      stock: 80,
+      images: [],
+      image: 'https://placehold.co/400x400/222/fff?text=LUBE',
+      points: 1590,
       isSale: true,
       isLimited: false
     }
@@ -74,6 +122,7 @@ function getFallbackProducts() {
 loadProducts();
 
 module.exports = {
+  loadProductsFromFile,
   getAllProducts: (page = 1, limit = 24) => {
     const start = (page - 1) * limit;
     const end = start + limit;
