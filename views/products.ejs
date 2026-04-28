@@ -70,7 +70,7 @@
         </a>
         
         <!-- 搜尋 -->
-        <div class="flex-1 max-w-xl">
+        <div class="hidden md:flex flex-1 max-w-xl">
           <div class="flex">
             <input type="text" placeholder="<%= t('nav.searchPlaceholder') %>" class="flex-1 border-2 border-gray-300 rounded-l-lg px-4 py-2 text-sm focus:border-red-500 focus:outline-none">
             <button class="bg-red-600 text-white px-6 rounded-r-lg hover:bg-red-700 transition font-bold">
@@ -78,6 +78,8 @@
             </button>
           </div>
         </div>
+        <!-- Mobile Search Button -->
+        <button class="md:hidden text-xl flex-shrink-0">🔍</button>
         
         <!-- 購物車與帳戶 -->
         <div class="flex items-center gap-4 flex-shrink-0">
