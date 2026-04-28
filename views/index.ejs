@@ -138,69 +138,135 @@
     </nav>
   </header>
 
-  <!-- 推廣橫幅 Carousel -->
-  <div class="max-w-7xl mx-auto mt-4 px-2">
-    <!-- Main Banner Carousel -->
-    <div class="relative rounded-lg overflow-hidden mb-3">
-      <div id="bannerCarousel" class="flex transition-transform duration-500">
-        <div class="min-w-full">
-          <img src="/images/105de4b0f17941cd79fb7b0572340d95.jpg" alt="M-ZAKKA Banner 1" class="w-full h-48 sm:h-64 md:h-72 lg:h-80 object-cover">
-        </div>
-        <div class="min-w-full">
-          <img src="/images/2d6af70828e32ec6381b2b81900fa4d2.jpg" alt="M-ZAKKA Banner 2" class="w-full h-48 sm:h-64 md:h-72 lg:h-80 object-cover">
-        </div>
-        <div class="min-w-full">
-          <img src="/images/a63d52684e4989d093d0748870f93058.jpg" alt="M-ZAKKA Banner 3" class="w-full h-48 sm:h-64 md:h-72 lg:h-80 object-cover">
-        </div>
+  <!-- M-ZAKKA Classic 3-Column Wrapper -->
+  <div id="wrapper" class="max-w-7xl mx-auto px-2 mt-4 mb-4 flex gap-4 flex-col lg:flex-row">
+    
+    <!-- LEFT SIDEBAR - Category Menu -->
+    <div id="wrap_left" class="lg:w-52 flex-shrink-0 order-2 lg:order-1">
+      <div id="menu" class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <h3 class="bg-[#ba0000] text-white font-bold px-4 py-2 text-sm">【商品分類】</h3>
+        <ul class="divide-y divide-gray-100">
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🆕 新商品・新規取扱商品</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">✨ M-ZAKKA 原創</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🧴 潤滑液・清潔劑</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">💪 飛機杯・巨乳</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🛌 抱枕・娃娃</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🔌 震動棒・電動按摩棒</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🌀 跳蛋・乳頭刺激</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🛡️ 安全套</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🍑 後庭用品</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🔧 輔助工具</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">⛓️ SM・拘束具</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">💊 保健品・香水</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">👗 角色扮演</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">📚 書籍・雜貨</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🏪 營業用</a></li>
+          <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition text-red-600 font-bold">🔥 大減價 SALE!</a></li>
+        </ul>
       </div>
-      <button onclick="moveBanner(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-10 h-10 rounded-full flex items-center justify-center transition">❮</button>
-      <button onclick="moveBanner(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-10 h-10 rounded-full flex items-center justify-center transition">❯</button>
-      <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-        <button onclick="gotoBanner(0)" class="banner-dot w-2.5 h-2.5 rounded-full bg-white/80 transition"></button>
-        <button onclick="gotoBanner(1)" class="banner-dot w-2.5 h-2.5 rounded-full bg-white/50 transition"></button>
-        <button onclick="gotoBanner(2)" class="banner-dot w-2.5 h-2.5 rounded-full bg-white/50 transition"></button>
+      
+      <!-- Left Side Ad -->
+      <div class="mt-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg p-4 text-center">
+        <h4 class="font-bold text-sm mb-1">【本日限定】</h4>
+        <p class="text-xl font-black">超特價！</p>
+        <p class="text-xs opacity-90">最大 70% OFF</p>
       </div>
     </div>
     
-    <!-- Stacked Sub Banners -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-      <div class="bg-gray-900 text-white rounded-lg p-4">
-        <h3 class="font-bold text-orange-400 jpn-bracket text-sm">會員限定</h3>
-        <p class="text-lg font-bold mt-1">每月送積分</p>
-        <p class="text-xs text-gray-400 mt-1">按會員等級派發積分</p>
-      </div>
-      <div class="bg-red-50 border-2 border-red-500 rounded-lg p-4">
-        <h3 class="font-bold text-red-600 jpn-bracket text-sm">售完即止</h3>
-        <p class="text-lg font-bold mt-1 text-red-600">最多 50% OFF</p>
-        <p class="text-xs text-gray-600 mt-1">熱門商品大量售罄中！</p>
-      </div>
-      <div class="bg-blue-50 border border-blue-300 rounded-lg p-4">
-        <h3 class="font-bold text-blue-600 jpn-bracket text-sm">免運費</h3>
-        <p class="text-lg font-bold mt-1 text-blue-600">滿 ¥3,000</p>
-        <p class="text-xs text-gray-600 mt-1">全區配送免運</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- 配送提示 -->
-  <div class="max-w-7xl mx-auto px-2 mb-4">
-    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <span class="text-2xl">📅</span>
-          <div>
-            <h3 class="font-bold text-sm">【可指定送貨時段】</h3>
-            <p class="text-xs text-gray-600">可按你選擇的日期時間送達</p>
+    <!-- MAIN CONTENT CENTER -->
+    <div id="wrap_center" class="flex-1 order-1 lg:order-2">
+      <!-- Main Banner Carousel -->
+      <div class="relative rounded-lg overflow-hidden mb-3">
+        <div id="bannerCarousel" class="flex transition-transform duration-500">
+          <div class="min-w-full">
+            <img src="/images/105de4b0f17941cd79fb7b0572340d95.jpg" alt="M-ZAKKA Banner 1" class="w-full h-48 sm:h-64 md:h-72 lg:h-80 object-cover">
+          </div>
+          <div class="min-w-full">
+            <img src="/images/2d6af70828e32ec6381b2b81900fa4d2.jpg" alt="M-ZAKKA Banner 2" class="w-full h-48 sm:h-64 md:h-72 lg:h-80 object-cover">
+          </div>
+          <div class="min-w-full">
+            <img src="/images/a63d52684e4989d093d0748870f93058.jpg" alt="M-ZAKKA Banner 3" class="w-full h-48 sm:h-64 md:h-72 lg:h-80 object-cover">
           </div>
         </div>
-        <div class="flex gap-2 text-xs">
-          <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">即日出貨</span>
-          <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">最快明天到</span>
-          <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold">可選時段</span>
+        <button onclick="moveBanner(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-10 h-10 rounded-full flex items-center justify-center transition">❮</button>
+        <button onclick="moveBanner(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-10 h-10 rounded-full flex items-center justify-center transition">❯</button>
+        <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+          <button onclick="gotoBanner(0)" class="banner-dot w-2.5 h-2.5 rounded-full bg-white/80 transition"></button>
+          <button onclick="gotoBanner(1)" class="banner-dot w-2.5 h-2.5 rounded-full bg-white/50 transition"></button>
+          <button onclick="gotoBanner(2)" class="banner-dot w-2.5 h-2.5 rounded-full bg-white/50 transition"></button>
+        </div>
+      </div>
+      
+      <!-- Stacked Sub Banners -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div class="bg-gray-900 text-white rounded-lg p-4">
+          <h3 class="font-bold text-orange-400 jpn-bracket text-sm">會員限定</h3>
+          <p class="text-lg font-bold mt-1">每月送積分</p>
+          <p class="text-xs text-gray-400 mt-1">按會員等級派發積分</p>
+        </div>
+        <div class="bg-red-50 border-2 border-red-500 rounded-lg p-4">
+          <h3 class="font-bold text-red-600 jpn-bracket text-sm">售完即止</h3>
+          <p class="text-lg font-bold mt-1 text-red-600">最多 50% OFF</p>
+          <p class="text-xs text-gray-600 mt-1">熱門商品大量售罄中！</p>
+        </div>
+        <div class="bg-blue-50 border border-blue-300 rounded-lg p-4">
+          <h3 class="font-bold text-blue-600 jpn-bracket text-sm">免運費</h3>
+          <p class="text-lg font-bold mt-1 text-blue-600">滿 ¥3,000</p>
+          <p class="text-xs text-gray-600 mt-1">全區配送免運</p>
+        </div>
+      </div>
+      
+      <!-- 配送提示 -->
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="text-2xl">📅</span>
+            <div>
+              <h3 class="font-bold text-sm">【可指定送貨時段】</h3>
+              <p class="text-xs text-gray-600">可按你選擇的日期時間送達</p>
+            </div>
+          </div>
+          <div class="flex gap-2 text-xs">
+            <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">即日出貨</span>
+            <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">最快明天到</span>
+            <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold">可選時段</span>
+          </div>
         </div>
       </div>
     </div>
+    
+    <!-- RIGHT SIDEBAR -->
+    <div id="wrap_right" class="lg:w-48 flex-shrink-0 order-3">
+      <div id="menu_right" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-4">
+        <h3 class="bg-gray-800 text-white font-bold px-4 py-2 text-sm">【最近睇過】</h3>
+        <div class="p-3 text-center text-gray-400 text-xs">
+          <p>仲冇瀏覽記錄</p>
+          <p class="mt-1">開始睇吓商品啦！</p>
+        </div>
+      </div>
+      
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-4">
+        <h3 class="bg-orange-500 text-white font-bold px-4 py-2 text-sm">【人氣商品】</h3>
+        <ul class="divide-y divide-gray-100">
+          <li><a href="#" class="block px-3 py-2 text-xs hover:bg-orange-50 hover:text-orange-600 transition">🔥 本週熱賣 No.1</a></li>
+          <li><a href="#" class="block px-3 py-2 text-xs hover:bg-orange-50 hover:text-orange-600 transition">⭐ 好評推薦</a></li>
+          <li><a href="#" class="block px-3 py-2 text-xs hover:bg-orange-50 hover:text-orange-600 transition">💎 會員獨享</a></li>
+          <li><a href="#" class="block px-3 py-2 text-xs hover:bg-orange-50 hover:text-orange-600 transition">🆕 新上架</a></li>
+        </ul>
+      </div>
+      
+      <!-- Right Side Ad -->
+      <div class="bg-gradient-to-b from-yellow-100 to-orange-100 rounded-lg p-3 text-center border border-orange-200">
+        <h4 class="font-bold text-orange-600 text-xs mb-1">【初回限定】</h4>
+        <p class="text-sm font-bold text-orange-700">首次購物</p>
+        <p class="text-xs text-orange-600">送 ¥500 優惠券</p>
+      </div>
+    </div>
+    
   </div>
+  <!-- END M-ZAKKA 3-Column Wrapper -->
+
+  <!-- 商品列表 - 跨三欄全闊 -->
 
   <!-- 人氣商品 -->
   <div class="max-w-7xl mx-auto px-2 py-6">
