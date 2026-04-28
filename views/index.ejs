@@ -66,7 +66,7 @@
         <!-- Logo -->
         <a href="/" class="flex items-center gap-2 flex-shrink-0">
           <span class="text-3xl">🏪</span>
-          <span class="text-xl font-black text-red-600">OHYA2.0</span>
+          <span class="text-xl font-black text-red-600">M-ZAKKA</span>
         </a>
         
         <!-- 搜尋 -->
@@ -144,8 +144,11 @@
     <!-- LEFT SIDEBAR - Category Menu -->
     <div id="wrap_left" class="lg:w-52 flex-shrink-0 order-2 lg:order-1">
       <div id="menu" class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <h3 class="bg-[#ba0000] text-white font-bold px-4 py-2 text-sm">【商品分類】</h3>
-        <ul class="divide-y divide-gray-100">
+        <h3 onclick="toggleCategories()" class="bg-[#ba0000] text-white font-bold px-4 py-2 text-sm cursor-pointer flex justify-between items-center lg:cursor-default">
+          <span>【商品分類】</span>
+          <span id="catToggle" class="lg:hidden">▼</span>
+        </h3>
+        <ul id="catList" class="divide-y divide-gray-100 hidden lg:block">
           <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🆕 新商品・新規取扱商品</a></li>
           <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">✨ M-ZAKKA 原創</a></li>
           <li><a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 transition">🧴 潤滑液・清潔劑</a></li>
@@ -235,8 +238,8 @@
       </div>
     </div>
     
-    <!-- RIGHT SIDEBAR -->
-    <div id="wrap_right" class="lg:w-48 flex-shrink-0 order-3">
+    <!-- RIGHT SIDEBAR - Desktop Only -->
+    <div id="wrap_right" class="lg:w-48 flex-shrink-0 order-3 hidden lg:block">
       <div id="menu_right" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-4">
         <h3 class="bg-gray-800 text-white font-bold px-4 py-2 text-sm">【最近睇過】</h3>
         <div class="p-3 text-center text-gray-400 text-xs">
@@ -506,6 +509,22 @@
     // Banner Carousel
     let currentBanner = 0;
     const totalBanners = 3;
+    
+    // Mobile Category Toggle
+    function toggleCategories() {
+      // Only run on mobile
+      if (window.innerWidth < 1024) {
+        const catList = document.getElementById('catList');
+        const catToggle = document.getElementById('catToggle');
+        if (catList.classList.contains('hidden')) {
+          catList.classList.remove('hidden');
+          catToggle.textContent = '▲';
+        } else {
+          catList.classList.add('hidden');
+          catToggle.textContent = '▼';
+        }
+      }
+    }
     
     function updateBannerDots() {
       const dots = document.querySelectorAll('.banner-dot');
