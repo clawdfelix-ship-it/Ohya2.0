@@ -196,7 +196,7 @@
     
     <!-- Products Grid -->
     <% if (products && products.length > 0) { %>
-      <div class="grid grid-cols-4 gap-3 product-grid">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 product-grid">
         <% products.forEach(product => { %>
           <div class="bg-white border border-gray-200 rounded-lg hover:shadow-lg transition duration-300 overflow-hidden group">
             <a href="/product/<%= product.id %>" class="block">
@@ -282,7 +282,7 @@
   <footer class="bg-gray-900 text-white mt-8">
     <div class="max-w-7xl mx-auto px-2 py-10">
       <!-- 連結 -->
-      <div class="grid grid-cols-5 gap-8 mb-8">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         <div>
           <h4 class="font-bold mb-4 text-sm">【使用指南】</h4>
           <ul class="space-y-2 text-xs text-gray-400">

@@ -52,7 +52,7 @@
     <div class="bg-gray-900 text-white text-xs py-1">
       <div class="max-w-7xl mx-auto px-2 flex justify-between items-center">
         <span class="text-orange-400 font-bold">【積分 5 倍】註冊會員更抵！</span>
-        <div class="flex gap-4">
+        <div class="hidden sm:flex gap-4">
           <a href="#" class="hover:text-orange-400"><%= t('nav.myAccount') %></a>
           <a href="#" class="hover:text-orange-400"><%= t('nav.faq') %></a>
           <a href="#" class="hover:text-orange-400"><%= t('nav.contact') %></a>
@@ -70,7 +70,7 @@
         </a>
         
         <!-- 搜尋 -->
-        <div class="flex-1 max-w-xl">
+        <div class="hidden md:flex flex-1 max-w-xl">
           <div class="flex">
             <input type="text" placeholder="<%= t('nav.searchPlaceholder') %>" class="flex-1 border-2 border-gray-300 rounded-l-lg px-4 py-2 text-sm focus:border-red-500 focus:outline-none">
             <button class="bg-red-600 text-white px-6 rounded-r-lg hover:bg-red-700 transition font-bold">
@@ -78,6 +78,8 @@
             </button>
           </div>
         </div>
+        <!-- Mobile Search Button -->
+        <button class="md:hidden text-xl">🔍</button>
         
         <!-- 購物車與帳戶 -->
         <div class="flex items-center gap-4 flex-shrink-0">
@@ -157,7 +159,7 @@
     </div>
     
     <!-- Stacked Sub Banners -->
-    <div class="grid grid-cols-3 gap-3 mb-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
       <div class="bg-gray-900 text-white rounded-lg p-4">
         <h3 class="font-bold text-orange-400 jpn-bracket text-sm">會員限定</h3>
         <p class="text-lg font-bold mt-1">每月送積分</p>
@@ -202,7 +204,7 @@
     <span class="text-sm text-gray-500 ml-2">— 精選高評價商品 —</span>
     
     <% if (products && products.length > 0) { %>
-      <div class="grid grid-cols-4 gap-3 product-grid mt-4">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 product-grid mt-4">
         <% products.forEach(product => { %>
           <div class="bg-white border border-gray-200 rounded-lg hover:shadow-lg transition duration-300 overflow-hidden group">
             <a href="/product/<%= product.id %>" class="block">
