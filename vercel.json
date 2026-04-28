@@ -1,7 +1,6 @@
 {
   "version": 2,
   "installCommand": "npm install --no-optional --omit=dev",
-  "excludeFiles": "{test,docs,migrations,scripts,data,**/*.md,**/*.sql,node_modules/@img/**,node_modules/sharp/vendor/**}",
   "rewrites": [
     {
       "source": "/(.*)",
