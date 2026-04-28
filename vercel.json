@@ -1,26 +1,11 @@
 {
   "version": 2,
-  "functions": {
-    "api/*.js": {
-      "excludeFiles": [
-        "node_modules/@img/**",
-        "node_modules/sharp/vendor/**",
-        "test/**",
-        "docs/**",
-        "frontend/**",
-        "migrations/**",
-        "scripts/**",
-        "data/**",
-        "*.md",
-        "*.sql"
-      ]
-    }
-  },
+  "installCommand": "npm install --no-optional --omit=dev",
+  "excludeFiles": "{test,docs,migrations,scripts,data,**/*.md,**/*.sql,node_modules/@img/**,node_modules/sharp/vendor/**}",
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/api/index.js"
     }
-  ],
-  "installCommand": "npm install --omit=dev"
+  ]
 }
