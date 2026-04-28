@@ -1,0 +1,91 @@
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <!-- 頂部提示 -->
+    <div class="bg-gray-900 text-white text-xs py-1">
+      <div class="max-w-7xl mx-auto px-2 flex justify-between items-center">
+        <span class="text-orange-400 font-bold">【積分 5 倍】註冊會員更抵！</span>
+        <div class="hidden sm:flex gap-4">
+          <a href="#" class="hover:text-orange-400"><%= t('nav.myAccount') %></a>
+          <a href="#" class="hover:text-orange-400"><%= t('nav.faq') %></a>
+          <a href="#" class="hover:text-orange-400"><%= t('nav.contact') %></a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main Header -->
+    <div class="max-w-7xl mx-auto px-2 py-3">
+      <div class="flex items-center justify-between gap-4">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2 flex-shrink-0">
+          <span class="text-3xl">🏪</span>
+          <span class="text-xl font-black text-red-600">OHYA2.0</span>
+        </a>
+        
+        <!-- 搜尋 -->
+        <div class="hidden md:flex flex-1 max-w-xl">
+          <div class="flex">
+            <input type="text" placeholder="<%= t('nav.searchPlaceholder') %>" class="flex-1 border-2 border-gray-300 rounded-l-lg px-4 py-2 text-sm focus:border-red-500 focus:outline-none">
+            <button class="bg-red-600 text-white px-6 rounded-r-lg hover:bg-red-700 transition font-bold">
+              <%= t('nav.search') %>
+            </button>
+          </div>
+        </div>
+        <!-- Mobile Search Button -->
+        <button class="md:hidden text-xl">🔍</button>
+        
+        <!-- 購物車與帳戶 -->
+        <div class="flex items-center gap-4 flex-shrink-0">
+          <a href="/cart" class="flex items-center gap-1 text-sm hover:text-red-600 transition">
+            <span class="text-xl">🛒</span>
+            <span><%= t('nav.cart') %></span>
+            <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full font-bold" id="cart-count">0</span>
+          </a>
+          <% if (user) { %>
+            <div class="text-sm">
+              <span class="text-gray-600">歡迎</span>
+              <a href="/logout" class="text-red-600 hover:underline ml-2">登出</a>
+            </div>
+          <% } else { %>
+            <a href="/login" class="text-sm hover:text-red-600 transition"><%= t('nav.login') %></a>
+            <a href="/register" class="bg-red-600 text-white text-sm px-4 py-1.5 rounded hover:bg-red-700 transition font-bold"><%= t('nav.register') %></a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 分類導航 -->
+    <nav class="bg-gray-100 border-t border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-2">
+        <div class="flex items-center gap-0">
+          <!-- Category Dropdown -->
+          <div class="relative group flex-shrink-0">
+            <button class="bg-red-600 text-white px-3 py-2.5 font-bold text-sm flex items-center gap-1 hover:bg-red-700 transition">
+              <span>☰</span>
+              <span class="hidden sm:inline">商品分類</span>
+              <span class="hidden md:inline">▼</span>
+            </button>
+            <div class="absolute left-0 top-full bg-white shadow-xl border border-gray-200 w-64 hidden group-hover:block z-50">
+              <% categories.forEach(cat => { %>
+                <a href="/products?category=<%= cat.name %>" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 border-b border-gray-100">
+                  <%= cat.name %> <span class="text-gray-400">(<%= cat.count %>)</span>
+                </a>
+              <% }) %>
+            </div>
+          </div>
+          
+          <!-- Quick Category Links -->
+          <div class="flex overflow-x-auto no-scrollbar flex-1">
+            <a href="/products?category=男士護理" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">男士護理</a>
+            <a href="/products?category=護理配件" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">護理配件</a>
+            <a href="/products?category=進階系列" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">進階系列</a>
+            <a href="/products?category=頂級系列" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">頂級系列</a>
+            <a href="/products?category=優惠套裝" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">優惠套裝</a>
+            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">最新上架</a>
+            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">人氣排行榜</a>
+            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">限時優惠</a>
+            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">品牌一覽</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </header>
+
