@@ -317,7 +317,7 @@ app.locals.toProxyUrl = toProxyUrl;
         title: 'M-ZAKKA - 熱門男士護理網店',
         products: featuredProducts,
         categories: categories,
-        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
+        user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
         formatPrice: formatPrice
       });
     } catch (err) {
@@ -348,7 +348,7 @@ app.locals.toProxyUrl = toProxyUrl;
         title: '商品列表 - M-ZAKKA',
         products: products,
         categories: categories,
-        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
+        user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
         formatPrice: formatPrice,
         selectedCategory: categoryFilter || '全部商品'
       });
@@ -383,7 +383,7 @@ app.locals.toProxyUrl = toProxyUrl;
         title: product.name + ' - M-ZAKKA',
         product: product,
         relatedProducts: relatedProducts,
-        user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
+        user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
         formatPrice: formatPrice
       });
     } catch (err) {
@@ -412,7 +412,7 @@ app.locals.toProxyUrl = toProxyUrl;
   app.get('/cart', (req, res) => {
     res.render('cart', {
       title: '購物車 - M-ZAKKA',
-      user: req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
+      user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
       formatPrice: formatPrice
     });
   });
