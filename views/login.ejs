@@ -5,41 +5,220 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+    }
+    .jpn-bracket::before { content: '【'; }
+    .jpn-bracket::after { content: '】'; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .modal-animate {
+      animation: slideDown 0.3s ease-out;
+    }
+  </style>
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center">
-  <div class="max-w-md w-full bg-white rounded-2xl shadow-lg p-8">
-    <div class="text-center mb-8">
-      <span class="text-5xl mb-4 block">🛍️</span>
-      <h1 class="text-2xl font-bold text-gray-900 mb-2">登入帳戶</h1>
-      <p class="text-gray-500">歡迎返到 Ohya2.0</p>
-    </div>
-    
-    <form action="/api/auth/login" method="POST" class="space-y-4">
-      <div>
-        <label class="block text-gray-700 font-medium mb-2">用戶名</label>
-        <input type="text" name="username" required class="w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="輸入用戶名">
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- 年齡確認 Modal -->
+  <div id="ageModal" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center hidden">
+    <div class="modal-animate bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center shadow-2xl">
+      <div class="text-5xl mb-4">🔞</div>
+      <h2 class="text-2xl font-bold mb-4">年齡確認</h2>
+      <p class="text-gray-600 mb-6">您是否已滿 18 歲？</p>
+      <div class="flex gap-4 justify-center">
+        <button onclick="verifyAge(true)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg transition text-lg">
+          是
+        </button>
+        <button onclick="verifyAge(false)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-10 rounded-lg transition text-lg">
+          否
+        </button>
       </div>
-      
-      <div>
-        <label class="block text-gray-700 font-medium mb-2">密碼</label>
-        <input type="password" name="password" required class="w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="輸入密碼">
-      </div>
-      
-      <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition">
-        登入
-      </button>
-    </form>
-    
-    <div class="mt-6 text-center">
-      <p class="text-gray-500">
-        仲未有帳戶？
-        <a href="/register" class="text-blue-600 font-medium hover:underline">立即註冊</a>
-      </p>
-    </div>
-    
-    <div class="mt-8 text-center">
-      <a href="/" class="text-gray-400 hover:text-gray-600">← 返回首頁</a>
     </div>
   </div>
+
+  <!-- 頁首 -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <!-- 頂部提示 -->
+    <div class="bg-gray-900 text-white text-xs py-1">
+      <div class="max-w-7xl mx-auto px-2 flex justify-between items-center">
+        <span class="text-orange-400 font-bold">【積分 5 倍】註冊會員更抵！</span>
+        <div class="hidden sm:flex gap-4">
+          <a href="#" class="hover:text-orange-400">我的帳戶</a>
+          <a href="#" class="hover:text-orange-400">常見問題</a>
+          <a href="#" class="hover:text-orange-400">聯絡我們</a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main Header -->
+    <div class="max-w-7xl mx-auto px-2 py-3">
+      <div class="flex items-center justify-between gap-4">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2 flex-shrink-0">
+          <span class="text-3xl">🏪</span>
+          <span class="text-xl font-black text-red-600">OHYA2.0</span>
+        </a>
+        
+        <!-- 搜尋 -->
+        <div class="hidden md:flex flex-1 max-w-xl">
+          <div class="flex">
+            <input type="text" placeholder="搜尋商品..." class="flex-1 border-2 border-gray-300 rounded-l-lg px-4 py-2 text-sm focus:border-red-500 focus:outline-none">
+            <button class="bg-red-600 text-white px-6 rounded-r-lg hover:bg-red-700 transition font-bold">
+              搜尋
+            </button>
+          </div>
+        </div>
+        <!-- Mobile Search Button -->
+        <button class="md:hidden text-xl">🔍</button>
+        
+        <!-- 購物車與帳戶 -->
+        <div class="flex items-center gap-4 flex-shrink-0">
+          <a href="/cart" class="flex items-center gap-1 text-sm hover:text-red-600 transition">
+            <span class="text-xl">🛒</span>
+            <span>購物車</span>
+            <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full font-bold" id="cart-count">0</span>
+          </a>
+          <span class="text-red-600 font-bold text-sm">登入</span>
+          <a href="/register" class="bg-red-600 text-white text-sm px-4 py-1.5 rounded hover:bg-red-700 transition font-bold">註冊</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 登入表單 -->
+  <div class="max-w-md mx-auto px-4 py-16">
+    <div class="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
+      <h1 class="text-2xl font-bold text-center mb-8 jpn-bracket inline-block w-full">會員登入</h1>
+      
+      <% if (error) { %>
+        <div class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm">
+          <%= error %>
+        </div>
+      <% } %>
+      
+      <form method="POST" action="/login">
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">電郵地址</label>
+          <input type="email" name="email" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-red-500 focus:outline-none transition" placeholder="your@email.com">
+        </div>
+        
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">密碼</label>
+          <input type="password" name="password" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-red-500 focus:outline-none transition" placeholder="••••••••">
+        </div>
+        
+        <button type="submit" class="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition text-lg">
+          登入
+        </button>
+      </form>
+      
+      <div class="mt-6 text-center text-sm text-gray-600">
+        仲未有帳戶？
+        <a href="/register" class="text-red-600 font-medium hover:underline">立即註冊</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 頁尾 -->
+  <footer class="bg-gray-900 text-white mt-8">
+    <div class="max-w-7xl mx-auto px-2 py-10">
+      <!-- 連結 -->
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
+        <div>
+          <h4 class="font-bold mb-4 text-sm">【使用指南】</h4>
+          <ul class="space-y-2 text-xs text-gray-400">
+            <li><a href="#" class="hover:text-white transition">訂購方法</a></li>
+            <li><a href="#" class="hover:text-white transition">付款方式</a></li>
+            <li><a href="#" class="hover:text-white transition">配送安排</a></li>
+            <li><a href="#" class="hover:text-white transition">退換貨</a></li>
+            <li><a href="#" class="hover:text-white transition">私隱政策</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-4 text-sm">【會員服務】</h4>
+          <ul class="space-y-2 text-xs text-gray-400">
+            <li><a href="#" class="hover:text-white transition">會員註冊</a></li>
+            <li><a href="#" class="hover:text-white transition">登入</a></li>
+            <li><a href="#" class="hover:text-white transition">我的帳戶</a></li>
+            <li><a href="#" class="hover:text-white transition">關於積分</a></li>
+            <li><a href="#" class="hover:text-white transition">會員等級</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-4 text-sm">【支援】</h4>
+          <ul class="space-y-2 text-xs text-gray-400">
+            <li><a href="#" class="hover:text-white transition">常見問題</a></li>
+            <li><a href="#" class="hover:text-white transition">聯絡我們</a></li>
+            <li><a href="#" class="hover:text-white transition">店舖資料</a></li>
+            <li><a href="#" class="hover:text-white transition">招聘資訊</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-4 text-sm">【公司資訊】</h4>
+          <ul class="space-y-2 text-xs text-gray-400">
+            <li><a href="#" class="hover:text-white transition">公司簡介</a></li>
+            <li><a href="#" class="hover:text-white transition">使用條款</a></li>
+            <li><a href="#" class="hover:text-white transition">銷售條款</a></li>
+            <li><a href="#" class="hover:text-white transition">新聞稿</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-4 text-sm">【聯絡方式】</h4>
+          <div class="text-xs text-gray-400 space-y-2">
+            <p>📞 0120-XXX-XXX</p>
+            <p>⏰ 營業時間：10:00 - 22:00</p>
+            <p>📍 日本東京都某某區</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 付款方式 -->
+      <div class="border-t border-gray-700 pt-6 mb-6">
+        <div class="flex justify-center gap-4 text-2xl text-gray-400">
+          <span>💳</span>
+          <span>🏦</span>
+          <span>💰</span>
+          <span>📱</span>
+          <span>🍎</span>
+          <span>🅿️</span>
+        </div>
+      </div>
+      
+      <!-- Copyright -->
+      <div class="border-t border-gray-700 pt-6 text-center text-xs text-gray-500">
+        <p>© 2026 M-ZAKKA. 版權所有。未經授權不得轉載。</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Age Verification
+    function checkAgeVerification() {
+      const verified = localStorage.getItem('ageVerified');
+      if (!verified) {
+        document.getElementById('ageModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+    
+    function verifyAge(isAdult) {
+      if (isAdult) {
+        localStorage.setItem('ageVerified', 'true');
+        document.getElementById('ageModal').classList.add('hidden');
+        document.body.style.overflow = '';
+      } else {
+        window.location.href = 'https://www.google.com';
+      }
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      checkAgeVerification();
+    });
+  </script>
 </body>
 </html>
