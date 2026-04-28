@@ -106,11 +106,11 @@
       <div class="max-w-7xl mx-auto px-2">
         <div class="flex items-center gap-0">
           <!-- Category Dropdown -->
-          <div class="relative group">
-            <button class="bg-red-600 text-white px-4 py-2.5 font-bold text-sm flex items-center gap-2 hover:bg-red-700 transition">
+          <div class="relative group flex-shrink-0">
+            <button class="bg-red-600 text-white px-3 py-2.5 font-bold text-sm flex items-center gap-1 hover:bg-red-700 transition">
               <span>☰</span>
-              商品分類
-              <span>▼</span>
+              <span class="hidden sm:inline">商品分類</span>
+              <span class="hidden md:inline">▼</span>
             </button>
             <div class="absolute left-0 top-full bg-white shadow-xl border border-gray-200 w-64 hidden group-hover:block z-50">
               <% categories.forEach(cat => { %>
