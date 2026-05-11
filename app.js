@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
@@ -34,6 +35,14 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 const dictZhHK = JSON.parse(fs.readFileSync(path.join(__dirname, 'locales', 'zh-HK.json'), 'utf8'));
+
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
 
 const mzakkaDescriptionCache = new Map();
 const mzakkaDescriptionTtlMs = 6 * 60 * 60 * 1000;
@@ -87,12 +96,6 @@ async function maybeHydrateMzakkaDescription({ productId, slug, name, descriptio
 
   return out;
 }
-
-// Add custom header to verify Express is handling the request
-app.use((req, res, next) => {
-  res.setHeader('X-Custom-Express', 'true');
-  next();
-});
 
 // Database connection - Vercel serverless compatible
 const connectionString = getConnectionString();
