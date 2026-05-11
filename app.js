@@ -18,7 +18,8 @@ const { mapDbProductToStorefrontProduct } = require('./utils/storefrontDbMapper'
 const { mapRowsToRankingProducts } = require('./utils/homepageQuery');
 const { getProductsOrderBy, normalizeProductsSort } = require('./lib/productsSort');
 const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch-mzakka-description');
-const { loginLimiter, adminWriteLimiter, webhookLimiter } = require('./utils/security/rateLimiters');
+const { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
+const { normalizeCspReports } = require('./utils/security/cspReport');
 
 let cachedSharp;
 function getSharp() {
@@ -41,20 +42,25 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
+const cspMode = String(process.env.CSP_MODE || 'report').toLowerCase();
+const cspReportOnly = cspMode !== 'enforce';
+const cspReportPath = String(process.env.CSP_REPORT_PATH || '/csp-report');
+
 app.use(helmet({
   contentSecurityPolicy: {
-    reportOnly: true,
+    reportOnly: cspReportOnly,
     useDefaults: true,
     directives: {
       defaultSrc: ["'self'"],
       baseUri: ["'self'"],
       objectSrc: ["'none'"],
       frameAncestors: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdn.tailwindcss.com'],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com'],
       imgSrc: ["'self'", 'data:', 'https:'],
       fontSrc: ["'self'", 'data:', 'https:'],
       connectSrc: ["'self'", 'https:'],
+      reportUri: [cspReportPath],
     },
   },
 }));
@@ -66,6 +72,7 @@ function shouldSkipCsrf(req) {
   if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return true;
   const p = String(req.path || '');
   if (p.startsWith('/webhooks/')) return true;
+  if (p === cspReportPath) return true;
   return false;
 }
 
@@ -143,6 +150,8 @@ app.use(cors(buildCorsOptions({
 })));
 app.use('/api/auth/login', loginLimiter());
 app.use('/webhooks', webhookLimiter());
+app.use(cspReportPath, cspReportLimiter());
+app.use(cspReportPath, express.json({ type: ['application/csp-report', 'application/reports+json', 'application/json'] }));
 app.use('/api/admin', (req, res, next) => {
   const m = String(req.method || 'GET').toUpperCase();
   if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return next();
@@ -371,6 +380,12 @@ try {
   require('./routes/refunds')(app, pool);
   require('./routes/reconciliation')(app, pool);
   require('./routes/reports')(app, pool);
+
+  app.post(cspReportPath, (req, res) => {
+    const items = normalizeCspReports(req.body);
+    if (items.length) console.warn('CSP report', items[0]);
+    res.status(204).end();
+  });
 } catch (error) {
   console.error('Error loading routes:', error);
   app.use('/api/*', (req, res) => {

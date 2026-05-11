@@ -8,5 +8,5 @@ test('rate limiting middleware is wired', () => {
   assert.match(s, /loginLimiter\(\)/);
   assert.match(s, /webhookLimiter\(\)/);
   assert.match(s, /adminWriteLimiter\(\)/);
+  assert.match(s, /cspReportLimiter\(\)/);
 });
-

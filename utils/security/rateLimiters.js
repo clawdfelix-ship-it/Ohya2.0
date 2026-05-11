@@ -30,5 +30,14 @@ function webhookLimiter() {
   });
 }
 
-module.exports = { loginLimiter, adminWriteLimiter, webhookLimiter };
+function cspReportLimiter() {
+  return rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'too many requests' },
+  });
+}
 
+module.exports = { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter };
