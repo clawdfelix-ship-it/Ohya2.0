@@ -30,3 +30,9 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 data/*.db-journal
+
+# Local QA / temp docs
+QA測試報告_*.md
+
+# Data samples
+data/*sample*.json

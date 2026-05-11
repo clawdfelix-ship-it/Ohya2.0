@@ -1,0 +1,13 @@
+.mz-body { background: #000; color: #000; }
+.mz-wrapper { background: #fff; border: 2px solid #000; }
+.mz-topbar { background: #f3f4f6; border-bottom: 1px solid #d1d5db; color: #111827; }
+.mz-header { color: #111827; }
+.mz-nav { color: #111827; }
+.mz-nav a { color: inherit; }
+.mz-sidebar-title { background: #f3f4f6; border-bottom: 1px solid #d1d5db; }
+.mz-footer-links { background: #e5e7eb; color: #111827; }
+.mz-footer-18 { background: #7f1d1d; color: #fff; }
+.mz-3col { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+@media (min-width: 1024px) {
+  .mz-3col { grid-template-columns: 14rem minmax(0, 1fr) 14rem; }
+}
