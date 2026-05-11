@@ -108,10 +108,11 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Middleware
-app.use(cors({
-  credentials: true,
-  origin: process.env.NODE_ENV === 'production' ? true : 'http://localhost:5173',
-}));
+const { buildCorsOptions } = require('./utils/security/cors');
+app.use(cors(buildCorsOptions({
+  nodeEnv: process.env.NODE_ENV,
+  allowedOriginsEnv: process.env.CORS_ALLOWED_ORIGINS || '',
+})));
 app.use(express.json({
   verify: (req, res, buf) => {
     req.rawBody = buf;
