@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
   <style>
     body {
@@ -21,76 +22,18 @@
     }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="mz-body text-black min-h-screen">
 
-  <!-- 年齡確認 Modal -->
-  <div id="ageModal" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center hidden">
-    <div class="modal-animate bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center shadow-2xl">
-      <div class="text-5xl mb-4">🔞</div>
-      <h2 class="text-2xl font-bold mb-4">年齡確認</h2>
-      <p class="text-gray-600 mb-6">您是否已滿 18 歲？</p>
-      <div class="flex gap-4 justify-center">
-        <button onclick="verifyAge(true)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg transition text-lg">
-          是
-        </button>
-        <button onclick="verifyAge(false)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-10 rounded-lg transition text-lg">
-          否
-        </button>
-      </div>
-    </div>
-  </div>
+  <%- include('partials/age-modal') %>
 
-  <!-- 頁首 -->
-  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-    <!-- 頂部提示 -->
-    <div class="bg-gray-900 text-white text-xs py-1">
-      <div class="max-w-7xl mx-auto px-2 flex justify-between items-center">
-        <span class="text-orange-400 font-bold">【積分 5 倍】註冊會員更抵！</span>
-        <div class="hidden sm:flex gap-4">
-          <a href="#" class="hover:text-orange-400">我的帳戶</a>
-          <a href="#" class="hover:text-orange-400">常見問題</a>
-          <a href="#" class="hover:text-orange-400">聯絡我們</a>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Main Header -->
-    <div class="max-w-7xl mx-auto px-2 py-3">
-      <div class="flex items-center justify-between gap-4">
-        <!-- Logo -->
-        <a href="/" class="flex items-center gap-2 flex-shrink-0">
-          <span class="text-3xl">🏪</span>
-          <span class="text-xl font-black text-red-600">OHYA2.0</span>
-        </a>
-        
-        <!-- 搜尋 -->
-        <div class="hidden md:flex flex-1 max-w-xl">
-          <div class="flex">
-            <input type="text" placeholder="搜尋商品..." class="flex-1 border-2 border-gray-300 rounded-l-lg px-4 py-2 text-sm focus:border-red-500 focus:outline-none">
-            <button class="bg-red-600 text-white px-6 rounded-r-lg hover:bg-red-700 transition font-bold">
-              搜尋
-            </button>
-          </div>
-        </div>
-        <!-- Mobile Search Button -->
-        <button class="md:hidden text-xl">🔍</button>
-        
-        <!-- 購物車與帳戶 -->
-        <div class="flex items-center gap-4 flex-shrink-0">
-          <a href="/cart" class="flex items-center gap-1 text-sm hover:text-red-600 transition">
-            <span class="text-xl">🛒</span>
-            <span>購物車</span>
-            <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full font-bold" id="cart-count">0</span>
-          </a>
-          <span class="text-red-600 font-bold text-sm">登入</span>
-          <a href="/register" class="bg-red-600 text-white text-sm px-4 py-1.5 rounded hover:bg-red-700 transition font-bold">註冊</a>
-        </div>
-      </div>
-    </div>
-  </header>
+  <%- include('partials/header') %>
 
-  <!-- 登入表單 -->
-  <div class="max-w-md mx-auto px-4 py-16">
+  <div id="mz-wrapper" class="mz-wrapper max-w-7xl mx-auto px-2 mt-4 mb-4">
+    <div class="mz-3col">
+      <%- include('partials/sidebar-left') %>
+
+      <div id="wrap_center" class="min-w-0">
+  <div class="max-w-md mx-auto px-0 py-10">
     <div class="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
       <h1 class="text-2xl font-bold text-center mb-8 jpn-bracket inline-block w-full">會員登入</h1>
       
@@ -123,77 +66,13 @@
     </div>
   </div>
 
-  <!-- 頁尾 -->
-  <footer class="bg-gray-900 text-white mt-8">
-    <div class="max-w-7xl mx-auto px-2 py-10">
-      <!-- 連結 -->
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
-        <div>
-          <h4 class="font-bold mb-4 text-sm">【使用指南】</h4>
-          <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">訂購方法</a></li>
-            <li><a href="#" class="hover:text-white transition">付款方式</a></li>
-            <li><a href="#" class="hover:text-white transition">配送安排</a></li>
-            <li><a href="#" class="hover:text-white transition">退換貨</a></li>
-            <li><a href="#" class="hover:text-white transition">私隱政策</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-bold mb-4 text-sm">【會員服務】</h4>
-          <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">會員註冊</a></li>
-            <li><a href="#" class="hover:text-white transition">登入</a></li>
-            <li><a href="#" class="hover:text-white transition">我的帳戶</a></li>
-            <li><a href="#" class="hover:text-white transition">關於積分</a></li>
-            <li><a href="#" class="hover:text-white transition">會員等級</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-bold mb-4 text-sm">【支援】</h4>
-          <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">常見問題</a></li>
-            <li><a href="#" class="hover:text-white transition">聯絡我們</a></li>
-            <li><a href="#" class="hover:text-white transition">店舖資料</a></li>
-            <li><a href="#" class="hover:text-white transition">招聘資訊</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-bold mb-4 text-sm">【公司資訊】</h4>
-          <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">公司簡介</a></li>
-            <li><a href="#" class="hover:text-white transition">使用條款</a></li>
-            <li><a href="#" class="hover:text-white transition">銷售條款</a></li>
-            <li><a href="#" class="hover:text-white transition">新聞稿</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-bold mb-4 text-sm">【聯絡方式】</h4>
-          <div class="text-xs text-gray-400 space-y-2">
-            <p>📞 0120-XXX-XXX</p>
-            <p>⏰ 營業時間：10:00 - 22:00</p>
-            <p>📍 日本東京都某某區</p>
-          </div>
-        </div>
       </div>
-      
-      <!-- 付款方式 -->
-      <div class="border-t border-gray-700 pt-6 mb-6">
-        <div class="flex justify-center gap-4 text-2xl text-gray-400">
-          <span>💳</span>
-          <span>🏦</span>
-          <span>💰</span>
-          <span>📱</span>
-          <span>🍎</span>
-          <span>🅿️</span>
-        </div>
-      </div>
-      
-      <!-- Copyright -->
-      <div class="border-t border-gray-700 pt-6 text-center text-xs text-gray-500">
-        <p>© 2026 OHYA2.0. 版權所有。未經授權不得轉載。</p>
-      </div>
+
+      <%- include('partials/sidebar-right') %>
     </div>
-  </footer>
+  </div>
+
+  <%- include('partials/footer') %>
 
   <script>
     // Age Verification
@@ -212,6 +91,20 @@
         document.body.style.overflow = '';
       } else {
         window.location.href = 'https://www.google.com';
+      }
+    }
+
+    function toggleCategories() {
+      const list = document.getElementById('catList');
+      const toggle = document.getElementById('catToggle');
+      if (!list || !toggle) return;
+      const hidden = list.classList.contains('hidden');
+      if (hidden) {
+        list.classList.remove('hidden');
+        toggle.textContent = '▲';
+      } else {
+        list.classList.add('hidden');
+        toggle.textContent = '▼';
       }
     }
     

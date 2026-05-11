@@ -8,6 +8,13 @@ module.exports = function(app, pool) {
 
   const requireAuth = require('./middleware/auth').requireAuth;
   const requireAdmin = require('./middleware/auth').requireAdmin;
+  const requireSuperAdmin = (req, res, next) => {
+    if (req.session && req.session.userId && req.session.isAdmin) {
+      req.user = { id: req.session.userId, isAdmin: true, permissions: req.session.adminPermissions || ['*'] };
+      return next();
+    }
+    res.status(403).json({ error: '需要管理員權限' });
+  };
 
   // ===========================================
   // Member Levels (public info)
@@ -302,7 +309,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  app.get('/api/admin/users', requireSuperAdmin, async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
       const pageSize = parseInt(req.query.page_size) || 50;
@@ -334,7 +341,9 @@ module.exports = function(app, pool) {
       const result = await pool.query(`
         SELECT u.id, u.username, u.email, u.phone, u.whatsapp, u.first_name, u.last_name,
                u.is_active, u.is_blacklisted, u.is_admin, u.points, u.total_spent, u.total_orders,
-               u.member_level_id, u.created_at, u.last_login_at, ml.name as member_level_name
+               u.member_level_id, u.created_at, u.last_login_at, ml.name as member_level_name,
+               (SELECT ap.role_id FROM admin_permissions ap WHERE ap.user_id = u.id ORDER BY ap.id DESC LIMIT 1) as role_id,
+               (SELECT ar.name FROM admin_permissions ap JOIN admin_roles ar ON ar.id = ap.role_id WHERE ap.user_id = u.id ORDER BY ap.id DESC LIMIT 1) as role_name
         FROM users u
         LEFT JOIN member_levels ml ON u.member_level_id = ml.id
         WHERE ${where}
@@ -352,11 +361,13 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.get('/api/admin/users/:id', requireAdmin, async (req, res) => {
+  app.get('/api/admin/users/:id', requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const userResult = await pool.query(`
-        SELECT u.*, ml.name as member_level_name
+        SELECT u.*, ml.name as member_level_name,
+               (SELECT ap.role_id FROM admin_permissions ap WHERE ap.user_id = u.id ORDER BY ap.id DESC LIMIT 1) as role_id,
+               (SELECT ar.name FROM admin_permissions ap JOIN admin_roles ar ON ar.id = ap.role_id WHERE ap.user_id = u.id ORDER BY ap.id DESC LIMIT 1) as role_name
         FROM users u
         LEFT JOIN member_levels ml ON u.member_level_id = ml.id
         WHERE u.id = $1
@@ -393,9 +404,9 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.post('/api/admin/users', requireAdmin, async (req, res) => {
+  app.post('/api/admin/users', requireSuperAdmin, async (req, res) => {
     try {
-      const { username, email, phone, password, first_name, last_name, is_admin, is_active } = req.body;
+      const { username, email, phone, password, first_name, last_name, is_admin, is_active, role_id } = req.body;
       const bcrypt = require('bcryptjs');
       const passwordHash = await bcrypt.hash(password, 10);
 
@@ -405,7 +416,16 @@ module.exports = function(app, pool) {
         RETURNING id, username, email, created_at
       `, [username, email, phone, passwordHash, first_name, last_name, is_admin || false, is_active !== false]);
 
-      res.json({ success: true, user: result.rows[0] });
+      const newUser = result.rows[0];
+      const roleIdNum = role_id ? Number(role_id) : null;
+      if (roleIdNum && Number.isInteger(roleIdNum) && roleIdNum > 0) {
+        await pool.query(
+          'INSERT INTO admin_permissions (user_id, role_id) VALUES ($1, $2)',
+          [newUser.id, roleIdNum]
+        );
+      }
+
+      res.json({ success: true, user: newUser });
     } catch (err) {
       console.error(err);
       if (err.code === '23505') {
@@ -415,10 +435,10 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.put('/api/admin/users/:id', requireAdmin, async (req, res) => {
+  app.put('/api/admin/users/:id', requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const { email, phone, whatsapp, first_name, last_name, is_active, is_blacklisted, is_admin, member_level_id } = req.body;
+      const { email, phone, whatsapp, first_name, last_name, is_active, is_blacklisted, is_admin, member_level_id, role_id } = req.body;
 
       await pool.query(`
         UPDATE users
@@ -426,6 +446,17 @@ module.exports = function(app, pool) {
             is_active = $6, is_blacklisted = $7, is_admin = $8, member_level_id = $9, updated_at = NOW()
         WHERE id = $10
       `, [email, phone, whatsapp, first_name, last_name, is_active, is_blacklisted, is_admin, member_level_id || null, id]);
+
+      if (role_id !== undefined) {
+        const roleIdNum = role_id ? Number(role_id) : null;
+        await pool.query('DELETE FROM admin_permissions WHERE user_id = $1', [id]);
+        if (roleIdNum && Number.isInteger(roleIdNum) && roleIdNum > 0) {
+          await pool.query(
+            'INSERT INTO admin_permissions (user_id, role_id) VALUES ($1, $2)',
+            [id, roleIdNum]
+          );
+        }
+      }
 
       res.json({ success: true });
     } catch (err) {
@@ -435,7 +466,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin change user password
-  app.post('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
+  app.post('/api/admin/users/:id/password', requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { new_password } = req.body;
@@ -459,7 +490,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
+  app.delete('/api/admin/users/:id', requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       // Soft delete by deactivating
@@ -475,7 +506,7 @@ module.exports = function(app, pool) {
   // Admin Roles & Permissions
   // ===========================================
 
-  app.get('/api/admin/roles', requireAdmin, async (req, res) => {
+  app.get('/api/admin/roles', requireSuperAdmin, async (req, res) => {
     try {
       const result = await pool.query('SELECT * FROM admin_roles ORDER BY name');
       res.json({ roles: result.rows });
@@ -485,7 +516,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.get('/api/admin/operation-logs', requireAdmin, async (req, res) => {
+  app.get('/api/admin/operation-logs', requireSuperAdmin, async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
       const pageSize = parseInt(req.query.page_size) || 50;

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
   <style>
     body {
@@ -21,123 +22,20 @@
     }
   </style>
 </head>
-<body class="bg-white text-black min-h-screen">
+<body class="mz-body text-black min-h-screen">
 
-  <!-- 年齡確認 -->
-  <div id="ageModal" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center hidden">
-    <div class="modal-animate bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center shadow-2xl">
-      <div class="text-5xl mb-4">🔞</div>
-      <h2 class="text-2xl font-bold mb-4"><%= t('age.title') %></h2>
-      <p class="text-gray-600 mb-6 whitespace-pre-line"><%= t('age.desc') %></p>
-      <div class="flex gap-4 justify-center">
-        <button onclick="verifyAge(true)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg transition text-lg">
-          <%= t('common.yes') %>
-        </button>
-        <button onclick="verifyAge(false)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-10 rounded-lg transition text-lg">
-          <%= t('common.no') %>
-        </button>
-      </div>
-      <p class="text-xs text-gray-400 mt-6">
-        選擇「否」將無法繼續瀏覽本網站。
-      </p>
-    </div>
-  </div>
+  <%- include('partials/age-modal') %>
 
-  <!-- 頁首 -->
-  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-    <!-- 頂部提示 -->
-    <div class="bg-gray-900 text-white text-xs py-1">
-      <div class="max-w-7xl mx-auto px-2 flex justify-between items-center">
-        <span class="text-orange-400 font-bold">【積分 5 倍】註冊會員更抵！</span>
-        <div class="flex gap-4">
-          <a href="#" class="hover:text-orange-400"><%= t('nav.myAccount') %></a>
-          <a href="#" class="hover:text-orange-400"><%= t('nav.faq') %></a>
-          <a href="#" class="hover:text-orange-400"><%= t('nav.contact') %></a>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Main Header -->
-    <div class="max-w-7xl mx-auto px-2 py-3">
-      <div class="flex items-center justify-between gap-4">
-        <!-- Logo -->
-        <a href="/" class="flex items-center gap-2 flex-shrink-0">
-          <span class="text-3xl">🏪</span>
-          <span class="text-xl font-black text-red-600">OHYA2.0</span>
-        </a>
-        
-        <!-- 搜尋 -->
-        <div class="flex-1 max-w-xl">
-          <div class="flex">
-            <input type="text" placeholder="<%= t('nav.searchPlaceholder') %>" class="flex-1 border-2 border-gray-300 rounded-l-lg px-4 py-2 text-sm focus:border-red-500 focus:outline-none">
-            <button class="bg-red-600 text-white px-6 rounded-r-lg hover:bg-red-700 transition font-bold">
-              <%= t('nav.search') %>
-            </button>
-          </div>
-        </div>
-        
-        <!-- 購物車與帳戶 -->
-        <div class="flex items-center gap-4 flex-shrink-0">
-          <a href="/cart" class="flex items-center gap-1 text-sm hover:text-red-600 transition">
-            <span class="text-xl">🛒</span>
-            <span><%= t('nav.cart') %></span>
-            <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full font-bold" id="cart-count">0</span>
-          </a>
-          <% if (user) { %>
-            <div class="text-sm">
-              <span class="text-gray-600">歡迎</span>
-              <a href="/logout" class="text-red-600 hover:underline ml-2">登出</a>
-            </div>
-          <% } else { %>
-            <a href="/login" class="text-sm hover:text-red-600 transition"><%= t('nav.login') %></a>
-            <a href="/register" class="bg-red-600 text-white text-sm px-4 py-1.5 rounded hover:bg-red-700 transition font-bold"><%= t('nav.register') %></a>
-          <% } %>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 分類導航 -->
-    <nav class="bg-gray-100 border-t border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-2">
-        <div class="flex items-center gap-0">
-          <!-- Category Dropdown -->
-          <div class="relative group">
-            <button class="bg-red-600 text-white px-4 py-2.5 font-bold text-sm flex items-center gap-2 hover:bg-red-700 transition">
-              <span>☰</span>
-              商品分類
-              <span>▼</span>
-            </button>
-            <div class="absolute left-0 top-full bg-white shadow-xl border border-gray-200 w-64 hidden group-hover:block z-50">
-              <a href="/products?category=全部商品" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 border-b border-gray-100">
-                全部商品
-              </a>
-              <a href="/products?category=男士護理" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 border-b border-gray-100">男士護理</a>
-              <a href="/products?category=護理配件" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 border-b border-gray-100">護理配件</a>
-              <a href="/products?category=進階系列" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 border-b border-gray-100">進階系列</a>
-              <a href="/products?category=頂級系列" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 border-b border-gray-100">頂級系列</a>
-              <a href="/products?category=優惠套裝" class="block px-4 py-2.5 text-sm hover:bg-red-50 hover:text-red-600 border-b border-gray-100">優惠套裝</a>
-            </div>
-          </div>
-          
-          <!-- Quick Category Links -->
-          <div class="flex overflow-x-auto no-scrollbar flex-1">
-            <a href="/products?category=男士護理" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">男士護理</a>
-            <a href="/products?category=護理配件" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">護理配件</a>
-            <a href="/products?category=進階系列" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">進階系列</a>
-            <a href="/products?category=頂級系列" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">頂級系列</a>
-            <a href="/products?category=優惠套裝" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">優惠套裝</a>
-            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">最新上架</a>
-            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">人氣排行榜</a>
-            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">限時優惠</a>
-            <a href="#" class="px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-white hover:text-red-600 transition border-r border-gray-200">品牌一覽</a>
-          </div>
-        </div>
-      </div>
-    </nav>
-  </header>
+  <%- include('partials/header') %>
 
-  <!-- 導覽路徑 -->
-  <div class="max-w-7xl mx-auto px-2 py-3">
+  <div id="mz-wrapper" class="mz-wrapper max-w-7xl mx-auto px-2 mt-4 mb-4">
+    <div class="mz-3col">
+      <%- include('partials/sidebar-left') %>
+
+      <div id="wrap_center" class="min-w-0">
+
+  <div class="px-0 py-2">
+  <div class="max-w-7xl mx-auto px-0 py-3">
     <nav class="text-xs text-gray-500">
       <a href="/" class="hover:text-red-600">首頁</a>
       <span class="mx-2">›</span>
@@ -148,22 +46,36 @@
   </div>
 
   <!-- 商品詳情 -->
-  <div class="max-w-7xl mx-auto px-2 py-4">
+  <div class="max-w-7xl mx-auto px-0 py-4">
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
         <!-- 商品圖片 -->
-        <div class="aspect-square bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center p-8 relative">
-          <% if (product.originalPrice && product.originalPrice > product.price) { %>
-            <div class="absolute top-4 left-4 z-10">
-              <span class="bg-red-600 text-white text-sm px-4 py-2 rounded-lg font-bold">
-                <%= t('product.badge.deal') %>
-              </span>
+        <div class="space-y-3">
+          <div class="aspect-square bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center p-8 relative">
+            <% if (product.originalPrice && product.originalPrice > product.price) { %>
+              <div class="absolute top-4 left-4 z-10">
+                <span class="bg-red-600 text-white text-sm px-4 py-2 rounded-lg font-bold">
+                  <%= t('product.badge.deal') %>
+                </span>
+              </div>
+            <% } %>
+
+            <% const gallery = (product && Array.isArray(product.images) && product.images.length) ? product.images : (product.image ? [product.image] : []); %>
+            <% if (gallery.length) { %>
+              <img id="mz-product-main-image" src="<%= gallery[0] %>" alt="<%= product.name %>" class="w-full h-full object-contain rounded-lg">
+            <% } else { %>
+              <span class="text-9xl">📦</span>
+            <% } %>
+          </div>
+
+          <% if (gallery.length > 1) { %>
+            <div id="mz-product-thumbs" class="grid grid-cols-5 gap-2">
+              <% gallery.slice(0, 10).forEach((img, idx) => { %>
+                <button type="button" data-mz-image="<%= img %>" aria-label="切換圖片 <%= idx + 1 %>" class="<%= idx === 0 ? 'ring-2 ring-red-600' : 'ring-1 ring-gray-200' %> bg-white rounded overflow-hidden aspect-square">
+                  <img src="<%= img %>" alt="" class="w-full h-full object-cover">
+                </button>
+              <% }) %>
             </div>
-          <% } %>
-          <% if (product.image) { %>
-            <img src="<%= product.image %>" alt="<%= product.name %>" class="w-full h-full object-contain rounded-lg">
-          <% } else { %>
-            <span class="text-9xl">📦</span>
           <% } %>
         </div>
         
@@ -204,8 +116,10 @@
           <!-- 商品介紹 -->
           <div class="border-t border-b py-4 mb-6">
             <h3 class="font-bold text-gray-900 mb-3 jpn-bracket">商品介紹</h3>
-            <p class="text-gray-600 leading-relaxed text-sm">
-              <%= product.description || '為你送上高品質產品。' %>
+            <p class="text-gray-600 leading-relaxed text-sm whitespace-pre-line">
+              <% const _desc = (product && product.description != null) ? String(product.description).trim() : ''; %>
+              <% const _name = (product && product.name != null) ? String(product.name).trim() : ''; %>
+              <%= (_desc && _desc !== _name) ? _desc : '暫未提供產品詳細介紹。' %>
             </p>
           </div>
           
@@ -273,90 +187,14 @@
       </a>
     </div>
   </div>
+      </div>
+      </div>
 
-  <!-- 頁尾 -->
-  <footer class="bg-gray-900 text-white mt-8">
-    <div class="max-w-7xl mx-auto px-2 py-10">
-      <!-- 連結 -->
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-        <div>
-          <h4 class="font-bold mb-4 text-sm">【使用指南】</h4>
-          <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">訂購方法</a></li>
-            <li><a href="#" class="hover:text-white transition">付款方式</a></li>
-            <li><a href="#" class="hover:text-white transition">配送安排</a></li>
-            <li><a href="#" class="hover:text-white transition">退換貨</a></li>
-            <li><a href="#" class="hover:text-white transition">私隱政策</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-bold mb-4 text-sm">【會員服務】</h4>
-          <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">會員註冊</a></li>
-            <li><a href="#" class="hover:text-white transition">登入</a></li>
-            <li><a href="#" class="hover:text-white transition">我的帳戶</a></li>
-            <li><a href="#" class="hover:text-white transition">關於積分</a></li>
-            <li><a href="#" class="hover:text-white transition">會員等級</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-bold mb-4 text-sm">【支援】</h4>
-          <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">常見問題</a></li>
-            <li><a href="#" class="hover:text-white transition">聯絡我們</a></li>
-            <li><a href="#" class="hover:text-white transition">店舖資料</a></li>
-            <li><a href="#" class="hover:text-white transition">招聘資訊</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-bold mb-4 text-sm">【公司資訊】</h4>
-          <ul class="space-y-2 text-xs text-gray-400">
-            <li><a href="#" class="hover:text-white transition">公司簡介</a></li>
-            <li><a href="#" class="hover:text-white transition">使用條款</a></li>
-            <li><a href="#" class="hover:text-white transition">銷售條款</a></li>
-            <li><a href="#" class="hover:text-white transition">新聞稿</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-bold mb-4 text-sm">【聯絡方式】</h4>
-          <div class="text-xs text-gray-400 space-y-2">
-            <p>📞 0120-XXX-XXX</p>
-            <p>服務時間：10:00–18:00</p>
-            <p>（公眾假期除外）</p>
-            <p class="mt-3">📧 support@mzakka.com</p>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 年齡限制 -->
-      <div class="border-t border-gray-700 pt-6 mb-6">
-        <div class="bg-red-900/30 border border-red-800 rounded-lg p-4 text-center">
-          <p class="text-red-400 font-bold text-sm mb-1">🔞 <%= t('footer.ageRestrictionTitle') %></p>
-          <p class="text-xs text-gray-400">
-            <%= t('footer.ageRestrictionDesc') %>
-          </p>
-        </div>
-      </div>
-      
-      <!-- 付款方式 -->
-      <div class="text-center mb-6">
-        <p class="text-xs text-gray-500 mb-3"><%= t('footer.payments') %></p>
-        <div class="flex justify-center gap-4 text-2xl text-gray-400">
-          <span>💳</span>
-          <span>🏦</span>
-          <span>💰</span>
-          <span>📱</span>
-          <span>🍎</span>
-          <span>🅿️</span>
-        </div>
-      </div>
-      
-      <!-- Copyright -->
-      <div class="border-t border-gray-700 pt-6 text-center text-xs text-gray-500">
-        <p>© 2026 OHYA2.0. 版權所有。未經授權不得轉載。</p>
-      </div>
+      <%- include('partials/sidebar-right') %>
     </div>
-  </footer>
+  </div>
+
+  <%- include('partials/footer') %>
 
   <script id="current-product" type="application/json"><%- JSON.stringify(product) %></script>
 
@@ -379,6 +217,20 @@
         document.body.style.overflow = '';
       } else {
         window.location.href = 'https://www.google.com';
+      }
+    }
+
+    function toggleCategories() {
+      const list = document.getElementById('catList');
+      const toggle = document.getElementById('catToggle');
+      if (!list || !toggle) return;
+      const hidden = list.classList.contains('hidden');
+      if (hidden) {
+        list.classList.remove('hidden');
+        toggle.textContent = '▲';
+      } else {
+        list.classList.add('hidden');
+        toggle.textContent = '▼';
       }
     }
     
@@ -421,11 +273,31 @@
       
       alert('已加入購物車！');
     }
+
+    function initGalleryThumbs() {
+      const main = document.getElementById('mz-product-main-image');
+      const thumbs = document.getElementById('mz-product-thumbs');
+      if (!main || !thumbs) return;
+      thumbs.addEventListener('click', (e) => {
+        const btn = e.target && e.target.closest ? e.target.closest('button[data-mz-image]') : null;
+        if (!btn) return;
+        const src = btn.getAttribute('data-mz-image');
+        if (!src) return;
+        main.setAttribute('src', src);
+        for (const el of thumbs.querySelectorAll('button[data-mz-image]')) {
+          el.classList.remove('ring-2', 'ring-red-600');
+          el.classList.add('ring-1', 'ring-gray-200');
+        }
+        btn.classList.remove('ring-1', 'ring-gray-200');
+        btn.classList.add('ring-2', 'ring-red-600');
+      });
+    }
     
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
       checkAgeVerification();
       updateCartCount();
+      initGalleryThumbs();
     });
   </script>
 </body>

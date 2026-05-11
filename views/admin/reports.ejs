@@ -1,0 +1,67 @@
+<div id="admin-reports" class="space-y-3">
+  <div class="flex flex-wrap gap-2 items-end">
+    <label class="text-sm">
+      <div class="mb-1">開始日</div>
+      <input id="rp-start" class="admin-input" type="date" />
+    </label>
+    <label class="text-sm">
+      <div class="mb-1">結束日</div>
+      <input id="rp-end" class="admin-input" type="date" />
+    </label>
+    <label class="text-sm">
+      <div class="mb-1">分組</div>
+      <select id="rp-group" class="admin-input">
+        <option value="day">日</option>
+        <option value="week">週</option>
+        <option value="month">月</option>
+      </select>
+    </label>
+    <button id="rp-last-7" class="admin-btn-secondary" type="button">最近 7 日</button>
+    <button id="rp-last-30" class="admin-btn-secondary" type="button">最近 30 日</button>
+    <button id="rp-last-90" class="admin-btn-secondary" type="button">最近 90 日</button>
+    <button id="rp-refresh" class="admin-btn" type="button">刷新</button>
+    <button id="rp-export" class="admin-btn-secondary" type="button">匯出訂單 CSV</button>
+  </div>
+
+  <div id="rp-error" class="admin-error hidden"></div>
+
+  <div class="admin-card">
+    <div class="font-bold mb-2">Overview</div>
+    <div id="rp-overview" class="grid grid-cols-2 md:grid-cols-4 gap-2"></div>
+  </div>
+
+  <div class="admin-card space-y-2">
+    <div class="font-bold">銷售趨勢</div>
+    <div id="rp-sales-chart" class="overflow-x-auto"></div>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>期間</th>
+          <th>訂單數</th>
+          <th>銷售額</th>
+          <th>客戶數</th>
+          <th>平均客單</th>
+        </tr>
+      </thead>
+      <tbody id="rp-sales-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="admin-card space-y-2">
+    <div class="font-bold">熱賣商品</div>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>商品</th>
+          <th>數量</th>
+          <th>銷售額</th>
+        </tr>
+      </thead>
+      <tbody id="rp-top-tbody"></tbody>
+    </table>
+  </div>
+
+  <script src="/js/admin/common.js"></script>
+  <script src="/js/admin/reports.js"></script>
+</div>
+

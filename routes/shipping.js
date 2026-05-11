@@ -6,6 +6,7 @@
 module.exports = function(app, pool) {
 
   const requireAdmin = require('./middleware/auth').requireAdmin;
+  const { computeShippingFee } = require('../utils/shippingAvailability');
 
   // ===========================================
   // Shipping Zones & Methods (public)
@@ -28,33 +29,35 @@ module.exports = function(app, pool) {
       const { district, total_amount } = req.body;
 
       // Find shipping methods available for this district
-      // Simplified: get all active sorted by sort_order
-      const result = await pool.query(`
-        SELECT sm.*, sz.name as zone_name
-        FROM shipping_methods sm
-        LEFT JOIN shipping_zones sz ON sm.zone_id = sz.id
-        WHERE sm.is_active = true
-        ORDER BY sm.sort_order
-      `);
+      const params = [];
+      let where = 'sm.is_active = true';
+      if (district) {
+        params.push(district);
+        where += `
+          AND EXISTS (
+            SELECT 1
+            FROM json_array_elements_text(sz.districts) d
+            WHERE d = $1
+          )
+        `;
+      }
 
-      const methods = await Promise.all(result.rows.map(async (method) => {
-        let shippingFee = method.shipping_fee;
+      const result = await pool.query(
+        `
+          SELECT sm.*, sz.name as zone_name
+          FROM shipping_methods sm
+          LEFT JOIN shipping_zones sz ON sm.zone_id = sz.id
+          WHERE ${where}
+          ORDER BY sm.sort_order
+        `,
+        params
+      );
 
-        // Check free shipping threshold
-        if (method.free_shipping_threshold && total_amount >= method.free_shipping_threshold) {
-          shippingFee = 0;
-        }
-
-        // Check min order
-        if (method.min_order_amount && total_amount < method.min_order_amount) {
-          return null;
-        }
-
-        return {
-          ...method,
-          calculated_fee: shippingFee
-        };
-      }));
+      const methods = result.rows.map((method) => {
+        const fee = computeShippingFee(method, total_amount);
+        if (fee === null) return null;
+        return { ...method, calculated_fee: fee };
+      });
 
       // Filter out unavailable methods
       const availableMethods = methods.filter(m => m !== null);

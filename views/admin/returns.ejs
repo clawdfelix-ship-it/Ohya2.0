@@ -1,0 +1,46 @@
+<div id="admin-returns" class="space-y-3">
+  <div class="flex flex-wrap gap-2 items-end">
+    <label class="text-sm">
+      <div class="mb-1">狀態</div>
+      <select id="returns-status" class="admin-input">
+        <option value="">全部</option>
+        <option value="pending">待審批</option>
+        <option value="approved">已批准</option>
+        <option value="in_transit">退回中</option>
+        <option value="received">已收貨</option>
+        <option value="inspected">已驗貨</option>
+        <option value="refunded">已退款</option>
+        <option value="rejected">已拒絕</option>
+      </select>
+    </label>
+    <button id="returns-refresh" class="admin-btn">刷新</button>
+  </div>
+
+  <div id="returns-error" class="admin-error hidden"></div>
+
+  <div class="admin-grid-2">
+    <div class="admin-card">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>訂單</th>
+            <th>客戶</th>
+            <th>狀態</th>
+            <th>建立時間</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="returns-tbody"></tbody>
+      </table>
+    </div>
+    <div class="admin-card">
+      <div class="font-bold mb-2">售後詳情</div>
+      <div id="return-detail" class="text-sm text-gray-700">請喺左邊揀一張售後單</div>
+    </div>
+  </div>
+
+  <script src="/js/admin/common.js"></script>
+  <script src="/js/admin/returns.js"></script>
+</div>
+

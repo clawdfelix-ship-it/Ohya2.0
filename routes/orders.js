@@ -1,4 +1,5 @@
 module.exports = function(app, pool, requireAuth, requireAdmin) {
+  const { requirePermission } = require('./middleware/auth');
 
   // Get my orders (current user)
   app.get('/api/orders', requireAuth, async (req, res) => {
@@ -195,7 +196,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
   });
 
   // Admin: Get all orders
-  app.get('/api/admin/orders', requireAdmin, async (req, res) => {
+  app.get('/api/admin/orders', requirePermission('orders:read'), async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
       const perPage = parseInt(req.query.per_page) || 30;
@@ -242,7 +243,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
   });
 
   // Admin: Update order status
-  app.put('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
+  app.put('/api/admin/orders/:id/status', requirePermission('orders:write'), async (req, res) => {
     try {
       const { id } = req.params;
       const { status, tracking_number } = req.body;
@@ -275,12 +276,12 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
   });
 
   // Admin: Get order details (full info with items)
-  app.get('/api/admin/orders/:id', requireAdmin, async (req, res) => {
+  app.get('/api/admin/orders/:id', requirePermission('orders:read'), async (req, res) => {
     try {
       const { id } = req.params;
 
       const orderResult = await pool.query(`
-        SELECT o.*, u.username, u.contact
+        SELECT o.*, u.username, u.contact, u.whatsapp, u.marketing_consent
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         WHERE o.id = $1
@@ -308,4 +309,3 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
   });
 
 };
-

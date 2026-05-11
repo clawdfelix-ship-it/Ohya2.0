@@ -93,25 +93,4 @@ module.exports = function(app, pool, requireAdmin, requireAuth, bcrypt) {
     });
   });
 
-  // List users (admin only)
-  app.get('/api/admin/users', requireAdmin, async (req, res) => {
-    try {
-      const q = req.query.q || '';
-      let query = 'SELECT id, username, is_admin, contact, created_at, entries_count FROM users';
-      let params = [];
-
-      if (q) {
-        query += ' WHERE username ILIKE $1 OR contact ILIKE $1';
-        params.push(`%${q}%`);
-      }
-
-      query += ' ORDER BY created_at DESC';
-      const result = await pool.query(query, params);
-      res.json({ users: result.rows });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
-    }
-  });
-
 };

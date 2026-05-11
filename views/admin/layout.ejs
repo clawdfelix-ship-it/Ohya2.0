@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/mzakka-theme.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="mz-body text-black min-h-screen">
+  <%
+    const perms = (session && session.adminPermissions) ? session.adminPermissions : [];
+    const isSuperAdmin = !!(session && session.isAdmin);
+    function hasPerm(required) {
+      if (isSuperAdmin) return true;
+      if (!required) return true;
+      const reqs = Array.isArray(required) ? required : [required];
+      if (perms.includes('*')) return true;
+      return reqs.every((r) => {
+        if (perms.includes(r)) return true;
+        const idx = String(r).indexOf(':');
+        if (idx > 0) {
+          const prefix = String(r).slice(0, idx);
+          if (perms.includes(prefix + ':*')) return true;
+        }
+        return false;
+      });
+    }
+  %>
+  <div class="mz-wrapper max-w-7xl mx-auto px-2 mt-3 mb-5">
+    <div class="admin-top flex items-center justify-between border border-gray-300 bg-white px-3 py-2">
+      <div class="font-black">後台管理</div>
+      <form method="POST" action="/admin/logout">
+        <button class="text-sm underline">登出</button>
+      </form>
+    </div>
+
+    <div class="admin-shell border border-gray-300 bg-white mt-2">
+      <div class="admin-grid">
+        <aside class="admin-nav border-r border-gray-200 p-3">
+          <a class="admin-link <%= active==='dashboard' ? 'active' : '' %>" href="/admin">總覽</a>
+          <% if (hasPerm('orders:read')) { %>
+            <a class="admin-link <%= active==='orders' ? 'active' : '' %>" href="/admin/orders">訂單</a>
+          <% } %>
+          <% if (hasPerm('catalog:read')) { %>
+            <a class="admin-link <%= active==='products' ? 'active' : '' %>" href="/admin/products">商品</a>
+          <% } %>
+          <% if (hasPerm('inventory:read')) { %>
+            <a class="admin-link <%= active==='inventory' ? 'active' : '' %>" href="/admin/inventory">庫存</a>
+            <a class="admin-link <%= active==='low-stock' ? 'active' : '' %>" href="/admin/low-stock">低庫存</a>
+          <% } %>
+          <% if (hasPerm('inventory:write')) { %>
+            <a class="admin-link <%= active==='warehouses' ? 'active' : '' %>" href="/admin/warehouses">倉庫</a>
+            <a class="admin-link <%= active==='suppliers' ? 'active' : '' %>" href="/admin/suppliers">供應商</a>
+            <a class="admin-link <%= active==='purchase-orders' ? 'active' : '' %>" href="/admin/purchase-orders">採購單</a>
+          <% } %>
+          <% if (hasPerm('inventory:bulk')) { %>
+            <a class="admin-link <%= active==='bulk-skus' ? 'active' : '' %>" href="/admin/bulk-skus">批量更新</a>
+          <% } %>
+          <% if (hasPerm('catalog:write')) { %>
+            <a class="admin-link <%= active==='categories' ? 'active' : '' %>" href="/admin/categories">分類</a>
+          <% } %>
+          <% if (hasPerm('users:manage')) { %>
+            <a class="admin-link <%= active==='users' ? 'active' : '' %>" href="/admin/users">用戶</a>
+          <% } %>
+          <% if (hasPerm('returns:read')) { %>
+            <a class="admin-link <%= active==='returns' ? 'active' : '' %>" href="/admin/returns">售後</a>
+          <% } %>
+          <% if (hasPerm('refunds:read')) { %>
+            <a class="admin-link <%= active==='refunds' ? 'active' : '' %>" href="/admin/refunds">退款</a>
+          <% } %>
+          <% if (hasPerm('reconciliation:read')) { %>
+            <a class="admin-link <%= active==='reconciliation' ? 'active' : '' %>" href="/admin/reconciliation">對賬</a>
+          <% } %>
+          <% if (hasPerm('reports:read')) { %>
+            <a class="admin-link <%= active==='reports' ? 'active' : '' %>" href="/admin/reports">報表</a>
+          <% } %>
+        </aside>
+        <main class="admin-main p-3">
+          <div class="text-lg font-black mb-3"><%= title %></div>
+          <%- include(content) %>
+        </main>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

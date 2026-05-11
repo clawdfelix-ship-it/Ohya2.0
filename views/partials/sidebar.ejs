@@ -1,0 +1,17 @@
+    <div id="wrap_left" class="lg:w-52 flex-shrink-0 order-2 lg:order-1">
+      <div id="menu" class="bg-white border border-gray-300">
+        <h3 onclick="toggleCategories()" class="bg-gray-100 border-b border-gray-300 text-black font-black px-3 py-2 text-xs cursor-pointer flex justify-between items-center lg:cursor-default">
+          <span>【商品分類】</span>
+          <span id="catToggle" class="lg:hidden">▼</span>
+        </h3>
+        <ul id="catList" class="divide-y divide-gray-200 hidden lg:block">
+          <% (categories || []).forEach(cat => { %>
+            <li>
+              <a href="/products?category=<%= encodeURIComponent(cat.slug) %>&page=1" class="block px-3 py-2 text-xs hover:bg-gray-100 transition">
+                <%= cat.name %> <span class="text-gray-400">(<%= cat.count %>)</span>
+              </a>
+            </li>
+          <% }) %>
+        </ul>
+      </div>
+    </div>

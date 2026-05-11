@@ -1,0 +1,49 @@
+<div id="admin-warehouses" class="space-y-3">
+  <div class="flex flex-wrap gap-2 items-end">
+    <label class="text-sm">
+      <div class="mb-1">倉庫名</div>
+      <input id="wh-name" class="admin-input" placeholder="例如：預設倉庫" />
+    </label>
+    <label class="text-sm">
+      <div class="mb-1">地址</div>
+      <input id="wh-address" class="admin-input" placeholder="可留空" />
+    </label>
+    <label class="text-sm">
+      <div class="mb-1">聯絡人</div>
+      <input id="wh-contact-name" class="admin-input" placeholder="可留空" />
+    </label>
+    <label class="text-sm">
+      <div class="mb-1">電話</div>
+      <input id="wh-contact-phone" class="admin-input" placeholder="可留空" />
+    </label>
+    <label class="text-sm flex items-center gap-2 pb-1">
+      <input id="wh-is-default" type="checkbox" />
+      <span>設為預設</span>
+    </label>
+    <button id="wh-create" class="admin-btn" type="button">新增倉庫</button>
+    <button id="wh-refresh" class="admin-btn-secondary" type="button">刷新</button>
+  </div>
+
+  <div id="wh-error" class="admin-error hidden"></div>
+
+  <div class="admin-card">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>倉庫</th>
+          <th>地址</th>
+          <th>聯絡人</th>
+          <th>電話</th>
+          <th>狀態</th>
+          <th>預設</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="wh-tbody"></tbody>
+    </table>
+  </div>
+
+  <script src="/js/admin/common.js"></script>
+  <script src="/js/admin/warehouses.js"></script>
+</div>
+

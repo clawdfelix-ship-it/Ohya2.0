@@ -19,9 +19,8 @@ function extractHashFromUrl(url) {
   if (match) {
     return match[1].toLowerCase();
   }
-  
-  // If no hash in URL, compute MD5 of the URL itself
-  return crypto.createHash('md5').update(url).digest('hex');
+
+  return null;
 }
 
 /**

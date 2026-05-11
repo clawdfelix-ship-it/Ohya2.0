@@ -5,7 +5,23 @@
 
 module.exports = function(app, pool) {
 
-  const requireAdmin = require('./middleware/auth').requireAdmin;
+  const { requireAdmin, requirePermission } = require('./middleware/auth');
+  const { computeNewStock } = require('../lib/inventory');
+
+  async function assertLeafSubcategory(db, categoryId) {
+    const categoryIdNum = Number(categoryId);
+    if (!Number.isInteger(categoryIdNum) || categoryIdNum <= 0) return false;
+    const r = await db.query(
+      `SELECT c.id
+       FROM categories c
+       WHERE c.id = $1
+         AND c.parent_id IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM categories c2 WHERE c2.parent_id = c.id)
+       LIMIT 1`,
+      [categoryIdNum]
+    );
+    return r.rows.length > 0;
+  }
 
   // ===========================================
   // Brands
@@ -25,7 +41,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin: get all brands (including inactive)
-  app.get('/api/admin/brands', requireAdmin, async (req, res) => {
+  app.get('/api/admin/brands', requirePermission('catalog:read'), async (req, res) => {
     try {
       const result = await pool.query(`
         SELECT * FROM brands ORDER BY sort_order, name
@@ -38,7 +54,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin: create brand
-  app.post('/api/admin/brands', requireAdmin, async (req, res) => {
+  app.post('/api/admin/brands', requirePermission('catalog:write'), async (req, res) => {
     try {
       const { name, slug, description, image_url, website, sort_order, is_active } = req.body;
       const result = await pool.query(`
@@ -57,7 +73,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin: update brand
-  app.put('/api/admin/brands/:id', requireAdmin, async (req, res) => {
+  app.put('/api/admin/brands/:id', requirePermission('catalog:write'), async (req, res) => {
     try {
       const { id } = req.params;
       const { name, slug, description, image_url, website, sort_order, is_active } = req.body;
@@ -78,7 +94,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin: delete brand (soft delete handled elsewhere, just hard delete here)
-  app.delete('/api/admin/brands/:id', requireAdmin, async (req, res) => {
+  app.delete('/api/admin/brands/:id', requirePermission('catalog:write'), async (req, res) => {
     try {
       const { id } = req.params;
       await pool.query('DELETE FROM brands WHERE id = $1', [id]);
@@ -117,8 +133,9 @@ module.exports = function(app, pool) {
       const brandId = req.query.brand_id;
       const tagId = req.query.tag_id;
       const search = req.query.search;
-      const sort = req.query.sort || 'created_at';
-      const order = req.query.order || 'desc';
+      const sort = typeof req.query.sort === 'string' ? req.query.sort : 'created_at';
+      const orderRaw = typeof req.query.order === 'string' ? req.query.order : 'desc';
+      const order = orderRaw.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
       let where = 'p.status = \'active\'';
       let params = [];
@@ -150,14 +167,21 @@ module.exports = function(app, pool) {
         WHERE ${where}
       `;
 
-      if (sort === 'price') {
-        query += ` ORDER BY p.price ${order}`;
-      } else if (sort === 'name') {
-        query += ` ORDER BY p.name ${order}`;
-      } else if (sort === 'popular') {
+      const allowedSort = {
+        created_at: 'p.created_at',
+        updated_at: 'p.updated_at',
+        price: 'p.price',
+        name: 'p.name',
+        average_rating: 'p.average_rating',
+        review_count: 'p.review_count',
+      };
+
+      if (sort === 'popular') {
         query += ` ORDER BY p.is_featured DESC, p.created_at DESC`;
+      } else if (allowedSort[sort]) {
+        query += ` ORDER BY ${allowedSort[sort]} ${order}`;
       } else {
-        query += ` ORDER BY p.${sort} ${order}`;
+        query += ` ORDER BY p.created_at DESC`;
       }
 
       query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
@@ -262,7 +286,7 @@ module.exports = function(app, pool) {
   });
 
   // Get low stock (public/admin)
-  app.get('/api/admin/products/low-stock', requireAdmin, async (req, res) => {
+  app.get('/api/admin/products/low-stock', requirePermission('inventory:read'), async (req, res) => {
     try {
       const threshold = parseInt(req.query.threshold) || 10;
       const result = await pool.query(`
@@ -286,8 +310,92 @@ module.exports = function(app, pool) {
     }
   });
 
+  // Low stock (SKU-level)
+  app.get('/api/admin/low-stock/skus', requirePermission('inventory:read'), async (req, res) => {
+    try {
+      const raw = parseInt(req.query.threshold);
+      const threshold = Number.isInteger(raw) && raw >= 0 ? raw : 5;
+      const result = await pool.query(
+        `SELECT
+           ps.id as sku_id,
+           ps.sku,
+           ps.barcode,
+           ps.stock,
+           ps.product_id,
+           COALESCE(p.name_zh_hk, p.name) as product_name,
+           p.slug as product_slug,
+           ps.updated_at
+         FROM product_skus ps
+         JOIN products p ON ps.product_id = p.id
+         WHERE ps.is_active = true
+           AND ps.stock <= $1
+         ORDER BY ps.stock ASC, ps.id ASC`,
+        [threshold]
+      );
+      return res.json({ threshold, skus: result.rows });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
+  app.get('/api/admin/low-stock/skus/export.csv', requirePermission('inventory:read'), async (req, res) => {
+    try {
+      const raw = parseInt(req.query.threshold);
+      const threshold = Number.isInteger(raw) && raw >= 0 ? raw : 5;
+      const result = await pool.query(
+        `SELECT
+           ps.id as sku_id,
+           ps.sku,
+           ps.barcode,
+           ps.stock,
+           ps.product_id,
+           COALESCE(p.name_zh_hk, p.name) as product_name,
+           p.slug as product_slug,
+           ps.updated_at
+         FROM product_skus ps
+         JOIN products p ON ps.product_id = p.id
+         WHERE ps.is_active = true
+           AND ps.stock <= $1
+         ORDER BY ps.stock ASC, ps.id ASC`,
+        [threshold]
+      );
+
+      const escape = (val) => {
+        if (val === null || typeof val === 'undefined') return '';
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) return `"${str.replace(/"/g, '""')}"`;
+        return str;
+      };
+
+      let csv = 'Product ID,Product Name,Product Slug,SKU ID,SKU,Barcode,Stock,Updated At\n';
+      for (const row of result.rows) {
+        csv += [
+          row.product_id,
+          row.product_name,
+          row.product_slug,
+          row.sku_id,
+          row.sku,
+          row.barcode,
+          row.stock,
+          row.updated_at,
+        ].map(escape).join(',') + '\n';
+      }
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="low-stock-skus-${new Date().toISOString().slice(0, 10)}.csv"`
+      );
+      return res.send(csv);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
   // Export products to CSV
-  app.get('/api/admin/products/export/csv', requireAdmin, async (req, res) => {
+  app.get('/api/admin/products/export/csv', requirePermission('catalog:read'), async (req, res) => {
     try {
       const result = await pool.query(`
         SELECT
@@ -333,7 +441,7 @@ module.exports = function(app, pool) {
   // Admin: Products CRUD
   // ===========================================
 
-  app.get('/api/admin/products', requireAdmin, async (req, res) => {
+  app.get('/api/admin/products', requirePermission('catalog:read'), async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
       const pageSize = parseInt(req.query.page_size) || 50;
@@ -368,11 +476,18 @@ module.exports = function(app, pool) {
       const totalPages = Math.ceil(total / pageSize);
 
       const query = `
-        SELECT p.*, b.name as brand_name, c.name as category_name
+        SELECT
+          p.*,
+          b.name as brand_name,
+          c.name as category_name,
+          COALESCE(SUM(CASE WHEN ps.is_active = true THEN ps.stock ELSE 0 END), 0) as total_stock,
+          COALESCE(COUNT(ps.id) FILTER (WHERE ps.is_active = true), 0) as active_sku_count
         FROM products p
+        LEFT JOIN product_skus ps ON p.id = ps.product_id
         LEFT JOIN brands b ON p.brand_id = b.id
         LEFT JOIN categories c ON p.category_id = c.id
         WHERE ${where}
+        GROUP BY p.id, b.name, c.name
         ORDER BY p.created_at DESC
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `;
@@ -390,7 +505,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.get('/api/admin/products/:id', requireAdmin, async (req, res) => {
+  app.get('/api/admin/products/:id', requirePermission('catalog:read'), async (req, res) => {
     try {
       const { id } = req.params;
       const productResult = await pool.query(`
@@ -432,10 +547,10 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.post('/api/admin/products', requireAdmin, async (req, res) => {
+  app.post('/api/admin/products', requirePermission('catalog:write'), async (req, res) => {
     try {
       const {
-        name, slug, description, short_description,
+        name, name_zh_hk, slug, description, description_zh_hk, short_description, short_description_zh_hk,
         brand_id, category_id,
         cost_price, price, original_price, member_price,
         status, is_featured,
@@ -450,10 +565,18 @@ module.exports = function(app, pool) {
       try {
         await client.query('BEGIN');
 
+        if (!(await assertLeafSubcategory(client, category_id))) {
+          return res.status(400).json({ error: '請選擇子分類' });
+        }
+
+        const outName = name_zh_hk || name;
+        const outDesc = description_zh_hk || description;
+        const outShort = short_description_zh_hk || short_description;
+
         // Insert product
         const productResult = await client.query(`
           INSERT INTO products (
-            name, slug, description, short_description,
+            name, name_zh_hk, slug, description, description_zh_hk, short_description, short_description_zh_hk,
             brand_id, category_id,
             cost_price, price, original_price, member_price,
             status, is_featured,
@@ -461,10 +584,10 @@ module.exports = function(app, pool) {
             image_url, gallery_images, video_url,
             product_type, is_digital, digital_file_url,
             has_batch_expiry, enable_reviews
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
           RETURNING id
         `, [
-          name, slug, description, short_description,
+          outName, outName, slug, outDesc, outDesc, outShort, outShort,
           brand_id || null, category_id || null,
           cost_price, price, original_price, member_price,
           status || 'active', is_featured || false,
@@ -522,11 +645,11 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.put('/api/admin/products/:id', requireAdmin, async (req, res) => {
+  app.put('/api/admin/products/:id', requirePermission('catalog:write'), async (req, res) => {
     try {
       const { id } = req.params;
       const {
-        name, slug, description, short_description,
+        name, name_zh_hk, slug, description, description_zh_hk, short_description, short_description_zh_hk,
         brand_id, category_id,
         cost_price, price, original_price, member_price,
         status, is_featured,
@@ -541,25 +664,35 @@ module.exports = function(app, pool) {
       try {
         await client.query('BEGIN');
 
+        if (category_id !== undefined && category_id !== null && category_id !== '') {
+          if (!(await assertLeafSubcategory(client, category_id))) {
+            return res.status(400).json({ error: '請選擇子分類' });
+          }
+        }
+
         // Get old data for log
         const oldResult = await client.query('SELECT * FROM products WHERE id = $1', [id]);
         const oldData = oldResult.rows[0];
 
+        const outName = name_zh_hk || name;
+        const outDesc = description_zh_hk || description;
+        const outShort = short_description_zh_hk || short_description;
+
         // Update product
         await client.query(`
           UPDATE products SET
-            name = $1, slug = $2, description = $3, short_description = $4,
-            brand_id = $5, category_id = $6,
-            cost_price = $7, price = $8, original_price = $9, member_price = $10,
-            status = $11, is_featured = $12,
-            meta_title = $13, meta_description = $14,
-            image_url = $15, gallery_images = $16, video_url = $17,
-            product_type = $18, is_digital = $19, digital_file_url = $20,
-            has_batch_expiry = $21, enable_reviews = $22,
+            name = $1, name_zh_hk = $2, slug = $3, description = $4, description_zh_hk = $5, short_description = $6, short_description_zh_hk = $7,
+            brand_id = $8, category_id = $9,
+            cost_price = $10, price = $11, original_price = $12, member_price = $13,
+            status = $14, is_featured = $15,
+            meta_title = $16, meta_description = $17,
+            image_url = $18, gallery_images = $19, video_url = $20,
+            product_type = $21, is_digital = $22, digital_file_url = $23,
+            has_batch_expiry = $24, enable_reviews = $25,
             updated_at = NOW()
-          WHERE id = $23
+          WHERE id = $26
         `, [
-          name, slug, description, short_description,
+          outName, outName, slug, outDesc, outDesc, outShort, outShort,
           brand_id || null, category_id || null,
           cost_price, price, original_price, member_price,
           status, is_featured,
@@ -570,26 +703,89 @@ module.exports = function(app, pool) {
           id
         ]);
 
-        // Update SKUs: delete and reinsert (simple approach)
-        if (skus) {
-          await client.query('DELETE FROM product_skus WHERE product_id = $1', [id]);
+        if (Array.isArray(skus)) {
+          const existing = await client.query(
+            'SELECT id, cost_price FROM product_skus WHERE product_id = $1',
+            [id]
+          );
+          const existingById = new Map(existing.rows.map((r) => [Number(r.id), r]));
+          const seenIds = new Set();
+
           for (const sku of skus) {
-            await client.query(`
-              INSERT INTO product_skus (product_id, sku, barcode, attributes, price, cost_price, original_price, stock, weight, weight_unit, is_active)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            `, [
-              id,
-              sku.sku || null,
-              sku.barcode || null,
-              JSON.stringify(sku.attributes || {}),
-              sku.price || null,
-              sku.cost_price || null,
-              sku.original_price || null,
-              sku.stock || 0,
-              sku.weight || null,
-              sku.weight_unit || 'g',
-              sku.is_active !== false
-            ]);
+            const skuId = sku && sku.id ? Number(sku.id) : null;
+            const nextCost = sku && sku.cost_price !== undefined ? sku.cost_price : undefined;
+
+            if (skuId && Number.isInteger(skuId) && skuId > 0) {
+              seenIds.add(skuId);
+              const old = existingById.get(skuId);
+
+              if (old && nextCost !== undefined && old.cost_price !== nextCost) {
+                await client.query(
+                  `INSERT INTO sku_cost_history (sku_id, old_cost_price, new_cost_price, changed_by_admin_id, reason)
+                   VALUES ($1, $2, $3, $4, NULL)`,
+                  [skuId, old.cost_price, nextCost, req.user.id]
+                );
+              }
+
+              await client.query(
+                `UPDATE product_skus
+                 SET sku = $1,
+                     barcode = $2,
+                     attributes = $3,
+                     price = $4,
+                     cost_price = $5,
+                     original_price = $6,
+                     weight = $7,
+                     weight_unit = $8,
+                     is_active = $9,
+                     updated_at = NOW()
+                 WHERE id = $10 AND product_id = $11`,
+                [
+                  sku.sku || null,
+                  sku.barcode || null,
+                  JSON.stringify(sku.attributes || {}),
+                  sku.price || null,
+                  sku.cost_price || null,
+                  sku.original_price || null,
+                  sku.weight || null,
+                  sku.weight_unit || 'g',
+                  sku.is_active !== false,
+                  skuId,
+                  id,
+                ]
+              );
+            } else {
+              await client.query(
+                `INSERT INTO product_skus
+                  (product_id, sku, barcode, attributes, price, cost_price, original_price, stock, weight, weight_unit, is_active)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                [
+                  id,
+                  sku.sku || null,
+                  sku.barcode || null,
+                  JSON.stringify(sku.attributes || {}),
+                  sku.price || null,
+                  sku.cost_price || null,
+                  sku.original_price || null,
+                  sku.stock || 0,
+                  sku.weight || null,
+                  sku.weight_unit || 'g',
+                  sku.is_active !== false,
+                ]
+              );
+            }
+          }
+
+          const toDisable = [];
+          for (const row of existing.rows) {
+            const existingId = Number(row.id);
+            if (!seenIds.has(existingId)) toDisable.push(existingId);
+          }
+          if (toDisable.length > 0) {
+            await client.query(
+              'UPDATE product_skus SET is_active = false, updated_at = NOW() WHERE id = ANY($1::int[]) AND product_id = $2',
+              [toDisable, id]
+            );
           }
         }
 
@@ -615,7 +811,7 @@ module.exports = function(app, pool) {
   });
 
   // Soft delete (move to recycle bin)
-  app.delete('/api/admin/products/:id', requireAdmin, async (req, res) => {
+  app.delete('/api/admin/products/:id', requirePermission('catalog:write'), async (req, res) => {
     try {
       const { id } = req.params;
       await pool.query(`
@@ -664,7 +860,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin: get all pending reviews
-  app.get('/api/admin/reviews/pending', requireAdmin, async (req, res) => {
+  app.get('/api/admin/reviews/pending', requirePermission('catalog:write'), async (req, res) => {
     try {
       const result = await pool.query(`
         SELECT r.*, p.name as product_name, u.username
@@ -682,7 +878,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin: approve/reject review
-  app.put('/api/admin/reviews/:id/status', requireAdmin, async (req, res) => {
+  app.put('/api/admin/reviews/:id/status', requirePermission('catalog:write'), async (req, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
@@ -716,28 +912,69 @@ module.exports = function(app, pool) {
   // Inventory
   // ===========================================
 
-  app.get('/api/admin/inventory/transactions', requireAdmin, async (req, res) => {
+  app.get('/api/admin/inventory/transactions', requirePermission('inventory:read'), async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
       const pageSize = parseInt(req.query.page_size) || 50;
       const offset = (page - 1) * pageSize;
       const productId = req.query.product_id;
+      const skuId = req.query.sku_id;
+      const warehouseId = req.query.warehouse_id;
+      const type = req.query.type;
+      const from = req.query.from;
+      const to = req.query.to;
 
       let where = '1=1';
       let params = [];
       if (productId) {
-        where += ` AND product_id = $${params.length + 1}`;
-        params.push(productId);
+        const pid = Number(productId);
+        if (Number.isInteger(pid) && pid > 0) {
+          where += ` AND it.product_id = $${params.length + 1}`;
+          params.push(pid);
+        }
+      }
+      if (skuId) {
+        const sid = Number(skuId);
+        if (Number.isInteger(sid) && sid > 0) {
+          where += ` AND it.sku_id = $${params.length + 1}`;
+          params.push(sid);
+        }
+      }
+      if (warehouseId) {
+        const wid = Number(warehouseId);
+        if (Number.isInteger(wid) && wid > 0) {
+          where += ` AND it.warehouse_id = $${params.length + 1}`;
+          params.push(wid);
+        }
+      }
+      if (type) {
+        where += ` AND it.type = $${params.length + 1}`;
+        params.push(String(type));
+      }
+      if (from) {
+        const d = new Date(String(from));
+        if (!Number.isNaN(d.getTime())) {
+          where += ` AND it.created_at >= $${params.length + 1}`;
+          params.push(d.toISOString());
+        }
+      }
+      if (to) {
+        const d = new Date(String(to));
+        if (!Number.isNaN(d.getTime())) {
+          d.setUTCDate(d.getUTCDate() + 1);
+          where += ` AND it.created_at < $${params.length + 1}`;
+          params.push(d.toISOString());
+        }
       }
 
-      const countResult = await pool.query(`SELECT COUNT(*) FROM inventory_transactions WHERE ${where}`, params);
+      const countResult = await pool.query(`SELECT COUNT(*) FROM inventory_transactions it WHERE ${where}`, params);
       const total = parseInt(countResult.rows[0].count);
 
       const result = await pool.query(`
         SELECT it.*, p.name as product_name, w.name as warehouse_name
         FROM inventory_transactions it
         LEFT JOIN products p ON it.product_id = p.id
-        LEFT JOIN warehouses w ON it.warehouse_id = w.id
+        LEFT JOIN inventory_warehouses w ON it.warehouse_id = w.id
         WHERE ${where}
         ORDER BY it.created_at DESC
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -753,10 +990,191 @@ module.exports = function(app, pool) {
     }
   });
 
-  // Get warehouses
-  app.get('/api/admin/warehouses', requireAdmin, async (req, res) => {
+  app.get('/api/admin/inventory/skus', requirePermission('inventory:read'), async (req, res) => {
     try {
-      const result = await pool.query('SELECT * FROM warehouses WHERE is_active = true ORDER BY name');
+      const q = String(req.query.q || '').trim();
+      const limitRaw = parseInt(req.query.limit) || 20;
+      const limit = Math.max(1, Math.min(50, limitRaw));
+      if (!q) return res.status(400).json({ error: 'q 必填' });
+
+      const like = `%${q.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_')}%`;
+      const result = await pool.query(
+        `SELECT ps.id, ps.sku, ps.barcode, ps.stock, ps.cost_price, ps.product_id,
+                COALESCE(p.name_zh_hk, p.name) as product_name
+         FROM product_skus ps
+         JOIN products p ON ps.product_id = p.id
+         WHERE ps.is_active = true
+           AND (
+             ps.sku ILIKE $1 ESCAPE '\\'
+             OR ps.barcode ILIKE $1 ESCAPE '\\'
+             OR COALESCE(p.name_zh_hk,'') ILIKE $1 ESCAPE '\\'
+             OR COALESCE(p.name,'') ILIKE $1 ESCAPE '\\'
+           )
+         ORDER BY ps.id DESC
+         LIMIT $2`,
+        [like, limit]
+      );
+
+      return res.json({ skus: result.rows });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
+  app.get('/api/admin/inventory/levels', requirePermission('inventory:read'), async (req, res) => {
+    try {
+      const skuId = Number(req.query.sku_id);
+      const includeInactive = String(req.query.include_inactive || '') === '1';
+      if (!Number.isInteger(skuId) || skuId <= 0) return res.status(400).json({ error: 'sku_id 不正確' });
+
+      const skuRow = await pool.query(
+        `SELECT id, sku, barcode, stock, product_id
+         FROM product_skus
+         WHERE id = $1`,
+        [skuId]
+      );
+      if (skuRow.rows.length === 0) return res.status(404).json({ error: 'SKU 不存在' });
+
+      const where = includeInactive ? '1=1' : 'w.is_active = true';
+      const levels = await pool.query(
+        `SELECT w.id AS warehouse_id,
+                w.name AS warehouse_name,
+                w.is_default,
+                w.is_active,
+                COALESCE(il.stock, 0) AS stock
+         FROM inventory_warehouses w
+         LEFT JOIN inventory_levels il
+           ON il.warehouse_id = w.id AND il.sku_id = $1
+         WHERE ${where}
+         ORDER BY w.is_default DESC, w.is_active DESC, w.name`,
+        [skuId]
+      );
+
+      return res.json({ sku: skuRow.rows[0], levels: levels.rows });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
+  app.post('/api/admin/inventory/adjust', requirePermission('inventory:write'), async (req, res) => {
+    try {
+      const skuId = Number(req.body.sku_id);
+      const delta = Number(req.body.delta);
+      const note = req.body.note ? String(req.body.note) : null;
+      let warehouseId = req.body.warehouse_id ? Number(req.body.warehouse_id) : null;
+
+      if (!Number.isInteger(skuId) || skuId <= 0) return res.status(400).json({ error: 'sku_id 不正確' });
+      if (!Number.isInteger(delta) || delta === 0) return res.status(400).json({ error: 'delta 不正確' });
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        if (warehouseId) {
+          const w = await client.query(
+            'SELECT id FROM inventory_warehouses WHERE id = $1 AND is_active = true LIMIT 1',
+            [warehouseId]
+          );
+          if (w.rows.length === 0) return res.status(400).json({ error: '倉庫不存在或已停用' });
+        }
+
+        if (!warehouseId) {
+          const w = await client.query(
+            'SELECT id FROM inventory_warehouses WHERE is_active = true ORDER BY is_default DESC, id ASC LIMIT 1'
+          );
+          if (w.rows.length === 0) return res.status(500).json({ error: '未設定倉庫' });
+          warehouseId = w.rows[0].id;
+        }
+
+        await client.query(
+          `INSERT INTO inventory_levels (warehouse_id, sku_id, stock)
+           VALUES ($1, $2, 0)
+           ON CONFLICT (warehouse_id, sku_id) DO NOTHING`,
+          [warehouseId, skuId]
+        );
+
+        const skuRow = await client.query(
+          `SELECT ps.id, ps.product_id, ps.stock AS total_stock, il.stock AS warehouse_stock
+           FROM product_skus ps
+           JOIN inventory_levels il
+             ON il.sku_id = ps.id AND il.warehouse_id = $2
+           WHERE ps.id = $1
+           FOR UPDATE OF ps, il`,
+          [skuId, warehouseId]
+        );
+        if (skuRow.rows.length === 0) return res.status(404).json({ error: 'SKU 不存在' });
+
+        const { previousStock: warehousePreviousStock, newStock: warehouseNewStock } = computeNewStock({
+          previousStock: skuRow.rows[0].warehouse_stock,
+          delta
+        });
+
+        const { previousStock: totalPreviousStock, newStock: totalNewStock } = computeNewStock({
+          previousStock: skuRow.rows[0].total_stock,
+          delta
+        });
+
+        await client.query(
+          'UPDATE inventory_levels SET stock = $1, updated_at = NOW() WHERE warehouse_id = $2 AND sku_id = $3',
+          [warehouseNewStock, warehouseId, skuId]
+        );
+
+        await client.query(
+          'UPDATE product_skus SET stock = $1, updated_at = NOW() WHERE id = $2',
+          [totalNewStock, skuId]
+        );
+
+        const tx = await client.query(
+          `INSERT INTO inventory_transactions
+            (product_id, sku_id, warehouse_id, type, quantity, previous_stock, new_stock, reference_id, note)
+           VALUES ($1,$2,$3,'adjustment',$4,$5,$6,NULL,$7)
+           RETURNING *`,
+          [
+            skuRow.rows[0].product_id,
+            skuId,
+            warehouseId,
+            delta,
+            warehousePreviousStock,
+            warehouseNewStock,
+            note
+          ]
+        );
+
+        await client.query('COMMIT');
+        return res.json({
+          success: true,
+          transaction: tx.rows[0],
+          sku: {
+            id: skuId,
+            stock: totalNewStock,
+            warehouse_id: warehouseId,
+            warehouse_stock: warehouseNewStock
+          }
+        });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
+    } catch (e) {
+      return res.status(500).json({ error: e && e.message ? e.message : '服務器錯誤' });
+    }
+  });
+
+  // Get warehouses
+  app.get('/api/admin/warehouses', requirePermission('inventory:read'), async (req, res) => {
+    try {
+      const includeInactive = String(req.query.include_inactive || '') === '1';
+      const where = includeInactive ? '1=1' : 'is_active = true';
+      const result = await pool.query(
+        `SELECT *
+         FROM inventory_warehouses
+         WHERE ${where}
+         ORDER BY is_default DESC, is_active DESC, name`
+      );
       res.json({ warehouses: result.rows });
     } catch (err) {
       console.error(err);
@@ -765,18 +1183,120 @@ module.exports = function(app, pool) {
   });
 
   // Create warehouse
-  app.post('/api/admin/warehouses', requireAdmin, async (req, res) => {
+  app.post('/api/admin/warehouses', requirePermission('inventory:write'), async (req, res) => {
     try {
-      const { name, address, contact_name, contact_phone } = req.body;
-      const result = await pool.query(`
-        INSERT INTO warehouses (name, address, contact_name, contact_phone)
-        VALUES ($1, $2, $3, $4)
-        RETURNING *
-      `, [name, address, contact_name, contact_phone]);
-      res.json({ success: true, warehouse: result.rows[0] });
+      const name = String(req.body.name || '').trim();
+      const address = req.body.address ? String(req.body.address) : null;
+      const contactName = req.body.contact_name ? String(req.body.contact_name) : null;
+      const contactPhone = req.body.contact_phone ? String(req.body.contact_phone) : null;
+      const isDefault = Boolean(req.body.is_default);
+      if (!name) return res.status(400).json({ error: '倉庫名必填' });
+
+      if (!isDefault) {
+        const result = await pool.query(
+          `INSERT INTO inventory_warehouses (name, address, contact_name, contact_phone)
+           VALUES ($1, $2, $3, $4)
+           RETURNING *`,
+          [name, address, contactName, contactPhone]
+        );
+        return res.json({ success: true, warehouse: result.rows[0] });
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('UPDATE inventory_warehouses SET is_default = false WHERE is_default = true');
+        const result = await client.query(
+          `INSERT INTO inventory_warehouses (name, address, contact_name, contact_phone, is_default)
+           VALUES ($1, $2, $3, $4, true)
+           RETURNING *`,
+          [name, address, contactName, contactPhone]
+        );
+        await client.query('COMMIT');
+        return res.json({ success: true, warehouse: result.rows[0] });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
+  app.put('/api/admin/warehouses/:id', requirePermission('inventory:write'), async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'id 不正確' });
+
+      const fields = [];
+      const params = [];
+      if (typeof req.body.name !== 'undefined') {
+        const name = String(req.body.name || '').trim();
+        if (!name) return res.status(400).json({ error: '倉庫名必填' });
+        fields.push(`name = $${params.length + 1}`);
+        params.push(name);
+      }
+      if (typeof req.body.address !== 'undefined') {
+        fields.push(`address = $${params.length + 1}`);
+        params.push(req.body.address ? String(req.body.address) : null);
+      }
+      if (typeof req.body.contact_name !== 'undefined') {
+        fields.push(`contact_name = $${params.length + 1}`);
+        params.push(req.body.contact_name ? String(req.body.contact_name) : null);
+      }
+      if (typeof req.body.contact_phone !== 'undefined') {
+        fields.push(`contact_phone = $${params.length + 1}`);
+        params.push(req.body.contact_phone ? String(req.body.contact_phone) : null);
+      }
+      if (typeof req.body.is_active !== 'undefined') {
+        fields.push(`is_active = $${params.length + 1}`);
+        params.push(Boolean(req.body.is_active));
+      }
+      if (fields.length === 0) return res.status(400).json({ error: '沒有可更新欄位' });
+
+      const r = await pool.query(
+        `UPDATE inventory_warehouses
+         SET ${fields.join(', ')}
+         WHERE id = $${params.length + 1}
+         RETURNING *`,
+        [...params, id]
+      );
+      if (r.rows.length === 0) return res.status(404).json({ error: '倉庫不存在' });
+      return res.json({ success: true, warehouse: r.rows[0] });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
+  app.post('/api/admin/warehouses/:id/make-default', requirePermission('inventory:write'), async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'id 不正確' });
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const check = await client.query('SELECT id, is_active FROM inventory_warehouses WHERE id = $1 FOR UPDATE', [id]);
+        if (check.rows.length === 0) return res.status(404).json({ error: '倉庫不存在' });
+        if (check.rows[0].is_active === false) return res.status(400).json({ error: '不能將停用倉庫設為預設' });
+
+        await client.query('UPDATE inventory_warehouses SET is_default = false WHERE is_default = true');
+        const out = await client.query('UPDATE inventory_warehouses SET is_default = true WHERE id = $1 RETURNING *', [id]);
+        await client.query('COMMIT');
+        return res.json({ success: true, warehouse: out.rows[0] });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: '服務器錯誤' });
     }
   });
 

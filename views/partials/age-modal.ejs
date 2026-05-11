@@ -1,0 +1,16 @@
+  <div id="ageModal" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center hidden">
+    <div class="modal-animate bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center shadow-2xl">
+      <div class="text-5xl mb-4">🔞</div>
+      <h2 class="text-2xl font-bold mb-4"><%= t('age.title') %></h2>
+      <p class="text-gray-600 mb-6 whitespace-pre-line"><%= t('age.desc') %></p>
+      <div class="flex gap-4 justify-center">
+        <button onclick="verifyAge(true)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg transition text-lg">
+          <%= t('common.yes') %>
+        </button>
+        <button onclick="verifyAge(false)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-10 rounded-lg transition text-lg">
+          <%= t('common.no') %>
+        </button>
+      </div>
+      <p class="text-xs text-gray-400 mt-6">選擇「否」將無法繼續瀏覽本網站。</p>
+    </div>
+  </div>

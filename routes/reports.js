@@ -6,13 +6,13 @@
 
 module.exports = function(app, pool) {
 
-  const requireAdmin = require('./middleware/auth').requireAdmin;
+  const { requirePermission } = require('./middleware/auth');
 
   // ===========================================
   // Dashboard Overview
   // ===========================================
 
-  app.get('/api/admin/dashboard/overview', requireAdmin, async (req, res) => {
+  app.get('/api/admin/dashboard/overview', requirePermission('reports:read'), async (req, res) => {
     try {
       // Today
       const todayStart = new Date();
@@ -120,20 +120,15 @@ module.exports = function(app, pool) {
   // Sales Report by Date
   // ===========================================
 
-  app.get('/api/admin/reports/sales-by-date', requireAdmin, async (req, res) => {
+  app.get('/api/admin/reports/sales-by-date', requirePermission('reports:read'), async (req, res) => {
     try {
       const startDate = req.query.start_date;
       const endDate = req.query.end_date;
       const groupBy = req.query.group_by || 'day'; // day, week, month
 
-      let groupFormat;
-      if (groupBy === 'day') {
-        groupFormat = 'DATE(created_at)';
-      } else if (groupBy === 'week') {
-        groupFormat = 'YEAR(created_at), WEEK(created_at)';
-      } else if (groupBy === 'month') {
-        groupFormat = 'YEAR(created_at), MONTH(created_at)';
-      }
+      let groupExpr = "DATE_TRUNC('day', created_at)::date";
+      if (groupBy === 'week') groupExpr = "DATE_TRUNC('week', created_at)::date";
+      if (groupBy === 'month') groupExpr = "DATE_TRUNC('month', created_at)::date";
 
       let where = '1=1';
       let params = [];
@@ -151,15 +146,15 @@ module.exports = function(app, pool) {
 
       const query = `
         SELECT
-          ${groupFormat} as date_group,
+          ${groupExpr} as date_group,
           COUNT(*) as order_count,
           COUNT(DISTINCT user_id) as customer_count,
           COALESCE(SUM(total_amount), 0) as total_sales,
           COALESCE(AVG(total_amount), 0) as avg_order_value
         FROM orders
         WHERE ${where}
-        GROUP BY ${groupFormat}
-        ORDER BY ${groupFormat} DESC
+        GROUP BY 1
+        ORDER BY 1 DESC
       `;
 
       const result = await pool.query(query, params);
@@ -191,7 +186,7 @@ module.exports = function(app, pool) {
   // Top Selling Products
   // ===========================================
 
-  app.get('/api/admin/reports/top-products', requireAdmin, async (req, res) => {
+  app.get('/api/admin/reports/top-products', requirePermission('reports:read'), async (req, res) => {
     try {
       const limit = parseInt(req.query.limit) || 20;
       const startDate = req.query.start_date;
@@ -206,7 +201,9 @@ module.exports = function(app, pool) {
       }
       if (endDate) {
         where += ` AND o.created_at <= $${params.length + 1}`;
-        params.push(endDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        params.push(end);
       }
       where += ` AND o.status != 'cancelled'`;
 
@@ -238,7 +235,7 @@ module.exports = function(app, pool) {
   // Inventory Report
   // ===========================================
 
-  app.get('/api/admin/reports/inventory', requireAdmin, async (req, res) => {
+  app.get('/api/admin/reports/inventory', requirePermission('reports:read'), async (req, res) => {
     try {
       const lowStockOnly = req.query.low_stock_only === 'true';
       const page = parseInt(req.query.page) || 1;
@@ -298,7 +295,7 @@ module.exports = function(app, pool) {
   // Customer Statistics
   // ===========================================
 
-  app.get('/api/admin/reports/customers', requireAdmin, async (req, res) => {
+  app.get('/api/admin/reports/customers', requirePermission('reports:read'), async (req, res) => {
     try {
       // New customers by date
       const startDate = req.query.start_date;
@@ -365,7 +362,7 @@ module.exports = function(app, pool) {
   // Coupon Usage Report
   // ===========================================
 
-  app.get('/api/admin/reports/coupons', requireAdmin, async (req, res) => {
+  app.get('/api/admin/reports/coupons', requirePermission('reports:read'), async (req, res) => {
     try {
       const result = await pool.query(`
         SELECT
@@ -390,7 +387,7 @@ module.exports = function(app, pool) {
   // Export Orders to CSV (for accounting)
   // ===========================================
 
-  app.get('/api/admin/reports/export-orders/csv', requireAdmin, async (req, res) => {
+  app.get('/api/admin/reports/export-orders/csv', requirePermission('reports:read'), async (req, res) => {
     try {
       const startDate = req.query.start_date;
       const endDate = req.query.end_date;
@@ -405,7 +402,9 @@ module.exports = function(app, pool) {
       }
       if (endDate) {
         where += ` AND o.created_at <= $${params.length + 1}`;
-        params.push(new Date(endDate).setHours(23,59,59));
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        params.push(end);
       }
       if (status) {
         where += ` AND o.status = $${params.length + 1}`;
@@ -460,7 +459,7 @@ module.exports = function(app, pool) {
   // Tax Report (for Hong Kong tax filing)
   // ===========================================
 
-  app.get('/api/admin/reports/tax', requireAdmin, async (req, res) => {
+  app.get('/api/admin/reports/tax', requirePermission('reports:read'), async (req, res) => {
     try {
       const month = req.query.month; // format YYYY-MM
       const year = req.query.year;
@@ -518,7 +517,7 @@ module.exports = function(app, pool) {
   });
 
   // Export Tax report to CSV
-  app.get('/api/admin/reports/tax/export/csv', requireAdmin, async (req, res) => {
+  app.get('/api/admin/reports/tax/export/csv', requirePermission('reports:read'), async (req, res) => {
     try {
       const month = req.query.month;
       const year = req.query.year;

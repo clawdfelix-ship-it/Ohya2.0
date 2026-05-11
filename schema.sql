@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(100),
   phone VARCHAR(20),
   whatsapp VARCHAR(20),
+  contact VARCHAR(255),
   password_hash VARCHAR(255) NOT NULL,
   first_name VARCHAR(50),
   last_name VARCHAR(50),
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS users (
   points INTEGER DEFAULT 0 NOT NULL,
   total_spent DECIMAL(10,2) DEFAULT 0 NOT NULL,
   total_orders INTEGER DEFAULT 0 NOT NULL,
+  entries_count INTEGER DEFAULT 0 NOT NULL,
   -- Social login
   facebook_id VARCHAR(100) UNIQUE,
   google_id VARCHAR(100) UNIQUE,

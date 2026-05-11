@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; }
@@ -22,93 +23,44 @@
     }
   </style>
 </head>
-<body class="bg-gray-50 text-black min-h-screen">
+<body class="mz-body text-black min-h-screen">
 
-  <!-- 年齡確認 -->
-  <div id="ageModal" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center hidden">
-    <div class="modal-animate bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center shadow-2xl">
-      <div class="text-5xl mb-4">🔞</div>
-      <h2 class="text-2xl font-bold mb-4"><%= t('age.title') %></h2>
-      <p class="text-gray-600 mb-6 whitespace-pre-line"><%= t('age.desc') %></p>
-      <div class="flex gap-4 justify-center">
-        <button onclick="verifyAge(true)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg transition text-lg"><%= t('common.yes') %></button>
-        <button onclick="verifyAge(false)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-10 rounded-lg transition text-lg"><%= t('common.no') %></button>
-      </div>
-      <p class="text-xs text-gray-400 mt-6">選擇「否」將無法繼續瀏覽本網站。</p>
-    </div>
-  </div>
+  <%- include('partials/age-modal') %>
 
-  <!-- Header -->
-  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-    <div class="bg-gray-900 text-white text-xs py-1">
-      <div class="max-w-7xl mx-auto px-2 flex justify-between items-center">
-        <span class="text-orange-400 font-bold">【積分 5 倍】註冊會員更抵！</span>
-        <div class="hidden sm:flex gap-4">
-          <a href="#" class="hover:text-orange-400"><%= t('nav.myAccount') %></a>
-          <a href="#" class="hover:text-orange-400"><%= t('nav.faq') %></a>
-          <a href="#" class="hover:text-orange-400"><%= t('nav.contact') %></a>
-        </div>
-      </div>
-    </div>
-    <div class="max-w-7xl mx-auto px-2">
-      <div class="flex items-center justify-between h-16">
-        <a href="/" class="flex items-center gap-2 flex-shrink-0">
-          <span class="text-3xl">🏪</span>
-          <span class="text-xl font-black text-red-600">OHYA2.0</span>
-        </a>
-        <!-- 桌面版搜尋 -->
-        <div class="hidden md:flex flex-1 max-w-xl mx-8">
-          <div class="flex w-full">
-            <input type="text" placeholder="<%= t('nav.searchPlaceholder') %>" class="flex-1 border-2 border-gray-300 rounded-l-lg px-4 py-2 text-sm focus:border-red-500 focus:outline-none">
-            <button class="bg-red-600 text-white px-6 rounded-r-lg hover:bg-red-700 transition"><%= t('nav.search') %></button>
-          </div>
-        </div>
-        <!-- 手機版搜尋按鈕 (隱藏輸入框，唔會出界) -->
-        <button class="md:hidden p-2 text-gray-600 hover:text-red-600">🔍</button>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <a href="/cart" class="relative p-2 text-gray-600 hover:text-red-600 transition">
-            <span class="text-xl">🛒</span>
-            <span id="cart-count" class="absolute -top-0 -right-0 bg-red-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-bold">0</span>
-          </a>
-          <a href="/login" class="hidden sm:inline-flex bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition"><%= t('nav.login') %></a>
-        </div>
-      </div>
-    </div>
-    <div class="bg-red-600">
-      <div class="max-w-7xl mx-auto px-2">
-        <div class="flex items-center justify-center h-10 overflow-x-auto">
-          <% categories.slice(0, 8).forEach(category => { %>
-            <a href="/products?category=<%= category.name %>" class="text-white hover:bg-red-700 px-3 py-2 text-xs font-medium whitespace-nowrap transition"><%= category.name %></a>
-          <% }) %>
-        </div>
-      </div>
-    </div>
-  </header>
+  <%- include('partials/header') %>
 
-  <!-- Main Content -->
-  <main class="max-w-7xl mx-auto px-2 py-6">
+  <div id="mz-wrapper" class="mz-wrapper max-w-7xl mx-auto px-2 mt-4 mb-4">
+    <div class="mz-3col">
+      <%- include('partials/sidebar-left') %>
+
+      <div id="wrap_center" class="min-w-0">
+  <main class="max-w-7xl mx-auto px-0 py-2">
     <div class="mb-6">
       <h1 class="text-xl font-black jpn-bracket inline-block"><%= selectedCategory && selectedCategory !== '全部商品' ? selectedCategory : '全部商品' %></h1>
-      <span class="text-sm text-gray-500 ml-2">共 <%= products.length %> 件</span>
+      <span class="text-sm text-gray-500 ml-2">共 <%= (typeof total === 'number' ? total : products.length) %> 件</span>
     </div>
 
     <!-- 手機版分類篩選 -->
     <div class="md:hidden bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
       <div class="flex items-center gap-2 mb-2"><span class="text-sm font-bold text-gray-700">分類：</span></div>
       <div class="flex flex-wrap gap-2">
-        <a href="/products" class="<%= selectedCategory === '全部商品' || !selectedCategory ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300' %> text-xs px-3 py-1.5 rounded font-medium hover:opacity-80 transition">全部 (<%= products.length %>)</a>
+        <a href="/products" class="<%= selectedCategorySlug === 'all' || !selectedCategorySlug ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300' %> text-xs px-3 py-1.5 rounded font-medium hover:opacity-80 transition">全部 (<%= (typeof total === 'number' ? total : products.length) %>)</a>
         <% categories.slice(1).forEach(category => { %>
-          <a href="/products?category=<%= category.name %>" class="<%= selectedCategory === category.name ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300' %> text-xs px-3 py-1.5 rounded font-medium hover:opacity-80 transition"><%= category.name %></a>
+          <a href="/products?category=<%= encodeURIComponent(category.slug) %>&page=1" class="<%= selectedCategorySlug === category.slug ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300' %> text-xs px-3 py-1.5 rounded font-medium hover:opacity-80 transition"><%= category.name %></a>
         <% }) %>
       </div>
     </div>
 
     <!-- 排序 -->
     <div class="flex justify-between items-center mb-6 bg-white border border-gray-200 rounded-lg p-3">
-      <div class="text-sm text-gray-500">已找到 <span class="font-bold text-black"><%= products.length %></span> 件商品</div>
+      <div class="text-sm text-gray-500">已找到 <span class="font-bold text-black"><%= (typeof total === 'number' ? total : products.length) %></span> 件商品</div>
       <div class="flex gap-2">
-        <select class="border border-gray-300 rounded px-2 py-1 text-sm focus:border-red-500 focus:outline-none">
-          <option>推介排序</option><option>價格由低至高</option><option>價格由高至低</option><option>最新上架</option><option>人氣排序</option>
+        <select id="mz-sort" class="border border-gray-300 rounded px-2 py-1 text-sm focus:border-red-500 focus:outline-none">
+          <option value="recommend" <%= (typeof sort === 'string' ? sort : 'recommend') === 'recommend' ? 'selected' : '' %>>推介排序</option>
+          <option value="price_asc" <%= (typeof sort === 'string' ? sort : 'recommend') === 'price_asc' ? 'selected' : '' %>>價格由低至高</option>
+          <option value="price_desc" <%= (typeof sort === 'string' ? sort : 'recommend') === 'price_desc' ? 'selected' : '' %>>價格由高至低</option>
+          <option value="newest" <%= (typeof sort === 'string' ? sort : 'recommend') === 'newest' ? 'selected' : '' %>>最新上架</option>
+          <option value="popular" <%= (typeof sort === 'string' ? sort : 'recommend') === 'popular' ? 'selected' : '' %>>人氣排序</option>
         </select>
       </div>
     </div>
@@ -157,13 +109,51 @@
         <% }) %>
       </div>
       <div class="flex justify-center mt-8">
+        <% 
+          const currentPage = typeof page === 'number' ? page : 1;
+          const pages = typeof totalPages === 'number' ? totalPages : 1;
+          const qParam = (typeof q === 'string' && q.trim()) ? ('&q=' + encodeURIComponent(q.trim())) : '';
+          const sortParam = (typeof sort === 'string' && sort) ? ('&sort=' + encodeURIComponent(sort)) : '';
+          const base = selectedCategorySlug && selectedCategorySlug !== 'all'
+            ? ('/products?category=' + encodeURIComponent(selectedCategorySlug) + qParam + sortParam + '&page=')
+            : ('/products?' + (qParam ? qParam.slice(1) + '&' : '') + (sortParam ? sortParam.slice(1) + '&' : '') + 'page=');
+          const startPage = Math.max(1, currentPage - 2);
+          const endPage = Math.min(pages, currentPage + 2);
+        %>
         <div class="flex gap-1">
-          <button class="w-9 h-9 border border-gray-300 rounded font-bold text-gray-400 cursor-not-allowed">«</button>
-          <button class="w-9 h-9 bg-red-600 text-white rounded font-bold">1</button>
-          <button class="w-9 h-9 border border-gray-300 rounded font-bold hover:bg-gray-100 transition">2</button>
-          <button class="w-9 h-9 border border-gray-300 rounded font-bold hover:bg-gray-100 transition">3</button>
-          <span class="w-9 h-9 flex items-center justify-center text-gray-400">...</span>
-          <button class="w-9 h-9 border border-gray-300 rounded font-bold hover:bg-gray-100 transition">»</button>
+          <% if (currentPage <= 1) { %>
+            <button class="w-9 h-9 border border-gray-300 rounded font-bold text-gray-400 cursor-not-allowed">«</button>
+          <% } else { %>
+            <a href="<%= base + (currentPage - 1) %>" class="w-9 h-9 border border-gray-300 rounded font-bold hover:bg-gray-100 transition flex items-center justify-center">«</a>
+          <% } %>
+
+          <% if (startPage > 1) { %>
+            <a href="<%= base + 1 %>" class="w-9 h-9 border border-gray-300 rounded font-bold hover:bg-gray-100 transition flex items-center justify-center">1</a>
+            <% if (startPage > 2) { %>
+              <span class="w-9 h-9 flex items-center justify-center text-gray-400">...</span>
+            <% } %>
+          <% } %>
+
+          <% for (let i = startPage; i <= endPage; i++) { %>
+            <% if (i === currentPage) { %>
+              <span class="w-9 h-9 bg-red-600 text-white rounded font-bold flex items-center justify-center"><%= i %></span>
+            <% } else { %>
+              <a href="<%= base + i %>" class="w-9 h-9 border border-gray-300 rounded font-bold hover:bg-gray-100 transition flex items-center justify-center"><%= i %></a>
+            <% } %>
+          <% } %>
+
+          <% if (endPage < pages) { %>
+            <% if (endPage < pages - 1) { %>
+              <span class="w-9 h-9 flex items-center justify-center text-gray-400">...</span>
+            <% } %>
+            <a href="<%= base + pages %>" class="w-9 h-9 border border-gray-300 rounded font-bold hover:bg-gray-100 transition flex items-center justify-center"><%= pages %></a>
+          <% } %>
+
+          <% if (currentPage >= pages) { %>
+            <button class="w-9 h-9 border border-gray-300 rounded font-bold text-gray-400 cursor-not-allowed">»</button>
+          <% } else { %>
+            <a href="<%= base + (currentPage + 1) %>" class="w-9 h-9 border border-gray-300 rounded font-bold hover:bg-gray-100 transition flex items-center justify-center">»</a>
+          <% } %>
         </div>
       </div>
     <% } else { %>
@@ -174,55 +164,13 @@
       </div>
     <% } %>
   </main>
+      </div>
 
-  <!-- Footer -->
-  <footer class="bg-gray-900 text-white mt-12">
-    <div class="max-w-7xl mx-auto px-2 py-10">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
-        <div>
-          <h3 class="font-bold text-lg mb-4 text-orange-400">顧客服務</h3>
-          <ul class="space-y-2 text-sm text-gray-400">
-            <li><a href="#" class="hover:text-white transition">常見問題</a></li>
-            <li><a href="#" class="hover:text-white transition">送貨方式</a></li>
-            <li><a href="#" class="hover:text-white transition">付款方式</a></li>
-            <li><a href="#" class="hover:text-white transition">退換貨政策</a></li>
-            <li><a href="#" class="hover:text-white transition">聯絡我們</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3 class="font-bold text-lg mb-4 text-orange-400">關於 OHYA2.0</h3>
-          <ul class="space-y-2 text-sm text-gray-400">
-            <li><a href="#" class="hover:text-white transition">品牌介紹</a></li>
-            <li><a href="#" class="hover:text-white transition">會員優惠</a></li>
-            <li><a href="#" class="hover:text-white transition">積分計劃</a></li>
-            <li><a href="#" class="hover:text-white transition">隱私政策</a></li>
-            <li><a href="#" class="hover:text-white transition">使用條款</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3 class="font-bold text-lg mb-4 text-orange-400">男士護理指南</h3>
-          <ul class="space-y-2 text-sm text-gray-400">
-            <li><a href="#" class="hover:text-white transition">新手入門</a></li>
-            <li><a href="#" class="hover:text-white transition">產品選擇</a></li>
-            <li><a href="#" class="hover:text-white transition">保養方法</a></li>
-            <li><a href="#" class="hover:text-white transition">清潔技巧</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3 class="font-bold text-lg mb-4 text-orange-400">聯絡我們</h3>
-          <ul class="space-y-2 text-sm text-gray-400">
-            <li>📧 info@ohya2.0.com</li>
-            <li>📞 +852 1234 5678</li>
-            <li>⏰ 星期一至日 10:00-20:00</li>
-          </ul>
-        </div>
-      </div>
-      <div class="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-500">
-        <p>© 2025 OHYA2.0 版權所有 | 18歲以下人士禁止瀏覽</p>
-        <p class="mt-1">本網站銷售之產品僅供成年人士使用，請根據個人需要選擇合適產品</p>
-      </div>
+      <%- include('partials/sidebar-right') %>
     </div>
-  </footer>
+  </div>
+
+  <%- include('partials/footer') %>
 
   <script>
     function verifyAge(isAdult) {
@@ -243,6 +191,32 @@
       countEl.textContent = current + 1;
       alert('已加入購物車！');
     }
+
+    function toggleCategories() {
+      const list = document.getElementById('catList');
+      const toggle = document.getElementById('catToggle');
+      if (!list || !toggle) return;
+      const hidden = list.classList.contains('hidden');
+      if (hidden) {
+        list.classList.remove('hidden');
+        toggle.textContent = '▲';
+      } else {
+        list.classList.add('hidden');
+        toggle.textContent = '▼';
+      }
+    }
+
+    (function initSort() {
+      const sel = document.getElementById('mz-sort');
+      if (!sel) return;
+      sel.addEventListener('change', function () {
+        const params = new URLSearchParams(window.location.search);
+        params.set('sort', String(sel.value || 'recommend'));
+        params.set('page', '1');
+        const next = window.location.pathname + '?' + params.toString();
+        window.location.href = next;
+      });
+    })();
   </script>
 </body>
 </html>

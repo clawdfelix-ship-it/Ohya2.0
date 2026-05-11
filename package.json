@@ -6,7 +6,17 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test": "node --test ./test/*.test.js"
+    "test": "node --test ./test/*.test.js",
+    "assets:download": "node scripts/download-mzakka-assets.js",
+    "assets:verify": "node scripts/verify-mzakka-assets.js",
+    "import:mzakka": "node scripts/import-mzakka-to-postgres.js --dry-run --limit 1",
+    "rebuild:categories": "node scripts/rebuild-categories-from-mzakka.js --limit 200 --concurrency 6 --delay-ms 150",
+    "rebuild:categories:by-category:dry": "node scripts/rebuild-categories-for-category.js --dry-run",
+    "rebuild:categories:by-category": "node scripts/rebuild-categories-for-category.js",
+    "gallery:cleanup:dry": "node scripts/cleanup-gallery-images.js --dry-run",
+    "gallery:cleanup": "node scripts/cleanup-gallery-images.js",
+    "products:deactivate-ended:dry": "node scripts/deactivate-ended-products.js --dry-run",
+    "products:deactivate-ended": "node scripts/deactivate-ended-products.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
