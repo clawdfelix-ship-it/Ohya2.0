@@ -18,6 +18,7 @@ const { mapDbProductToStorefrontProduct } = require('./utils/storefrontDbMapper'
 const { mapRowsToRankingProducts } = require('./utils/homepageQuery');
 const { getProductsOrderBy, normalizeProductsSort } = require('./lib/productsSort');
 const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch-mzakka-description');
+const { loginLimiter, adminWriteLimiter, webhookLimiter } = require('./utils/security/rateLimiters');
 
 let cachedSharp;
 function getSharp() {
@@ -116,6 +117,13 @@ app.use(cors(buildCorsOptions({
   nodeEnv: process.env.NODE_ENV,
   allowedOriginsEnv: process.env.CORS_ALLOWED_ORIGINS || '',
 })));
+app.use('/api/auth/login', loginLimiter());
+app.use('/webhooks', webhookLimiter());
+app.use('/api/admin', (req, res, next) => {
+  const m = String(req.method || 'GET').toUpperCase();
+  if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return next();
+  return adminWriteLimiter()(req, res, next);
+});
 app.use(express.json({
   verify: (req, res, buf) => {
     req.rawBody = buf;
