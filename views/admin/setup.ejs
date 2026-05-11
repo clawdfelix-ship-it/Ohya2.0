@@ -15,6 +15,7 @@
       <div class="text-sm text-gray-600 mb-4">只可用一次：建立第一個管理員帳號後，呢頁會自動封鎖。</div>
 
       <form method="POST" action="/admin/setup" class="space-y-3">
+        <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
         <div>
           <label class="block text-sm font-bold mb-1" for="username">管理員用戶名</label>
           <input id="username" name="username" class="w-full border border-gray-300 px-3 py-2" autocomplete="username" required>
@@ -37,4 +38,3 @@
   </div>
 </body>
 </html>
-

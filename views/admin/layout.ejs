@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
+  <meta name="csrf-token" content="<%= csrfToken || '' %>">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link rel="stylesheet" href="/css/admin.css">
@@ -32,6 +33,7 @@
     <div class="admin-top flex items-center justify-between border border-gray-300 bg-white px-3 py-2">
       <div class="font-black">後台管理</div>
       <form method="POST" action="/admin/logout">
+        <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
         <button class="text-sm underline">登出</button>
       </form>
     </div>

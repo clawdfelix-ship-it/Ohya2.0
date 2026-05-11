@@ -45,6 +45,16 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
+const csrf = require('csurf');
+const csrfProtection = csrf({ cookie: false });
+function shouldSkipCsrf(req) {
+  const m = String(req.method || 'GET').toUpperCase();
+  if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return true;
+  const p = String(req.path || '');
+  if (p.startsWith('/webhooks/')) return true;
+  return false;
+}
+
 const mzakkaDescriptionCache = new Map();
 const mzakkaDescriptionTtlMs = 6 * 60 * 60 * 1000;
 
@@ -162,6 +172,20 @@ if (connectionString) {
   // Fallback for when DB not configured - still boot so we can see error
   console.warn('No DATABASE_URL, session will not work');
 }
+
+app.use((req, res, next) => {
+  if (shouldSkipCsrf(req)) return next();
+  return csrfProtection(req, res, next);
+});
+
+app.use((req, res, next) => {
+  try {
+    res.locals.csrfToken = req.csrfToken ? req.csrfToken() : '';
+  } catch {
+    res.locals.csrfToken = '';
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   res.locals.session = req.session || {};

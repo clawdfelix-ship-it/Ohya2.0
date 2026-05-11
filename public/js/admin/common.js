@@ -12,8 +12,18 @@ function adminRenderJson(el, data) {
   el.textContent = JSON.stringify(data, null, 2);
 }
 
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? String(meta.getAttribute('content') || '') : '';
+}
+
 async function adminApiRequest(path, { method = 'GET', json, formData } = {}) {
   const init = { method, headers: { Accept: 'application/json' } };
+  const m = String(method || 'GET').toUpperCase();
+  if (m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS') {
+    const t = getCsrfToken();
+    if (t) init.headers['X-CSRF-Token'] = t;
+  }
   if (json !== undefined) {
     init.headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(json);
