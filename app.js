@@ -8,6 +8,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const crypto = require('crypto');
 require('dotenv').config();
 
 // Image utilities
@@ -175,8 +176,11 @@ app.get('/@vite/*', (req, res) => {
 
 // Session configuration
 if (connectionString) {
+  const sessionSecret = process.env.SESSION_SECRET || (
+    process.env.NODE_ENV === 'production' ? crypto.randomBytes(32).toString('hex') : 'dev-secret-change-me'
+  );
   if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
-    throw new Error('SESSION_SECRET is required in production');
+    console.warn('SESSION_SECRET missing in production; using ephemeral secret (sessions will reset on restart)');
   }
   app.use(session({
     store: new pgSession({
@@ -184,7 +188,7 @@ if (connectionString) {
       tableName: 'session',
       createTableIfMissing: true,
     }),
-    secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
