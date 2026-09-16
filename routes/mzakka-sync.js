@@ -1,5 +1,6 @@
 module.exports = function registerMzakkaSyncRoutes(app, pool) {
   const { requirePermission } = require('./middleware/auth');
+  const { bootstrapCoreSchema } = require('../utils/dbBootstrap');
   const { normalizeSyncOptions, syncMzakkaNewItemsToDb } = require('../utils/mzakkaSync');
 
   function getConfiguredSyncSecrets() {
@@ -68,6 +69,23 @@ module.exports = function registerMzakkaSyncRoutes(app, pool) {
     await handleSync(req, res, 'internal');
   }
 
+  async function handleInternalBootstrap(req, res) {
+    if (!ensurePool(res)) return;
+    if (!ensureInternalSyncAuthorized(req, res)) return;
+    try {
+      const result = await bootstrapCoreSchema(pool);
+      res.json({ ok: true, source: 'internal', result });
+    } catch (err) {
+      console.error('DB bootstrap failed:', err);
+      res.status(500).json({
+        ok: false,
+        error: String((err && err.message) || err),
+      });
+    }
+  }
+
   app.get('/api/internal/jobs/mzakka-sync', handleInternalSync);
   app.post('/api/internal/jobs/mzakka-sync', handleInternalSync);
+  app.get('/api/internal/jobs/db-bootstrap', handleInternalBootstrap);
+  app.post('/api/internal/jobs/db-bootstrap', handleInternalBootstrap);
 };

@@ -8,6 +8,7 @@ const {
   createMzakkaSyncService,
   normalizeSyncOptions,
 } = require('../utils/mzakkaSync');
+const { CORE_BOOTSTRAP_STEPS } = require('../utils/dbBootstrap');
 
 test('normalizeSyncOptions keeps sync defaults bounded', () => {
   const out = normalizeSyncOptions({});
@@ -76,7 +77,7 @@ test('mzakka sync service crawls records and imports them into DB layer', async 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('mzakka sync routes register admin and internal POST endpoints', () => {
+test('mzakka sync routes register admin, internal sync, and bootstrap endpoints', () => {
   const routes = [];
   const app = {
     get(pathname) {
@@ -92,6 +93,15 @@ test('mzakka sync routes register admin and internal POST endpoints', () => {
   assert.ok(routes.includes('POST /api/admin/catalog/mzakka-sync'));
   assert.ok(routes.includes('GET /api/internal/jobs/mzakka-sync'));
   assert.ok(routes.includes('POST /api/internal/jobs/mzakka-sync'));
+  assert.ok(routes.includes('GET /api/internal/jobs/db-bootstrap'));
+  assert.ok(routes.includes('POST /api/internal/jobs/db-bootstrap'));
+});
+
+test('db bootstrap includes catalog core steps needed for mzakka sync', () => {
+  const names = CORE_BOOTSTRAP_STEPS.map((step) => step.name);
+  assert.ok(names.includes('categories'));
+  assert.ok(names.includes('products'));
+  assert.ok(names.includes('product skus'));
 });
 
 test('internal GET sync route accepts CRON_SECRET and forwards query options', async () => {
