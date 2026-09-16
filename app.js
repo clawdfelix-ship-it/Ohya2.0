@@ -17,6 +17,8 @@ const { getConnectionString, getPool } = require('./utils/getPool');
 const { createTranslator } = require('./utils/i18n');
 const { mapDbProductToStorefrontProduct } = require('./utils/storefrontDbMapper');
 const { mapRowsToRankingProducts } = require('./utils/homepageQuery');
+const { buildCategoryTree } = require('./utils/storefrontCategories');
+const { partitionHomeModules } = require('./utils/storefrontHomeModules');
 const { getProductsOrderBy, normalizeProductsSort } = require('./lib/productsSort');
 const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch-mzakka-description');
 const { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
@@ -450,50 +452,147 @@ app.locals.toProxyUrl = toProxyUrl;
 const categoriesCache = { at: 0, value: null };
 const categoriesCacheTtlMs = 30 * 1000;
 
+function getSampleCategoryData() {
+  const sampleCategories = getSampleCategories();
+  return {
+    flat: sampleCategories,
+    tree: sampleCategories
+      .filter((category) => Number(category.id) !== 0)
+      .map((category) => ({
+        id: Number(category.id),
+        slug: String(category.slug),
+        name: String(category.name),
+        count: Number(category.count || 0),
+        children: [],
+      })),
+  };
+}
+
+function normalizeCategoryChildren(children) {
+  if (Array.isArray(children)) return children;
+  if (typeof children === 'string' && children.trim()) {
+    try {
+      return JSON.parse(children);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+async function loadStorefrontCategories() {
+  if (!connectionString) {
+    return getSampleCategoryData();
+  }
+
+  const totalResult = await pool.query(
+    `SELECT COUNT(*)::int as total
+     FROM products p
+     WHERE p.status = 'active'
+       AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'`
+  );
+  const totalCount = totalResult.rows[0] ? Number(totalResult.rows[0].total) : 0;
+
+  const result = await pool.query(
+    `WITH product_counts AS (
+       SELECT p.category_id, COUNT(*)::int as direct_count
+       FROM products p
+       WHERE p.status = 'active'
+         AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
+       GROUP BY p.category_id
+     )
+     SELECT root.id,
+            root.slug,
+            COALESCE(root.name_zh_hk, root.name) as name,
+            (COALESCE(root_count.direct_count, 0) + COALESCE(SUM(child_count.direct_count), 0))::int as count,
+            COALESCE(
+              json_agg(
+                json_build_object(
+                  'id', child.id,
+                  'slug', child.slug,
+                  'name', COALESCE(child.name_zh_hk, child.name),
+                  'count', COALESCE(child_count.direct_count, 0)
+                )
+                ORDER BY COALESCE(child_count.direct_count, 0) DESC, COALESCE(child.name_zh_hk, child.name) ASC
+              ) FILTER (WHERE child.id IS NOT NULL),
+              '[]'::json
+            ) as children
+     FROM categories root
+     LEFT JOIN product_counts root_count ON root_count.category_id = root.id
+     LEFT JOIN categories child
+       ON child.parent_id = root.id
+      AND child.status = 'active'
+     LEFT JOIN product_counts child_count ON child_count.category_id = child.id
+     WHERE root.parent_id IS NULL
+       AND root.status = 'active'
+     GROUP BY root.id, root.slug, root.name, root.name_zh_hk, root_count.direct_count
+     ORDER BY count DESC, name ASC
+     LIMIT 200`
+  );
+
+  const rows = result.rows.map((row) => ({
+    id: Number(row.id),
+    slug: String(row.slug),
+    name: String(row.name),
+    count: Number(row.count || 0),
+    children: normalizeCategoryChildren(row.children),
+  }));
+
+  return buildCategoryTree(rows, { totalCount });
+}
+
+function getFallbackHomeModules() {
+  return partitionHomeModules([]);
+}
+
+async function loadStorefrontHomeModules() {
+  if (!connectionString) {
+    return getFallbackHomeModules();
+  }
+
+  const result = await pool.query(
+    `SELECT module_key,
+            module_type,
+            title,
+            subtitle,
+            image_url,
+            target_url,
+            payload_json,
+            sort_order
+     FROM mzakka_home_modules
+     WHERE is_active = true
+     ORDER BY sort_order ASC, id ASC
+     LIMIT 12`
+  );
+
+  return partitionHomeModules(result.rows);
+}
+
 app.use(async (req, res, next) => {
   res.locals.user = req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null;
   res.locals.formatPrice = formatPrice;
+  res.locals.homeModules = getFallbackHomeModules();
 
   if (!connectionString) {
-    res.locals.categories = getSampleCategories();
+    const sampleCategoryData = getSampleCategoryData();
+    res.locals.categories = sampleCategoryData.flat;
+    res.locals.categoriesTree = sampleCategoryData.tree;
     return next();
   }
 
   try {
     const now = Date.now();
     if (!categoriesCache.value || now - categoriesCache.at > categoriesCacheTtlMs) {
-      const totalResult = await pool.query(
-        `SELECT COUNT(*)::int as total
-         FROM products p
-         WHERE p.status = 'active'
-           AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'`
-      );
-      const total = totalResult.rows[0] ? Number(totalResult.rows[0].total) : 0;
-
-      const result = await pool.query(
-        `SELECT c.id,
-                c.slug,
-                COALESCE(c.name_zh_hk, c.name) as name,
-                COUNT(p.id)::int as count
-         FROM categories c
-         LEFT JOIN products p
-           ON (p.category_id = c.id OR p.category_id IN (SELECT id FROM categories WHERE parent_id = c.id))
-          AND p.status = 'active'
-          AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
-         WHERE c.parent_id IS NULL
-           AND c.status = 'active'
-         GROUP BY c.id, c.slug, c.name, c.name_zh_hk
-         ORDER BY count DESC, name ASC
-         LIMIT 200`
-      );
-
-      categoriesCache.value = [{ id: 0, slug: 'all', name: '全部商品', count: total }, ...result.rows.map(r => ({ id: Number(r.id), slug: String(r.slug), name: String(r.name), count: Number(r.count) }))];
+      categoriesCache.value = await loadStorefrontCategories();
       categoriesCache.at = now;
     }
 
-    res.locals.categories = categoriesCache.value;
+    res.locals.categories = categoriesCache.value.flat;
+    res.locals.categoriesTree = categoriesCache.value.tree;
   } catch (err) {
-    res.locals.categories = getSampleCategories();
+    const sampleCategoryData = getSampleCategoryData();
+    res.locals.categories = sampleCategoryData.flat;
+    res.locals.categoriesTree = sampleCategoryData.tree;
   }
 
   next();
@@ -503,22 +602,26 @@ app.use(async (req, res, next) => {
   // 首頁 - 電商首頁
   app.get('/', async (req, res) => {
     try {
-      const banners = [
-        { title: '新貨入荷：最新上架商品', subtitle: '即刻睇吓新上架有咩值得入手', href: '/products?page=1' },
-        { title: '人氣熱選：精選分類推薦', subtitle: '由【商品分類】開始搵你想要嘅類型', href: '/products?page=1' },
-        { title: '會員服務：快速登入/註冊', subtitle: '建立帳戶後更方便追蹤同管理訂單', href: '/login' },
-      ];
+      let homeModules = getFallbackHomeModules();
 
       if (!connectionString) {
         const featuredProducts = getSampleProducts();
+        res.locals.homeModules = homeModules;
         return res.render('index', {
           title: 'OHYA2.0 - 熱門男士護理網店',
           user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
           formatPrice,
-          banners,
+          homeModules,
           rankingProducts: featuredProducts.slice(0, 20),
         });
       }
+
+      try {
+        homeModules = await loadStorefrontHomeModules();
+      } catch (moduleError) {
+        console.warn('Homepage modules unavailable:', moduleError && moduleError.message ? moduleError.message : String(moduleError));
+      }
+      res.locals.homeModules = homeModules;
 
       const listResult = await pool.query(
         `SELECT p.id,
@@ -550,7 +653,7 @@ app.use(async (req, res, next) => {
         title: 'OHYA2.0 - 熱門男士護理網店',
         user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
         formatPrice,
-        banners,
+        homeModules,
         rankingProducts,
       });
     } catch (err) {
@@ -559,9 +662,7 @@ app.use(async (req, res, next) => {
         title: 'OHYA2.0 - 熱門男士護理網店',
         user: null,
         formatPrice,
-        banners: [
-          { title: '新貨入荷：最新上架商品', subtitle: '即刻睇吓新上架有咩值得入手', href: '/products?page=1' },
-        ],
+        homeModules: getFallbackHomeModules(),
         rankingProducts: getSampleProducts().slice(0, 20),
       });
     }

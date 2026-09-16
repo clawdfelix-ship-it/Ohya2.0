@@ -1,3 +1,5 @@
+  <% const categoryOptions = Array.isArray(categories) ? categories : []; %>
+  <% const categoryTreeData = Array.isArray(categoriesTree) ? categoriesTree : []; %>
   <header class="mz-header bg-white border-b border-gray-300 sticky top-0 z-50">
     <div class="mz-topbar bg-gray-100 border-b border-gray-300 text-[11px] leading-6">
       <div class="max-w-7xl mx-auto px-2 flex items-center justify-between">
@@ -30,7 +32,7 @@
         <form action="/products" method="get" class="flex-1">
           <div class="flex items-stretch">
             <select name="category" class="hidden sm:block w-44 border border-gray-400 bg-white text-xs px-2">
-              <% (categories || []).slice(0, 50).forEach(cat => { %>
+              <% categoryOptions.slice(0, 50).forEach(cat => { %>
                 <option value="<%= cat.slug %>" <%= (typeof selectedCategorySlug === 'string' && selectedCategorySlug === cat.slug) ? 'selected' : '' %>><%= cat.name %></option>
               <% }) %>
             </select>
@@ -59,18 +61,25 @@
               <span class="text-[10px]">▼</span>
             </button>
             <div class="absolute left-0 top-full bg-white border border-gray-300 w-64 hidden group-hover:block z-50">
-              <% (categories || []).forEach(cat => { %>
-                <% const href = cat.slug === 'all' ? '/products?page=1' : ('/products?category=' + encodeURIComponent(cat.slug) + '&page=1'); %>
-                <a href="<%= href %>" class="block px-3 py-2 text-xs text-gray-900 hover:bg-gray-100 border-b border-gray-100">
+              <a href="/products?page=1" class="block px-3 py-2 text-xs text-gray-900 hover:bg-gray-100 border-b border-gray-100 font-bold">
+                全部商品 <span class="text-gray-400">(<%= (categoryOptions[0] && categoryOptions[0].count) || 0 %>)</span>
+              </a>
+              <% categoryTreeData.forEach(cat => { %>
+                <a href="/products?category=<%= encodeURIComponent(cat.slug) %>&page=1" class="block px-3 py-2 text-xs text-gray-900 hover:bg-gray-100 border-b border-gray-100 font-semibold">
                   <%= cat.name %> <span class="text-gray-400">(<%= cat.count %>)</span>
                 </a>
+                <% (cat.children || []).forEach(child => { %>
+                  <a href="/products?category=<%= encodeURIComponent(child.slug) %>&page=1" class="block px-5 py-2 text-xs text-gray-700 hover:bg-gray-100 border-b border-gray-100">
+                    <span class="text-gray-400 mr-1">-</span><%= child.name %> <span class="text-gray-400">(<%= child.count %>)</span>
+                  </a>
+                <% }) %>
               <% }) %>
             </div>
           </div>
 
           <div class="flex-1 overflow-x-auto">
             <div class="flex min-w-max">
-              <% (categories || []).slice(1, 60).forEach(cat => { %>
+              <% categoryTreeData.slice(0, 60).forEach(cat => { %>
                 <a href="/products?category=<%= encodeURIComponent(cat.slug) %>&page=1" class="h-9 px-3 text-xs text-gray-900 flex items-center border-r border-gray-200 hover:bg-white hover:underline whitespace-nowrap">
                   <%= cat.name %>
                 </a>

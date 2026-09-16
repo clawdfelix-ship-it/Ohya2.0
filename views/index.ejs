@@ -26,6 +26,7 @@
   </style>
 </head>
 <body class="mz-body text-black min-h-screen">
+  <% const centerModules = homeModules && Array.isArray(homeModules.center) ? homeModules.center : []; %>
 
   <%- include('partials/age-modal') %>
 
@@ -37,15 +38,11 @@
 
       <div id="wrap_center" class="min-w-0">
       <div class="mb-3 space-y-2">
-        <a href="/products?page=1" class="block border border-gray-300 bg-white">
-          <img src="/assets/mzakka/banners/214x78.jpg" alt="活動" class="w-full">
-        </a>
-        <a href="/products?page=1" class="block border border-gray-300 bg-white">
-          <img src="/assets/mzakka/banners/M_zakka_214x78.jpg" alt="活動" class="w-full">
-        </a>
-        <a href="/products?page=1" class="block border border-gray-300 bg-white">
-          <img src="/assets/mzakka/banners/214_78(1).png" alt="活動" class="w-full">
-        </a>
+        <% centerModules.forEach(module => { %>
+          <a href="<%= module.href || '/products?page=1' %>" class="block border border-gray-300 bg-white">
+            <img src="<%= module.image_url %>" alt="<%= module.title || '活動' %>" class="w-full">
+          </a>
+        <% }) %>
       </div>
 
       <section id="mzakka-ranking" class="border border-gray-300 bg-white mb-3">

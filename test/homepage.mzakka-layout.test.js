@@ -21,9 +21,10 @@ test('homepage has ranking section marker', () => {
   assert.match(html, />排行榜</);
 });
 
-test('homepage uses local mzakka banner images', () => {
+test('homepage renders DB-driven home modules', () => {
   const html = readView('index.ejs');
-  assert.match(html, /<img[^>]+src="\/assets\/mzakka\/banners\//i);
+  assert.match(html, /homeModules/);
+  assert.match(html, /module\.image_url/);
 });
 
 test('homepageQuery: maps rows to ranking products', () => {
@@ -31,4 +32,11 @@ test('homepageQuery: maps rows to ranking products', () => {
   const rows = [{ id: 1, name: 'A', description: 'D', category_name: 'C', price_cents: 100, original_price_cents: null, image_url: 'https://i.mzakka.com/x.jpg', stock: 0 }];
   const out = mapRowsToRankingProducts(rows, { toProxyUrl: (u) => `/img/${u}` });
   assert.equal(out[0].image, '/img/https://i.mzakka.com/x.jpg');
+});
+
+test('storefrontHomeModules falls back to local center banners', () => {
+  const { partitionHomeModules } = require('../utils/storefrontHomeModules');
+  const out = partitionHomeModules([]);
+  assert.equal(out.center.length, 3);
+  assert.match(out.center[0].image_url, /\/assets\/mzakka\/banners\//);
 });

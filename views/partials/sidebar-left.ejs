@@ -1,12 +1,33 @@
+<% const categoryTreeData = Array.isArray(categoriesTree) ? categoriesTree : []; %>
+<% const leftModules = homeModules && Array.isArray(homeModules.left) && homeModules.left.length ? homeModules.left : [
+  { key: 'fallback-left-1', href: '/products?page=1', image_url: '/assets/mzakka/banners/214x78.jpg', title: '活動' },
+  { key: 'fallback-left-2', href: '/products?page=1', image_url: '/assets/mzakka/banners/M_zakka_214x78.jpg', title: '活動' },
+]; %>
 <aside id="wrap_left" class="lg:w-56 flex-shrink-0">
   <div class="border border-gray-300 bg-white mb-3">
     <div class="mz-sidebar-title px-3 py-2 text-xs font-black">【商品分類】</div>
     <ul class="divide-y divide-gray-200">
-      <% (categories || []).forEach(cat => { %>
+      <li>
+        <a href="/products?page=1" class="block px-3 py-2 text-xs hover:bg-gray-100 font-semibold">
+          全部商品 <span class="text-gray-400">(<%= ((categories || [])[0] && categories[0].count) || 0 %>)</span>
+        </a>
+      </li>
+      <% categoryTreeData.forEach(cat => { %>
         <li>
-          <a href="/products?category=<%= encodeURIComponent(cat.slug) %>&page=1" class="block px-3 py-2 text-xs hover:bg-gray-100">
+          <a href="/products?category=<%= encodeURIComponent(cat.slug) %>&page=1" class="block px-3 py-2 text-xs hover:bg-gray-100 font-semibold">
             <%= cat.name %> <span class="text-gray-400">(<%= cat.count %>)</span>
           </a>
+          <% if (cat.children && cat.children.length) { %>
+            <ul class="border-t border-gray-100 bg-gray-50">
+              <% cat.children.forEach(child => { %>
+                <li>
+                  <a href="/products?category=<%= encodeURIComponent(child.slug) %>&page=1" class="block px-5 py-2 text-xs hover:bg-gray-100 text-gray-700">
+                    <span class="text-gray-400 mr-1">-</span><%= child.name %> <span class="text-gray-400">(<%= child.count %>)</span>
+                  </a>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
         </li>
       <% }) %>
     </ul>
@@ -30,12 +51,11 @@
   <div class="border border-gray-300 bg-white">
     <div class="mz-sidebar-title px-3 py-2 text-xs font-black">【公告】</div>
     <div class="p-2 space-y-2">
-      <a href="/products?page=1" class="block border border-gray-200 bg-white">
-        <img src="/assets/mzakka/banners/214x78.jpg" alt="活動" class="w-full">
-      </a>
-      <a href="/products?page=1" class="block border border-gray-200 bg-white">
-        <img src="/assets/mzakka/banners/M_zakka_214x78.jpg" alt="活動" class="w-full">
-      </a>
+      <% leftModules.forEach(module => { %>
+        <a href="<%= module.href || '/products?page=1' %>" class="block border border-gray-200 bg-white">
+          <img src="<%= module.image_url %>" alt="<%= module.title || '活動' %>" class="w-full">
+        </a>
+      <% }) %>
     </div>
   </div>
 </aside>
