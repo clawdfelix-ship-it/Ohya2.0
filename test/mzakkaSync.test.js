@@ -145,6 +145,13 @@ test('db bootstrap includes catalog core steps needed for mzakka sync', () => {
   assert.ok(names.includes('mzakka home modules'));
 });
 
+test('db bootstrap upgrades category source path columns to text', () => {
+  const step = CORE_BOOTSTRAP_STEPS.find((entry) => entry.name === 'categories source columns');
+  assert.ok(step);
+  assert.match(step.sql, /ALTER TABLE categories ALTER COLUMN source_key TYPE TEXT/i);
+  assert.match(step.sql, /ALTER TABLE categories ALTER COLUMN source_parent_key TYPE TEXT/i);
+});
+
 test('internal GET sync route accepts CRON_SECRET and forwards query options', async () => {
   const originalCronSecret = process.env.CRON_SECRET;
   delete process.env.MZAKKA_SYNC_SECRET;

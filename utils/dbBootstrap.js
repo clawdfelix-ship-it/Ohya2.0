@@ -100,8 +100,10 @@ const CORE_BOOTSTRAP_STEPS = [
     name: 'categories source columns',
     sql: `
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS source VARCHAR(50);
-      ALTER TABLE categories ADD COLUMN IF NOT EXISTS source_key VARCHAR(255);
-      ALTER TABLE categories ADD COLUMN IF NOT EXISTS source_parent_key VARCHAR(255);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS source_key TEXT;
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS source_parent_key TEXT;
+      ALTER TABLE categories ALTER COLUMN source_key TYPE TEXT;
+      ALTER TABLE categories ALTER COLUMN source_parent_key TYPE TEXT;
       CREATE UNIQUE INDEX IF NOT EXISTS uniq_categories_source_key
         ON categories (source, source_key)
         WHERE source IS NOT NULL AND source_key IS NOT NULL;
