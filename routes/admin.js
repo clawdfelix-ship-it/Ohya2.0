@@ -307,7 +307,10 @@ module.exports = function(app, pool, requireAdmin, upload) {
 
         const needsStock = parsed.some((x) => x.target_stock !== null && typeof x.target_stock !== 'undefined');
         const warehouseId = needsStock ? await pickWarehouseId(client, preferredWarehouseId) : null;
-        if (needsStock && !warehouseId) return res.status(500).json({ error: '未設定倉庫' });
+        if (needsStock && !warehouseId) {
+          await client.query('ROLLBACK');
+          return res.status(500).json({ error: '未設定倉庫' });
+        }
 
         let updatedSkus = 0;
         let stockAdjusted = 0;

@@ -566,6 +566,7 @@ module.exports = function(app, pool) {
         await client.query('BEGIN');
 
         if (!(await assertLeafSubcategory(client, category_id))) {
+          await client.query('ROLLBACK');
           return res.status(400).json({ error: '請選擇子分類' });
         }
 
@@ -666,6 +667,7 @@ module.exports = function(app, pool) {
 
         if (category_id !== undefined && category_id !== null && category_id !== '') {
           if (!(await assertLeafSubcategory(client, category_id))) {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: '請選擇子分類' });
           }
         }
@@ -1077,14 +1079,20 @@ module.exports = function(app, pool) {
             'SELECT id FROM inventory_warehouses WHERE id = $1 AND is_active = true LIMIT 1',
             [warehouseId]
           );
-          if (w.rows.length === 0) return res.status(400).json({ error: '倉庫不存在或已停用' });
+          if (w.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: '倉庫不存在或已停用' });
+          }
         }
 
         if (!warehouseId) {
           const w = await client.query(
             'SELECT id FROM inventory_warehouses WHERE is_active = true ORDER BY is_default DESC, id ASC LIMIT 1'
           );
-          if (w.rows.length === 0) return res.status(500).json({ error: '未設定倉庫' });
+          if (w.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(500).json({ error: '未設定倉庫' });
+          }
           warehouseId = w.rows[0].id;
         }
 
@@ -1104,7 +1112,10 @@ module.exports = function(app, pool) {
            FOR UPDATE OF ps, il`,
           [skuId, warehouseId]
         );
-        if (skuRow.rows.length === 0) return res.status(404).json({ error: 'SKU 不存在' });
+        if (skuRow.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: 'SKU 不存在' });
+        }
 
         const { previousStock: warehousePreviousStock, newStock: warehouseNewStock } = computeNewStock({
           previousStock: skuRow.rows[0].warehouse_stock,
@@ -1281,8 +1292,14 @@ module.exports = function(app, pool) {
       try {
         await client.query('BEGIN');
         const check = await client.query('SELECT id, is_active FROM inventory_warehouses WHERE id = $1 FOR UPDATE', [id]);
-        if (check.rows.length === 0) return res.status(404).json({ error: '倉庫不存在' });
-        if (check.rows[0].is_active === false) return res.status(400).json({ error: '不能將停用倉庫設為預設' });
+        if (check.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: '倉庫不存在' });
+        }
+        if (check.rows[0].is_active === false) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: '不能將停用倉庫設為預設' });
+        }
 
         await client.query('UPDATE inventory_warehouses SET is_default = false WHERE is_default = true');
         const out = await client.query('UPDATE inventory_warehouses SET is_default = true WHERE id = $1 RETURNING *', [id]);

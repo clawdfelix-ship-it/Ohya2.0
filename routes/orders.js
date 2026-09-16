@@ -92,23 +92,37 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         return res.status(400).json({ error: '購物車是空的' });
       }
 
-      // Check stock for all items
-      for (const item of cartResult.rows) {
-        if (item.stock < item.quantity) {
-          return res.status(400).json({ error: `產品 ${item.name} 庫存不足` });
-        }
-      }
-
-      // Calculate total
-      let total = 0;
-      cartResult.rows.forEach(item => {
-        total += item.price * item.quantity;
-      });
-
       // Start transaction
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
+
+        const lockedItems = [];
+        let total = 0;
+        for (const item of cartResult.rows) {
+          const productResult = await client.query(
+            `SELECT id, price, stock, name
+             FROM products
+             WHERE id = $1
+             FOR UPDATE`,
+            [item.product_id]
+          );
+          if (productResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: `產品 ${item.name} 不存在` });
+          }
+          const product = productResult.rows[0];
+          if (Number(product.stock) < Number(item.quantity)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: `產品 ${product.name} 庫存不足` });
+          }
+          lockedItems.push({
+            product_id: item.product_id,
+            quantity: Number(item.quantity),
+            price: Number(product.price),
+          });
+          total += Number(product.price) * Number(item.quantity);
+        }
 
         // Create order
         const orderResult = await client.query(`
@@ -120,16 +134,23 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         const orderId = orderResult.rows[0].id;
 
         // Create order items + decrease stock
-        for (const item of cartResult.rows) {
+        for (const item of lockedItems) {
           await client.query(`
             INSERT INTO order_items (order_id, product_id, quantity, unit_price)
             VALUES ($1, $2, $3, $4)
           `, [orderId, item.product_id, item.quantity, item.price]);
 
           // Decrease stock
-          await client.query(`
-            UPDATE products SET stock = stock - $1 WHERE id = $2
+          const updateStockResult = await client.query(`
+            UPDATE products
+            SET stock = stock - $1
+            WHERE id = $2 AND stock >= $1
+            RETURNING stock
           `, [item.quantity, item.product_id]);
+          if (updateStockResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: '庫存已更新，請重新提交訂單' });
+          }
         }
 
         // Clear cart

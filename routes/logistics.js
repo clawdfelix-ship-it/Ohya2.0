@@ -9,8 +9,33 @@ module.exports = function(app, pool) {
   const requireAuth = require('./middleware/auth').requireAuth;
   const requireAdmin = require('./middleware/auth').requireAdmin;
   const { requirePermission } = require('./middleware/auth');
-  const { verifyShipanySignature } = require('../utils/webhookSignatures');
+  const { verifyHmacSignature, verifyShipanySignature } = require('../utils/webhookSignatures');
   const { parseAllowedIps, extractClientIp, isIpAllowed } = require('../utils/ipAllowlist');
+
+  function pickSignatureHeader(req, headerNames) {
+    for (const name of headerNames) {
+      const value = req.headers ? req.headers[name] : null;
+      if (value) return value;
+    }
+    return null;
+  }
+
+  function requireVerifiedPaymentWebhook(req, res, { secretEnvKeys, headerNames }) {
+    const secret = secretEnvKeys
+      .map((key) => process.env[key])
+      .find((value) => typeof value === 'string' && value.trim());
+    if (!secret) {
+      res.status(503).json({ success: false, error: 'Webhook not configured' });
+      return false;
+    }
+    const headerValue = pickSignatureHeader(req, headerNames);
+    const ok = verifyHmacSignature({ secret, rawBody: req.rawBody, headerValue });
+    if (!ok) {
+      res.status(403).json({ success: false, error: 'Invalid signature' });
+      return false;
+    }
+    return true;
+  }
 
   // ===========================================
   // Returns & Refunds (After-sales)
@@ -309,7 +334,10 @@ module.exports = function(app, pool) {
            WHERE id = ANY($1::int[])`,
           [skuIds]
         );
-        if (skuRows.rows.length !== skuIds.length) return res.status(400).json({ error: '包含不存在的 sku_id' });
+        if (skuRows.rows.length !== skuIds.length) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: '包含不存在的 sku_id' });
+        }
 
         const skuToProductId = new Map(skuRows.rows.map((r) => [Number(r.id), Number(r.product_id)]));
         const total = items.reduce((acc, it) => acc + it.quantity * it.cost_price, 0);
@@ -425,7 +453,10 @@ module.exports = function(app, pool) {
         await client.query('BEGIN');
 
         const po = await client.query('SELECT id, po_number FROM purchase_orders WHERE id = $1', [poId]);
-        if (po.rows.length === 0) return res.status(404).json({ error: '採購單不存在' });
+        if (po.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: '採購單不存在' });
+        }
         const poNumberStr = String(po.rows[0].po_number || '');
 
         if (warehouseId) {
@@ -433,13 +464,19 @@ module.exports = function(app, pool) {
             'SELECT id FROM inventory_warehouses WHERE id = $1 AND is_active = true LIMIT 1',
             [warehouseId]
           );
-          if (w.rows.length === 0) return res.status(400).json({ error: '倉庫不存在或已停用' });
+          if (w.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: '倉庫不存在或已停用' });
+          }
         }
         if (!warehouseId) {
           const w = await client.query(
             'SELECT id FROM inventory_warehouses WHERE is_active = true ORDER BY is_default DESC, id ASC LIMIT 1'
           );
-          if (w.rows.length === 0) return res.status(500).json({ error: '未設定倉庫' });
+          if (w.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(500).json({ error: '未設定倉庫' });
+          }
           warehouseId = w.rows[0].id;
         }
 
@@ -451,12 +488,18 @@ module.exports = function(app, pool) {
              FOR UPDATE`,
             [poId, line.sku_id]
           );
-          if (poi.rows.length === 0) return res.status(400).json({ error: `採購單未包含 SKU #${line.sku_id}` });
+          if (poi.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: `採購單未包含 SKU #${line.sku_id}` });
+          }
 
           const item = poi.rows[0];
           const maxQty = Number(item.quantity);
           const receivedQty = Number(item.received_quantity || 0);
-          if (receivedQty + line.quantity > maxQty) return res.status(400).json({ error: `SKU #${line.sku_id} 收貨數量超過採購數量` });
+          if (receivedQty + line.quantity > maxQty) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: `SKU #${line.sku_id} 收貨數量超過採購數量` });
+          }
 
           await client.query(
             'UPDATE purchase_order_items SET received_quantity = received_quantity + $1 WHERE id = $2',
@@ -478,7 +521,10 @@ module.exports = function(app, pool) {
              FOR UPDATE OF ps, il`,
             [line.sku_id, warehouseId]
           );
-          if (skuRow.rows.length === 0) return res.status(400).json({ error: `SKU #${line.sku_id} 不存在` });
+          if (skuRow.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: `SKU #${line.sku_id} 不存在` });
+          }
 
           const warehousePreviousStock = Number(skuRow.rows[0].warehouse_stock || 0);
           const warehouseNewStock = warehousePreviousStock + line.quantity;
@@ -881,6 +927,11 @@ module.exports = function(app, pool) {
   // FPS / PayMe webhook
   app.post('/webhooks/fps-payme', async (req, res) => {
     try {
+      if (!requireVerifiedPaymentWebhook(req, res, {
+        secretEnvKeys: ['FPS_PAYME_WEBHOOK_SECRET', 'PAYMENT_WEBHOOK_SECRET'],
+        headerNames: ['x-fps-signature', 'x-payme-signature', 'x-payment-signature', 'x-signature']
+      })) return;
+
       const { transaction_id, order_id, amount, status } = req.body;
 
       // Update order payment status
@@ -915,6 +966,11 @@ module.exports = function(app, pool) {
   // AlipayHK webhook
   app.post('/webhooks/alipayhk', async (req, res) => {
     try {
+      if (!requireVerifiedPaymentWebhook(req, res, {
+        secretEnvKeys: ['ALIPAYHK_WEBHOOK_SECRET', 'PAYMENT_WEBHOOK_SECRET'],
+        headerNames: ['x-alipay-signature', 'x-payment-signature', 'x-signature']
+      })) return;
+
       const { out_trade_no, trade_no, trade_status } = req.body;
 
       // AlipayHK: trade_status = TRADE_SUCCESS means paid
@@ -956,6 +1012,11 @@ module.exports = function(app, pool) {
   // WeChat Pay HK webhook
   app.post('/webhooks/wechatpay', async (req, res) => {
     try {
+      if (!requireVerifiedPaymentWebhook(req, res, {
+        secretEnvKeys: ['WECHATPAY_WEBHOOK_SECRET', 'PAYMENT_WEBHOOK_SECRET'],
+        headerNames: ['x-wechatpay-signature', 'wechatpay-signature', 'x-payment-signature', 'x-signature']
+      })) return;
+
       const { out_trade_no, transaction_id, trade_state } = req.body;
 
       if (trade_state === 'SUCCESS') {
