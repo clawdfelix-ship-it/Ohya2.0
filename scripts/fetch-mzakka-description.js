@@ -1,6 +1,12 @@
 const https = require('node:https');
 const zlib = require('node:zlib');
-const { Pool } = require('pg');
+const { execFile } = require('node:child_process');
+
+const DEFAULT_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const DEFAULT_ACCEPT =
+  'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+const DEFAULT_ACCEPT_LANGUAGE = 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7';
 
 function decodeHtmlEntities(s) {
   return String(s || '')
@@ -62,7 +68,18 @@ function isBadDescriptionLine(t) {
   return false;
 }
 
-function fetchHtml(url) {
+function hasProxyEnv() {
+  return Boolean(
+    process.env.HTTPS_PROXY ||
+      process.env.HTTP_PROXY ||
+      process.env.ALL_PROXY ||
+      process.env.https_proxy ||
+      process.env.http_proxy ||
+      process.env.all_proxy
+  );
+}
+
+function fetchHtmlDirect(url) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     const req = https.request(
@@ -71,11 +88,10 @@ function fetchHtml(url) {
         path: u.pathname + u.search,
         method: 'GET',
         headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'User-Agent': DEFAULT_USER_AGENT,
           'Accept-Encoding': 'gzip, deflate, br',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7',
+          Accept: DEFAULT_ACCEPT,
+          'Accept-Language': DEFAULT_ACCEPT_LANGUAGE,
         },
         timeout: 20000,
       },
@@ -99,6 +115,48 @@ function fetchHtml(url) {
     req.on('error', reject);
     req.end();
   });
+}
+
+function fetchHtmlViaCurl(url) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'curl',
+      [
+        '-L',
+        '--fail',
+        '--silent',
+        '--show-error',
+        '--compressed',
+        '--max-time',
+        '20',
+        '-A',
+        DEFAULT_USER_AGENT,
+        '-H',
+        `Accept: ${DEFAULT_ACCEPT}`,
+        '-H',
+        `Accept-Language: ${DEFAULT_ACCEPT_LANGUAGE}`,
+        String(url),
+      ],
+      { maxBuffer: 10 * 1024 * 1024, env: process.env },
+      (error, stdout, stderr) => {
+        if (error) {
+          const msg = stderr ? String(stderr).trim() : String(error.message || error);
+          reject(new Error(msg || 'curl failed'));
+          return;
+        }
+        resolve(String(stdout || ''));
+      }
+    );
+  });
+}
+
+async function fetchHtml(url) {
+  try {
+    return await fetchHtmlDirect(url);
+  } catch (error) {
+    if (!hasProxyEnv()) throw error;
+    return fetchHtmlViaCurl(url);
+  }
 }
 
 function extractDescriptionFromDetailHtml(html) {
@@ -219,6 +277,7 @@ function parseArgs(argv) {
 
 async function main() {
   require('dotenv').config();
+  const { Pool } = require('pg');
 
   const args = parseArgs(process.argv);
   const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;

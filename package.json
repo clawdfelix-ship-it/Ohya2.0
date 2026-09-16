@@ -7,6 +7,7 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "test": "node --test ./test/*.test.js",
+    "crawl:mzakka:new": "node scripts/crawl-mzakka-new-items.js --pages 1 --out ./tmp/mzakka-new.jsonl",
     "assets:download": "node scripts/download-mzakka-assets.js",
     "assets:verify": "node scripts/verify-mzakka-assets.js",
     "import:mzakka": "node scripts/import-mzakka-to-postgres.js --dry-run --limit 1",
