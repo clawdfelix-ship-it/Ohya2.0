@@ -480,6 +480,19 @@ function normalizeCategoryChildren(children) {
   return [];
 }
 
+function parseJsonObject(value, fallback) {
+  if (value == null) return fallback;
+  if (typeof value === 'object') return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+}
+
 async function loadStorefrontCategories() {
   if (!connectionString) {
     return getSampleCategoryData();
@@ -887,6 +900,28 @@ app.use(async (req, res, next) => {
 
       const productRow = result.rows[0];
       const product = mapDbProductToStorefrontProduct(productRow, { toProxyUrl: app.locals.toProxyUrl });
+      const sectionsResult = await pool.query(
+        `SELECT section_type,
+                title,
+                sort_order,
+                content_html,
+                content_text,
+                content_json,
+                source_anchor
+         FROM mzakka_product_sections
+         WHERE product_id = $1
+         ORDER BY sort_order ASC, id ASC`,
+        [id]
+      );
+      product.sections = (sectionsResult.rows || []).map((row) => ({
+        sectionType: row.section_type ? String(row.section_type) : 'content',
+        title: row.title ? String(row.title) : null,
+        sortOrder: Number(row.sort_order || 0),
+        contentHtml: row.content_html ? String(row.content_html) : null,
+        contentText: row.content_text ? String(row.content_text) : null,
+        contentJson: parseJsonObject(row.content_json, null),
+        sourceAnchor: row.source_anchor ? String(row.source_anchor) : null,
+      }));
       try {
         const hydrated = await maybeHydrateMzakkaDescription({
           productId: productRow.id,

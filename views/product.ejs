@@ -83,6 +83,14 @@
         <div class="flex flex-col">
           <span class="text-xs text-red-600 font-bold bg-red-50 px-3 py-1 rounded w-fit mb-3"><%= product.category %></span>
           <h1 class="text-2xl font-black text-gray-900 mb-4"><%= product.name %></h1>
+          <% const detailSections = Array.isArray(product && product.sections) ? product.sections : []; %>
+          <% const productInfoSection = detailSections.find(section => section && section.sectionType === 'product_info' && section.contentJson && Array.isArray(section.contentJson.rows)); %>
+          <% const narrativeSections = detailSections.filter(section => section && section.sectionType !== 'product_info' && ((section.contentHtml && String(section.contentHtml).trim()) || (section.contentText && String(section.contentText).trim()))); %>
+          <% const fallbackDescription = (() => {
+               const rawDesc = (product && product.description != null) ? String(product.description).trim() : '';
+               const rawName = (product && product.name != null) ? String(product.name).trim() : '';
+               return (rawDesc && rawDesc !== rawName) ? rawDesc : '';
+             })(); %>
           
           <!-- 價格 -->
           <div class="mb-6 bg-gray-50 p-4 rounded-lg">
@@ -113,15 +121,41 @@
             <% } %>
           </div>
           
-          <!-- 商品介紹 -->
-          <div class="border-t border-b py-4 mb-6">
-            <h3 class="font-bold text-gray-900 mb-3 jpn-bracket">商品介紹</h3>
-            <p class="text-gray-600 leading-relaxed text-sm whitespace-pre-line">
-              <% const _desc = (product && product.description != null) ? String(product.description).trim() : ''; %>
-              <% const _name = (product && product.name != null) ? String(product.name).trim() : ''; %>
-              <%= (_desc && _desc !== _name) ? _desc : '暫未提供產品詳細介紹。' %>
-            </p>
-          </div>
+          <% if (productInfoSection || narrativeSections.length || fallbackDescription) { %>
+            <div class="border-t border-b py-4 mb-6 space-y-4">
+              <% if (productInfoSection) { %>
+                <section>
+                  <h3 class="font-bold text-gray-900 mb-3 jpn-bracket">商品情報</h3>
+                  <div class="rounded-lg border border-gray-200 overflow-hidden">
+                    <% (productInfoSection.contentJson.rows || []).forEach((row, idx) => { %>
+                      <div class="grid grid-cols-[7rem_1fr] gap-3 px-3 py-2 text-sm <%= idx !== 0 ? 'border-t border-gray-100' : '' %>">
+                        <div class="font-bold text-gray-700"><%= row.label %></div>
+                        <div class="text-gray-600 whitespace-pre-line"><%= row.value %></div>
+                      </div>
+                    <% }) %>
+                  </div>
+                </section>
+              <% } %>
+
+              <% if (narrativeSections.length) { %>
+                <% narrativeSections.forEach((section, idx) => { %>
+                  <section>
+                    <h3 class="font-bold text-gray-900 mb-3 jpn-bracket"><%= section.title || (idx === 0 ? '商品介紹' : '詳細內容') %></h3>
+                    <% if (section.contentHtml) { %>
+                      <div class="text-gray-600 leading-relaxed text-sm space-y-3"><%- section.contentHtml %></div>
+                    <% } else { %>
+                      <div class="text-gray-600 leading-relaxed text-sm whitespace-pre-line"><%= section.contentText %></div>
+                    <% } %>
+                  </section>
+                <% }) %>
+              <% } else if (fallbackDescription) { %>
+                <section>
+                  <h3 class="font-bold text-gray-900 mb-3 jpn-bracket">商品介紹</h3>
+                  <div class="text-gray-600 leading-relaxed text-sm whitespace-pre-line"><%= fallbackDescription %></div>
+                </section>
+              <% } %>
+            </div>
+          <% } %>
           
           <!-- 購買區 -->
           <div class="mt-auto space-y-4">

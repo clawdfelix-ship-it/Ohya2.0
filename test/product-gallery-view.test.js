@@ -10,3 +10,12 @@ test('product page supports gallery thumbnails when product.images exists', () =
   assert.match(html, /id="mz-product-thumbs"/, 'product.ejs should include thumbs marker');
 });
 
+test('product page renders mzakka product sections when available', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'views', 'product.ejs'), 'utf8');
+  const appSrc = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+
+  assert.match(appSrc, /FROM mzakka_product_sections/, 'app.js should load product sections from mzakka_product_sections');
+  assert.match(html, /商品情報/, 'product.ejs should render 商品情報 heading');
+  assert.match(html, /contentJson\.rows/, 'product.ejs should render product_info rows from contentJson');
+  assert.match(html, /section\.contentHtml/, 'product.ejs should support HTML-based detail sections');
+});
