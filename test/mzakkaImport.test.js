@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 test('mzakkaImport: extracts root category name', () => {
@@ -53,10 +55,14 @@ test('mzakkaImport: maps sku row', () => {
 
 test('import script: can dry-run parse first line without DATABASE_URL', async () => {
   const { dryRunParse } = require('../scripts/import-mzakka-to-postgres');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mzakka-import-'));
+  const file = path.join(tmpDir, 'products-metadata.jsonl');
+  fs.writeFileSync(file, `${JSON.stringify({ id: 'M1', name: '測試商品', category: '分類', priceYen: 100 })}\n`, 'utf8');
   const result = await dryRunParse({
-    file: path.join(__dirname, '..', '..', 'mzakka-clone', 'products-metadata.jsonl'),
+    file,
     limit: 1,
   });
   assert.equal(result.linesRead, 1);
   assert.ok(result.sample);
+  fs.rmSync(tmpDir, { recursive: true, force: true });
 });

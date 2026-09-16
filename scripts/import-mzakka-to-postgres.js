@@ -1,7 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
-const { Pool } = require('pg');
 const {
   getRootCategoryName,
   makeCategorySlug,
@@ -25,23 +24,44 @@ async function dryRunParse({ file, limit = 1 }) {
   return { linesRead, sample };
 }
 
-async function importMzakka({ file, limit = 0, batchSize = 200, dryRun = false }) {
-  if (dryRun) {
-    const r = await dryRunParse({ file, limit: limit || 1 });
-    return { mode: 'dry-run', linesRead: r.linesRead, sample: r.sample };
+async function *iterJsonlItems({ file, limit = 0 }) {
+  const input = fs.createReadStream(file);
+  const rl = readline.createInterface({ input, crlfDelay: Infinity });
+  let linesRead = 0;
+  try {
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+      yield JSON.parse(line);
+      linesRead++;
+      if (limit && linesRead >= limit) break;
+    }
+  } finally {
+    rl.close();
   }
+}
 
+async function *iterRecords({ records, limit = 0 }) {
+  const items = Array.isArray(records) ? records : [];
+  let linesRead = 0;
+  for (const item of items) {
+    if (!item) continue;
+    yield item;
+    linesRead++;
+    if (limit && linesRead >= limit) break;
+  }
+}
+
+function createOwnedPool() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set');
   }
+  const { Pool } = require('pg');
+  return new Pool({ connectionString });
+}
 
-  const pool = new Pool({ connectionString });
+async function runImport({ items, pool, batchSize = 200 }) {
   const categoryCache = new Map();
-
-  const input = fs.createReadStream(file);
-  const rl = readline.createInterface({ input, crlfDelay: Infinity });
-
   let linesRead = 0;
   let productsUpserted = 0;
   let skusUpserted = 0;
@@ -95,7 +115,8 @@ async function importMzakka({ file, limit = 0, batchSize = 200, dryRun = false }
              category_id = EXCLUDED.category_id,
              image_url = EXCLUDED.image_url,
              gallery_images = EXCLUDED.gallery_images,
-             status = 'active'
+             status = 'active',
+             updated_at = NOW()
            RETURNING id`,
           [
             p.name,
@@ -123,7 +144,8 @@ async function importMzakka({ file, limit = 0, batchSize = 200, dryRun = false }
              product_id = EXCLUDED.product_id,
              attributes = EXCLUDED.attributes,
              stock = EXCLUDED.stock,
-             is_active = EXCLUDED.is_active
+             is_active = EXCLUDED.is_active,
+             updated_at = NOW()
            RETURNING id`,
           [s.product_id, s.sku, JSON.stringify(s.attributes), s.stock, s.is_active]
         );
@@ -139,20 +161,56 @@ async function importMzakka({ file, limit = 0, batchSize = 200, dryRun = false }
     }
   }
 
-  for await (const line of rl) {
-    if (!line.trim()) continue;
-    const item = JSON.parse(line);
+  for await (const item of items) {
     linesRead++;
     batch.push(item);
     if (batch.length >= batchSize) await flushBatch();
-    if (limit && linesRead >= limit) break;
   }
 
   await flushBatch();
-  rl.close();
-  await pool.end();
-
   return { mode: 'import', linesRead, categoriesUpserted, productsUpserted, skusUpserted };
+}
+
+async function importMzakka({ file, limit = 0, batchSize = 200, dryRun = false, pool }) {
+  if (dryRun) {
+    const r = await dryRunParse({ file, limit: limit || 1 });
+    return { mode: 'dry-run', linesRead: r.linesRead, sample: r.sample };
+  }
+
+  const dbPool = pool || createOwnedPool();
+  const ownsPool = !pool;
+  try {
+    return await runImport({
+      items: iterJsonlItems({ file, limit }),
+      pool: dbPool,
+      batchSize,
+    });
+  } finally {
+    if (ownsPool) await dbPool.end();
+  }
+}
+
+async function importMzakkaRecords({ records, limit = 0, batchSize = 200, dryRun = false, pool }) {
+  if (dryRun) {
+    const items = Array.isArray(records) ? records.filter(Boolean) : [];
+    return {
+      mode: 'dry-run',
+      linesRead: Math.min(items.length, Math.max(1, Number(limit) || 1)),
+      sample: items[0] || null,
+    };
+  }
+
+  const dbPool = pool || createOwnedPool();
+  const ownsPool = !pool;
+  try {
+    return await runImport({
+      items: iterRecords({ records, limit }),
+      pool: dbPool,
+      batchSize,
+    });
+  } finally {
+    if (ownsPool) await dbPool.end();
+  }
 }
 
 function parseArgs(argv) {
@@ -181,5 +239,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { dryRunParse, importMzakka };
-
+module.exports = { dryRunParse, importMzakka, importMzakkaRecords };

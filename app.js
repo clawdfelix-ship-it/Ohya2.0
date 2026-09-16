@@ -384,6 +384,7 @@ try {
   require('./routes/refunds')(app, pool);
   require('./routes/reconciliation')(app, pool);
   require('./routes/reports')(app, pool);
+  require('./routes/mzakka-sync')(app, pool);
 
   app.post(cspReportPath, (req, res) => {
     const items = normalizeCspReports(req.body);

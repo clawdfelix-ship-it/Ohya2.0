@@ -5,8 +5,10 @@
     search: $('#products-search'),
     categoryFilter: $('#products-category'),
     refresh: $('#products-refresh'),
+    sync: $('#products-sync'),
     newBtn: $('#products-new'),
     error: $('#products-error'),
+    syncResult: $('#products-sync-result'),
     tbody: $('#products-tbody'),
 
     form: $('#product-form'),
@@ -44,6 +46,26 @@
     }
     els.error.classList.remove('hidden');
     els.error.textContent = msg;
+  }
+
+  function setSyncResult(msg, isError) {
+    if (!els.syncResult) return;
+    if (!msg) {
+      els.syncResult.classList.add('hidden');
+      els.syncResult.textContent = '';
+      els.syncResult.classList.remove('border-red-200', 'bg-red-50', 'text-red-800');
+      els.syncResult.classList.add('border-green-200', 'bg-green-50', 'text-green-800');
+      return;
+    }
+    els.syncResult.classList.remove('hidden');
+    els.syncResult.textContent = msg;
+    if (isError) {
+      els.syncResult.classList.remove('border-green-200', 'bg-green-50', 'text-green-800');
+      els.syncResult.classList.add('border-red-200', 'bg-red-50', 'text-red-800');
+    } else {
+      els.syncResult.classList.remove('border-red-200', 'bg-red-50', 'text-red-800');
+      els.syncResult.classList.add('border-green-200', 'bg-green-50', 'text-green-800');
+    }
   }
 
   let categories = [];
@@ -378,6 +400,32 @@
     return out && out.url ? out.url : null;
   }
 
+  async function syncMzakkaProducts() {
+    setError('');
+    setSyncResult('');
+    if (!els.sync) return;
+    els.sync.disabled = true;
+    const originalText = els.sync.textContent;
+    els.sync.textContent = '同步中...';
+    try {
+      const out = await adminApiRequest('/api/admin/catalog/mzakka-sync', {
+        method: 'POST',
+        json: { pages: 1, limit: 24, delay_ms: 120, batch_size: 100 }
+      });
+      const result = out && out.result ? out.result : {};
+      const imported = result.import || {};
+      setSyncResult(
+        `已抓取 ${result.recordsFetched || 0} 件，更新商品 ${imported.productsUpserted || 0} 件，SKU ${imported.skusUpserted || 0} 筆。`
+      );
+      await loadProducts();
+    } catch (e) {
+      setSyncResult(e && e.message ? e.message : String(e), true);
+    } finally {
+      els.sync.disabled = false;
+      els.sync.textContent = originalText;
+    }
+  }
+
   els.form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     setError('');
@@ -433,6 +481,9 @@
 
   els.reset.addEventListener('click', () => clearForm());
   els.refresh.addEventListener('click', () => loadProducts().catch((e) => setError(e.message)));
+  if (els.sync) {
+    els.sync.addEventListener('click', () => syncMzakkaProducts());
+  }
   els.newBtn.addEventListener('click', () => clearForm());
   els.search.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') loadProducts().catch((e) => setError(e.message));
