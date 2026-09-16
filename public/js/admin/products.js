@@ -410,7 +410,7 @@
     try {
       const out = await adminApiRequest('/api/admin/catalog/mzakka-sync', {
         method: 'POST',
-        json: { pages: 1, limit: 24, delay_ms: 120, batch_size: 100 }
+        json: { pages: 1, limit: 0, delay_ms: 120, batch_size: 100 }
       });
       const result = out && out.result ? out.result : {};
       const imported = result.import || {};

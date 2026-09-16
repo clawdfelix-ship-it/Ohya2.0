@@ -15,7 +15,7 @@ test('normalizeSyncOptions keeps sync defaults bounded', () => {
   assert.equal(out.categoryId, 1894);
   assert.equal(out.startPage, 1);
   assert.equal(out.pages, 1);
-  assert.equal(out.limit, 24);
+  assert.equal(out.limit, 0);
   assert.equal(out.delayMs, 150);
   assert.equal(out.includeEnded, false);
   assert.equal(out.batchSize, 100);

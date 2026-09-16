@@ -2,7 +2,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
 const {
+  extractCategorySegments,
   getRootCategoryName,
+  getLeafCategoryName,
   makeCategorySlug,
   toProductUpsertInput,
   toSkuUpsertInput,
@@ -67,23 +69,25 @@ async function runImport({ items, pool, batchSize = 200 }) {
   let skusUpserted = 0;
   let categoriesUpserted = 0;
 
-  async function upsertCategory(client, rootName) {
-    const cached = categoryCache.get(rootName);
+  async function upsertCategory(client, name, parentId = null) {
+    const cacheKey = `${parentId === null ? 'root' : parentId}:${name}`;
+    const cached = categoryCache.get(cacheKey);
     if (cached) return cached;
-    const slug = makeCategorySlug(rootName);
+    const slug = makeCategorySlug(parentId === null ? name : `${parentId}:${name}`);
     const r = await client.query(
-      `INSERT INTO categories (name, name_zh_hk, slug, status)
-       VALUES ($1, $2, $3, 'active')
+      `INSERT INTO categories (name, name_zh_hk, slug, parent_id, status)
+       VALUES ($1, $2, $3, $4, 'active')
        ON CONFLICT (slug) DO UPDATE SET
          name = EXCLUDED.name,
          name_zh_hk = EXCLUDED.name_zh_hk,
+         parent_id = EXCLUDED.parent_id,
          status = 'active'
        RETURNING id`,
-      [rootName, rootName, slug]
+      [name, name, slug, parentId]
     );
     categoriesUpserted++;
     const id = r.rows[0].id;
-    categoryCache.set(rootName, id);
+    categoryCache.set(cacheKey, id);
     return id;
   }
 
@@ -95,8 +99,13 @@ async function runImport({ items, pool, batchSize = 200 }) {
     try {
       await client.query('BEGIN');
       for (const item of batch) {
+        const segments = extractCategorySegments(item.category);
         const root = getRootCategoryName(item.category);
-        const categoryId = await upsertCategory(client, root);
+        const leaf = getLeafCategoryName(item.category);
+        const rootCategoryId = await upsertCategory(client, root, null);
+        const categoryId = segments.length > 1
+          ? await upsertCategory(client, leaf, rootCategoryId)
+          : rootCategoryId;
         const p = toProductUpsertInput(item, categoryId);
         const pr = await client.query(
           `INSERT INTO products

@@ -4,9 +4,14 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-test('mzakkaImport: extracts root category name', () => {
-  const { getRootCategoryName } = require('../utils/mzakkaImport');
-  assert.equal(getRootCategoryName('新商品・新規取扱商品 > M-ZAKKAオリジナル'), '新商品・新規取扱商品');
+test('mzakkaImport: extracts category segments and skips pseudo nodes', () => {
+  const { extractCategorySegments, getRootCategoryName, getLeafCategoryName } = require('../utils/mzakkaImport');
+  assert.deepEqual(
+    extractCategorySegments('新商品・新規取扱商品 > オナホール・おっぱい > M-ZAKKAオリジナル'),
+    ['オナホール・おっぱい', 'M-ZAKKAオリジナル']
+  );
+  assert.equal(getRootCategoryName('新商品・新規取扱商品 > オナホール・おっぱい > M-ZAKKAオリジナル'), 'オナホール・おっぱい');
+  assert.equal(getLeafCategoryName('新商品・新規取扱商品 > オナホール・おっぱい > M-ZAKKAオリジナル'), 'M-ZAKKAオリジナル');
   assert.equal(getRootCategoryName('  A  > B  '), 'A');
   assert.equal(getRootCategoryName(''), '未分類');
   assert.equal(getRootCategoryName(null), '未分類');

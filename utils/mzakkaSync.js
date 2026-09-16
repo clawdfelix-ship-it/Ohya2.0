@@ -30,7 +30,7 @@ function normalizeSyncOptions(input = {}) {
     categoryId: toPositiveInt(input.categoryId || input.category_id, 1894),
     startPage: toPositiveInt(input.startPage || input.start_page, 1),
     pages: toPositiveInt(input.pages, 1),
-    limit: toNonNegativeInt(input.limit, 24),
+    limit: toNonNegativeInt(input.limit, 0),
     delayMs: toNonNegativeInt(input.delayMs || input.delay_ms, 150),
     includeEnded: toBoolean(input.includeEnded || input.include_ended, false),
     batchSize: toPositiveInt(input.batchSize || input.batch_size, 100),

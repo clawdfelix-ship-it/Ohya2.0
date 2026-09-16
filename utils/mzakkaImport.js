@@ -1,11 +1,35 @@
 const crypto = require('node:crypto');
 
+function isPseudoCategory(name) {
+  const s = String(name || '').trim();
+  if (!s) return true;
+  if (s.includes('新商品')) return true;
+  if (s.includes('新規取扱')) return true;
+  if (s.includes('注目商品')) return true;
+  if (s.includes('ランキング')) return true;
+  if (s.includes('上半期')) return true;
+  if (s.includes('下半期')) return true;
+  if (/\d{4}年/.test(s)) return true;
+  return false;
+}
+
+function extractCategorySegments(category) {
+  if (typeof category !== 'string') return ['未分類'];
+  const parts = category
+    .split(' > ')
+    .map((s) => String(s || '').trim())
+    .filter(Boolean)
+    .filter((s) => !isPseudoCategory(s));
+  return parts.length ? parts : ['未分類'];
+}
+
 function getRootCategoryName(category) {
-  if (typeof category !== 'string') return '未分類';
-  const trimmed = category.trim();
-  if (!trimmed) return '未分類';
-  const parts = trimmed.split(' > ').map(s => s.trim()).filter(Boolean);
-  return parts[0] || '未分類';
+  return extractCategorySegments(category)[0] || '未分類';
+}
+
+function getLeafCategoryName(category) {
+  const segments = extractCategorySegments(category);
+  return segments[segments.length - 1] || '未分類';
 }
 
 function makeCategorySlug(name) {
@@ -60,10 +84,11 @@ function toSkuUpsertInput(item, productId) {
 }
 
 module.exports = {
+  extractCategorySegments,
+  getLeafCategoryName,
   getRootCategoryName,
   makeCategorySlug,
   makeProductSlug,
   toProductUpsertInput,
   toSkuUpsertInput,
 };
-
