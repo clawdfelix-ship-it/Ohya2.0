@@ -2,11 +2,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
 const {
-  extractCategorySegments,
-  getRootCategoryName,
-  getLeafCategoryName,
+  buildCategoryNodes,
   makeCategorySlug,
   toProductUpsertInput,
+  toProductMediaRows,
+  toProductSectionRows,
   toSkuUpsertInput,
 } = require('../utils/mzakkaImport');
 
@@ -68,27 +68,87 @@ async function runImport({ items, pool, batchSize = 200 }) {
   let productsUpserted = 0;
   let skusUpserted = 0;
   let categoriesUpserted = 0;
+  let mediaUpserted = 0;
+  let sectionsUpserted = 0;
 
-  async function upsertCategory(client, name, parentId = null) {
-    const cacheKey = `${parentId === null ? 'root' : parentId}:${name}`;
+  async function upsertCategory(client, node, parentId = null) {
+    const cacheKey = String(node.source_key || `${parentId || 'root'}:${node.name}`);
     const cached = categoryCache.get(cacheKey);
     if (cached) return cached;
-    const slug = makeCategorySlug(parentId === null ? name : `${parentId}:${name}`);
+    const slug = makeCategorySlug(node.source_key || node.name);
     const r = await client.query(
-      `INSERT INTO categories (name, name_zh_hk, slug, parent_id, status)
-       VALUES ($1, $2, $3, $4, 'active')
+      `INSERT INTO categories
+        (name, name_zh_hk, slug, parent_id, status, sort_order, source, source_key, source_parent_key)
+       VALUES ($1, $2, $3, $4, 'active', $5, $6, $7, $8)
        ON CONFLICT (slug) DO UPDATE SET
          name = EXCLUDED.name,
          name_zh_hk = EXCLUDED.name_zh_hk,
          parent_id = EXCLUDED.parent_id,
+         sort_order = EXCLUDED.sort_order,
+         source = EXCLUDED.source,
+         source_key = EXCLUDED.source_key,
+         source_parent_key = EXCLUDED.source_parent_key,
          status = 'active'
        RETURNING id`,
-      [name, name, slug, parentId]
+      [
+        node.name,
+        node.name,
+        slug,
+        parentId,
+        Number(node.depth || 0),
+        'mzakka',
+        node.source_key || null,
+        node.source_parent_key || null,
+      ]
     );
     categoriesUpserted++;
     const id = r.rows[0].id;
     categoryCache.set(cacheKey, id);
     return id;
+  }
+
+  async function replaceProductMedia(client, item, productId) {
+    const mediaRows = toProductMediaRows(item, productId);
+    await client.query('DELETE FROM mzakka_product_media WHERE product_id = $1', [productId]);
+    for (const row of mediaRows) {
+      await client.query(
+        `INSERT INTO mzakka_product_media
+          (product_id, media_url, media_type, alt_text, sort_order, source_key)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          row.product_id,
+          row.media_url,
+          row.media_type,
+          row.alt_text,
+          row.sort_order,
+          row.source_key,
+        ]
+      );
+      mediaUpserted++;
+    }
+  }
+
+  async function replaceProductSections(client, item, productId) {
+    const sectionRows = toProductSectionRows(item, productId);
+    await client.query('DELETE FROM mzakka_product_sections WHERE product_id = $1', [productId]);
+    for (const row of sectionRows) {
+      await client.query(
+        `INSERT INTO mzakka_product_sections
+          (product_id, section_type, title, sort_order, content_html, content_text, content_json, source_anchor)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::json, $8)`,
+        [
+          row.product_id,
+          row.section_type,
+          row.title,
+          row.sort_order,
+          row.content_html,
+          row.content_text,
+          row.content_json ? JSON.stringify(row.content_json) : null,
+          row.source_anchor,
+        ]
+      );
+      sectionsUpserted++;
+    }
   }
 
   let batch = [];
@@ -99,20 +159,21 @@ async function runImport({ items, pool, batchSize = 200 }) {
     try {
       await client.query('BEGIN');
       for (const item of batch) {
-        const segments = extractCategorySegments(item.category);
-        const root = getRootCategoryName(item.category);
-        const leaf = getLeafCategoryName(item.category);
-        const rootCategoryId = await upsertCategory(client, root, null);
-        const categoryId = segments.length > 1
-          ? await upsertCategory(client, leaf, rootCategoryId)
-          : rootCategoryId;
+        const nodes = buildCategoryNodes(item.category);
+        let parentId = null;
+        let categoryId = null;
+        for (const node of nodes) {
+          categoryId = await upsertCategory(client, node, parentId);
+          parentId = categoryId;
+        }
         const p = toProductUpsertInput(item, categoryId);
         const pr = await client.query(
           `INSERT INTO products
             (name, name_zh_hk, slug, description, description_zh_hk, short_description_zh_hk,
-             price, original_price, category_id, image_url, gallery_images, status)
+             price, original_price, category_id, image_url, gallery_images, status,
+             source, source_key, source_url, sync_status, raw_payload)
            VALUES
-            ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::json,$12)
+            ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::json,$12,$13,$14,$15,$16,$17::json)
            ON CONFLICT (slug) DO UPDATE SET
              name = EXCLUDED.name,
              name_zh_hk = EXCLUDED.name_zh_hk,
@@ -124,6 +185,11 @@ async function runImport({ items, pool, batchSize = 200 }) {
              category_id = EXCLUDED.category_id,
              image_url = EXCLUDED.image_url,
              gallery_images = EXCLUDED.gallery_images,
+             source = EXCLUDED.source,
+             source_key = EXCLUDED.source_key,
+             source_url = EXCLUDED.source_url,
+             sync_status = EXCLUDED.sync_status,
+             raw_payload = EXCLUDED.raw_payload,
              status = 'active',
              updated_at = NOW()
            RETURNING id`,
@@ -140,10 +206,18 @@ async function runImport({ items, pool, batchSize = 200 }) {
             p.image_url,
             JSON.stringify(p.gallery_images || []),
             p.status,
+            p.source,
+            p.source_key,
+            p.source_url,
+            p.sync_status,
+            JSON.stringify(p.raw_payload || {}),
           ]
         );
         productsUpserted++;
         const productId = pr.rows[0].id;
+
+        await replaceProductMedia(client, item, productId);
+        await replaceProductSections(client, item, productId);
 
         const s = toSkuUpsertInput(item, productId);
         await client.query(
@@ -177,7 +251,15 @@ async function runImport({ items, pool, batchSize = 200 }) {
   }
 
   await flushBatch();
-  return { mode: 'import', linesRead, categoriesUpserted, productsUpserted, skusUpserted };
+  return {
+    mode: 'import',
+    linesRead,
+    categoriesUpserted,
+    productsUpserted,
+    skusUpserted,
+    mediaUpserted,
+    sectionsUpserted,
+  };
 }
 
 async function importMzakka({ file, limit = 0, batchSize = 200, dryRun = false, pool }) {

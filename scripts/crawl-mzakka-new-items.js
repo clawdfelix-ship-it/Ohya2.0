@@ -81,6 +81,8 @@ function toJsonlRecord(listItem, detailItem) {
     images: Array.isArray(detailItem.images) && detailItem.images.length
       ? detailItem.images
       : (listItem.imageUrl ? [listItem.imageUrl] : []),
+    productInfo: Array.isArray(detailItem.productInfo) ? detailItem.productInfo : [],
+    sections: Array.isArray(detailItem.sections) ? detailItem.sections : [],
     productUrl: detailItem.productUrl || listItem.productUrl,
     statusText: detailItem.statusText || listItem.statusText || '',
   };

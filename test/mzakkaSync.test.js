@@ -19,12 +19,16 @@ test('normalizeSyncOptions keeps sync defaults bounded', () => {
   assert.equal(out.delayMs, 150);
   assert.equal(out.includeEnded, false);
   assert.equal(out.batchSize, 100);
+  assert.equal(out.syncHomeModules, true);
+  assert.equal(out.homeUrl, 'https://mzakka.com/');
 });
 
 test('mzakka sync service crawls records and imports them into DB layer', async () => {
   const calls = {
     crawl: null,
     import: null,
+    homeFetch: null,
+    homeParse: null,
   };
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mzakka-sync-'));
   const debugJsonlPath = path.join(tmpDir, 'debug.jsonl');
@@ -53,9 +57,39 @@ test('mzakka sync service crawls records and imports them into DB layer', async 
         skusUpserted: 2,
       };
     },
+    fetchHtml: async (url) => {
+      calls.homeFetch = url;
+      return '<html><body><a href="https://mzakka.com/pc/detail/category.php?category=1962"><img src="https://i.mzakka.com/free/banner-1.jpg" alt="campaign"></a></body></html>';
+    },
+    parseMzakkaHomePage: (html) => {
+      calls.homeParse = html;
+      return {
+        modules: [
+          {
+            moduleKey: 'home-test-1',
+            moduleType: 'banner',
+            title: 'campaign',
+            subtitle: null,
+            imageUrl: 'https://i.mzakka.com/free/banner-1.jpg',
+            targetUrl: 'https://mzakka.com/pc/detail/category.php?category=1962',
+            sortOrder: 0,
+            payload: { altText: 'campaign' },
+          },
+        ],
+      };
+    },
   });
 
-  const fakePool = { connect: async () => ({ release() {} }) };
+  const queryLog = [];
+  const fakePool = {
+    connect: async () => ({
+      async query(sql, params) {
+        queryLog.push({ sql: String(sql), params });
+        return { rows: [] };
+      },
+      release() {},
+    }),
+  };
   const out = await service.syncMzakkaNewItemsToDb({
     pool: fakePool,
     pages: 2,
@@ -69,10 +103,15 @@ test('mzakka sync service crawls records and imports them into DB layer', async 
   assert.equal(calls.import.pool, fakePool);
   assert.equal(calls.import.batchSize, 50);
   assert.equal(calls.import.records.length, 2);
+  assert.equal(calls.homeFetch, 'https://mzakka.com/');
+  assert.match(calls.homeParse, /banner-1\.jpg/);
   assert.equal(out.recordsFetched, 2);
   assert.equal(out.import.productsUpserted, 2);
+  assert.equal(out.homeModules.modulesUpserted, 1);
   assert.equal(out.debugJsonlPath, path.resolve(debugJsonlPath));
   assert.match(fs.readFileSync(debugJsonlPath, 'utf8'), /"id":"M10001"/);
+  assert.ok(queryLog.some((entry) => entry.sql.includes('DELETE FROM mzakka_home_modules')));
+  assert.ok(queryLog.some((entry) => entry.sql.includes('INSERT INTO mzakka_sync_snapshots')));
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
@@ -102,6 +141,8 @@ test('db bootstrap includes catalog core steps needed for mzakka sync', () => {
   assert.ok(names.includes('categories'));
   assert.ok(names.includes('products'));
   assert.ok(names.includes('product skus'));
+  assert.ok(names.includes('mzakka product sections'));
+  assert.ok(names.includes('mzakka home modules'));
 });
 
 test('internal GET sync route accepts CRON_SECRET and forwards query options', async () => {

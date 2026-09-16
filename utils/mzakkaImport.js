@@ -37,6 +37,13 @@ function makeCategorySlug(name) {
   return `mzakka-cat-${h}`;
 }
 
+function makeSourceKey(parts) {
+  return (Array.isArray(parts) ? parts : [])
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .join(' > ');
+}
+
 function makeProductSlug(mzakkaId) {
   return `mzakka-${String(mzakkaId || '').toLowerCase()}`;
 }
@@ -45,6 +52,16 @@ function normalizeTextOrNull(value) {
   if (typeof value !== 'string') return null;
   const t = value.trim();
   return t ? t : null;
+}
+
+function buildCategoryNodes(category) {
+  const segments = extractCategorySegments(category);
+  return segments.map((name, index) => ({
+    name,
+    source_key: makeSourceKey(segments.slice(0, index + 1)),
+    source_parent_key: index > 0 ? makeSourceKey(segments.slice(0, index)) : null,
+    depth: index,
+  }));
 }
 
 function toProductUpsertInput(item, categoryId) {
@@ -70,6 +87,11 @@ function toProductUpsertInput(item, categoryId) {
     image_url,
     gallery_images,
     status: 'active',
+    source: 'mzakka',
+    source_key: String(item.id || '').trim() || null,
+    source_url: normalizeTextOrNull(item.productUrl),
+    sync_status: 'synced',
+    raw_payload: item || null,
   };
 }
 
@@ -83,12 +105,68 @@ function toSkuUpsertInput(item, productId) {
   };
 }
 
+function toProductMediaRows(item, productId) {
+  const images = Array.isArray(item && item.images) ? item.images.filter(Boolean) : [];
+  return images.map((mediaUrl, index) => ({
+    product_id: productId,
+    media_url: String(mediaUrl),
+    media_type: 'image',
+    alt_text: normalizeTextOrNull(item && item.name),
+    sort_order: index,
+    source_key: `${String(item && item.id ? item.id : '').trim()}:image:${index}`,
+  }));
+}
+
+function toProductSectionRows(item, productId) {
+  const rows = [];
+  const baseId = String(item && item.id ? item.id : '').trim();
+  const infoRows = Array.isArray(item && item.productInfo) ? item.productInfo.filter(Boolean) : [];
+  const sections = Array.isArray(item && item.sections) ? item.sections.filter(Boolean) : [];
+
+  if (infoRows.length) {
+    rows.push({
+      product_id: productId,
+      section_type: 'product_info',
+      title: '商品情報',
+      sort_order: 10,
+      content_html: null,
+      content_text: infoRows
+        .map((row) => `${String(row.label || '').trim()}: ${String(row.value || '').trim()}`)
+        .filter(Boolean)
+        .join('\n'),
+      content_json: { rows: infoRows },
+      source_anchor: `${baseId}:product_info`,
+    });
+  }
+
+  let nextSortOrder = 20;
+  for (const section of sections) {
+    rows.push({
+      product_id: productId,
+      section_type: normalizeTextOrNull(section.sectionType) || 'content',
+      title: normalizeTextOrNull(section.title),
+      sort_order: Number.isFinite(Number(section.sortOrder)) ? Number(section.sortOrder) : nextSortOrder,
+      content_html: normalizeTextOrNull(section.contentHtml),
+      content_text: normalizeTextOrNull(section.contentText),
+      content_json: section.contentJson && typeof section.contentJson === 'object' ? section.contentJson : null,
+      source_anchor: normalizeTextOrNull(section.sourceAnchor) || `${baseId}:section:${rows.length}`,
+    });
+    nextSortOrder += 10;
+  }
+
+  return rows;
+}
+
 module.exports = {
+  buildCategoryNodes,
   extractCategorySegments,
   getLeafCategoryName,
   getRootCategoryName,
   makeCategorySlug,
   makeProductSlug,
+  makeSourceKey,
   toProductUpsertInput,
+  toProductMediaRows,
+  toProductSectionRows,
   toSkuUpsertInput,
 };

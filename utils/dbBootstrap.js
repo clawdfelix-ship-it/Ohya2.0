@@ -97,6 +97,17 @@ const CORE_BOOTSTRAP_STEPS = [
     `,
   },
   {
+    name: 'categories source columns',
+    sql: `
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS source VARCHAR(50);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS source_key VARCHAR(255);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS source_parent_key VARCHAR(255);
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_categories_source_key
+        ON categories (source, source_key)
+        WHERE source IS NOT NULL AND source_key IS NOT NULL;
+    `,
+  },
+  {
     name: 'products',
     sql: `
       CREATE TABLE IF NOT EXISTS products (
@@ -138,6 +149,96 @@ const CORE_BOOTSTRAP_STEPS = [
       CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
       CREATE INDEX IF NOT EXISTS idx_products_brand_id ON products(brand_id);
       CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);
+    `,
+  },
+  {
+    name: 'products source columns',
+    sql: `
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS source VARCHAR(50);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS source_key VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS source_url VARCHAR(1000);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS sync_status VARCHAR(30) DEFAULT 'pending' NOT NULL;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS raw_payload JSON;
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_products_source_key
+        ON products (source, source_key)
+        WHERE source IS NOT NULL AND source_key IS NOT NULL;
+    `,
+  },
+  {
+    name: 'mzakka product media',
+    sql: `
+      CREATE TABLE IF NOT EXISTS mzakka_product_media (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        media_url VARCHAR(1000) NOT NULL,
+        media_type VARCHAR(30) NOT NULL DEFAULT 'image',
+        alt_text TEXT,
+        sort_order INTEGER DEFAULT 0 NOT NULL,
+        source_key VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_mzakka_product_media_product_id
+        ON mzakka_product_media(product_id);
+    `,
+  },
+  {
+    name: 'mzakka product sections',
+    sql: `
+      CREATE TABLE IF NOT EXISTS mzakka_product_sections (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        section_type VARCHAR(50) NOT NULL,
+        title VARCHAR(255),
+        sort_order INTEGER DEFAULT 0 NOT NULL,
+        content_html TEXT,
+        content_text TEXT,
+        content_json JSON,
+        source_anchor VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_mzakka_product_sections_product_id
+        ON mzakka_product_sections(product_id);
+    `,
+  },
+  {
+    name: 'mzakka home modules',
+    sql: `
+      CREATE TABLE IF NOT EXISTS mzakka_home_modules (
+        id SERIAL PRIMARY KEY,
+        module_key VARCHAR(255) NOT NULL,
+        module_type VARCHAR(50) NOT NULL,
+        title TEXT,
+        subtitle TEXT,
+        image_url VARCHAR(1000),
+        target_url VARCHAR(1000),
+        payload_json JSON,
+        sort_order INTEGER DEFAULT 0 NOT NULL,
+        is_active BOOLEAN DEFAULT true NOT NULL,
+        source_url VARCHAR(1000),
+        last_synced_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_mzakka_home_modules_key
+        ON mzakka_home_modules(module_key);
+    `,
+  },
+  {
+    name: 'mzakka sync snapshots',
+    sql: `
+      CREATE TABLE IF NOT EXISTS mzakka_sync_snapshots (
+        id SERIAL PRIMARY KEY,
+        snapshot_type VARCHAR(50) NOT NULL,
+        source_key VARCHAR(255),
+        source_url VARCHAR(1000),
+        raw_html TEXT,
+        parsed_json JSON,
+        error_text TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_mzakka_sync_snapshots_type_created_at
+        ON mzakka_sync_snapshots(snapshot_type, created_at DESC);
     `,
   },
   {

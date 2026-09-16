@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const { extractBreadcrumbCategoryNames } = require('./mzakkaBreadcrumb');
 
 function decodeHtmlEntities(s) {
@@ -16,6 +17,12 @@ function stripTags(s) {
     .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ');
+}
+
+function stripScriptsAndStyles(s) {
+  return String(s || '')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, ' ');
 }
 
 function normalizeText(s) {
@@ -159,6 +166,119 @@ function extractCategoryPath(html) {
   return deduped.join(' > ');
 }
 
+function extractProductInfoRows(html) {
+  const tableMatch = String(html || '').match(/<div[^>]+id="item_data"[^>]*>[\s\S]*?<table[^>]*>([\s\S]*?)<\/table>/i);
+  if (!tableMatch) return [];
+  const rows = [];
+  const rowRe = /<tr[^>]*>\s*<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>\s*<\/tr>/gi;
+  let match;
+  while ((match = rowRe.exec(tableMatch[1]))) {
+    const label = normalizeInlineText(match[1]);
+    const value = normalizeText(stripTags(String(match[2] || '')).replace(/\u00a0/g, ' '));
+    if (!label || !value) continue;
+    rows.push({ label, value });
+  }
+  return rows;
+}
+
+function extractDetailSections(html, description) {
+  const sections = [];
+  if (description) {
+    sections.push({
+      sectionType: 'description',
+      title: '商品介紹',
+      sortOrder: 20,
+      contentHtml: null,
+      contentText: normalizeText(description),
+      contentJson: null,
+      sourceAnchor: 'description',
+    });
+  }
+
+  const sectionRe = /<div[^>]+id="(item_p\d+(?:_\d+)?)"[^>]*>([\s\S]*?)<\/div>/gi;
+  let match;
+  let nextSortOrder = 30;
+  while ((match = sectionRe.exec(String(html || '')))) {
+    const sectionId = String(match[1] || '').trim();
+    const innerHtml = stripScriptsAndStyles(match[2] || '').trim();
+    if (!innerHtml) continue;
+
+    const titleMatch =
+      innerHtml.match(/id="[^"]*_SubTitle"[^>]*>([\s\S]*?)<\/[^>]+>/i) ||
+      innerHtml.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i) ||
+      innerHtml.match(/<p[^>]*class="[^"]*SubTitle[^"]*"[^>]*>([\s\S]*?)<\/p>/i);
+    const title = normalizeInlineText(titleMatch ? titleMatch[1] : '');
+    const contentText = normalizeText(stripTags(innerHtml));
+    if (!contentText) continue;
+
+    const lowered = `${title}\n${contentText}`;
+    if (/商品番号/.test(lowered) && /販売価格/.test(lowered) && /商品名/.test(lowered)) {
+      continue;
+    }
+
+    sections.push({
+      sectionType: sectionId === 'item_p04' ? 'description_block' : 'content',
+      title: title || null,
+      sortOrder: nextSortOrder,
+      contentHtml: innerHtml,
+      contentText,
+      contentJson: { sectionId },
+      sourceAnchor: sectionId,
+    });
+    nextSortOrder += 10;
+  }
+
+  return sections;
+}
+
+function makeStableKey(parts) {
+  return crypto.createHash('sha1').update(parts.join('|'), 'utf8').digest('hex').slice(0, 16);
+}
+
+function parseMzakkaHomePage(html, options = {}) {
+  const baseUrl = options.baseUrl || 'https://mzakka.com';
+  const modules = [];
+  const source = String(html || '');
+  const linkRe = /<a\b[^>]+href="([^"]+)"[^>]*>([\s\S]{0,2000}?)<\/a>/gi;
+  let match;
+  while ((match = linkRe.exec(source))) {
+    const targetUrl = absoluteUrl(match[1], baseUrl);
+    const innerHtml = match[2] || '';
+    const imgMatch = innerHtml.match(/<img[^>]+src="([^"]+)"/i);
+    if (!imgMatch) continue;
+
+    const imageUrl = absoluteUrl(imgMatch[1], baseUrl);
+    if (!/i\.mzakka\.com/i.test(imageUrl)) continue;
+
+    const altAttrMatch = innerHtml.match(/<img[^>]+alt="([^"]*)"/i);
+    const altText = normalizeInlineText(altAttrMatch ? altAttrMatch[1] : '');
+    const contextStart = Math.max(0, match.index - 240);
+    const contextBefore = normalizeText(stripTags(source.slice(contextStart, match.index)));
+    const contextAfter = normalizeText(stripTags(source.slice(linkRe.lastIndex, Math.min(source.length, linkRe.lastIndex + 120))));
+    const title = altText || contextBefore.split('\n').filter(Boolean).slice(-1)[0] || null;
+    const subtitle = !altText && contextAfter ? contextAfter.split('\n').filter(Boolean)[0] || null : null;
+
+    modules.push({
+      moduleKey: `home-${makeStableKey([targetUrl, imageUrl, String(modules.length)])}`,
+      moduleType: /special|feature|campaign/i.test(targetUrl) ? 'feature_banner' : 'banner',
+      title,
+      subtitle,
+      imageUrl,
+      targetUrl,
+      sortOrder: modules.length,
+      payload: {
+        altText: altText || null,
+        contextBefore: contextBefore || null,
+        contextAfter: contextAfter || null,
+      },
+    });
+  }
+
+  return {
+    modules,
+  };
+}
+
 function parseMzakkaDetailPage(html, options = {}) {
   const productUrl = options.productUrl ? absoluteUrl(options.productUrl) : null;
   const itemIdFromUrl = productUrl ? extractItemIdFromUrl(productUrl) : null;
@@ -179,15 +299,20 @@ function parseMzakkaDetailPage(html, options = {}) {
   const originalPriceYen = parseYenValue(originalField);
   const images = extractDetailImages(html, itemId);
   const category = extractCategoryPath(html);
+  const description = options.extractDescription ? options.extractDescription(html) : '';
+  const productInfo = extractProductInfoRows(html);
+  const sections = extractDetailSections(html, description);
 
   return {
     id: itemId,
     name,
-    description: options.extractDescription ? options.extractDescription(html) : '',
+    description,
     category,
     priceYen,
     originalPriceYen,
     images,
+    productInfo,
+    sections,
     statusText,
     productUrl,
     isEnded: statusText.includes('販売終了'),
@@ -200,6 +325,7 @@ module.exports = {
   extractItemIdFromUrl,
   normalizeInlineText,
   normalizeText,
+  parseMzakkaHomePage,
   parseMzakkaCategoryPage,
   parseMzakkaDetailPage,
   parsePriceBlock,

@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const {
+  parseMzakkaHomePage,
   parseMzakkaCategoryPage,
   parseMzakkaDetailPage,
 } = require('../utils/mzakkaNewItems');
@@ -117,9 +118,38 @@ test('parseMzakkaDetailPage extracts item fields, cleans categories and keeps sa
     'https://i.mzakka.com/item/M12521/M12521-01-670x.jpg',
     'https://i.mzakka.com/item/M12521/M12521-02-670x.jpg',
   ]);
+  assert.deepEqual(out.productInfo.slice(0, 3), [
+    { label: '商品名', value: '月野かすみの極穴 GODS-924' },
+    { label: '商品番号', value: 'M12521' },
+    { label: '販売価格', value: '870円 (税込957円)' },
+  ]);
+  assert.equal(out.sections[0].sectionType, 'description');
+  assert.equal(out.sections[1].sourceAnchor, 'item_p04');
   assert.match(out.description, /ふわふわ系ダウナー/);
   assert.match(out.description, /むにゅむにゅ極上爆ヌキホール/);
   assert.equal(out.isEnded, false);
+});
+
+test('parseMzakkaHomePage extracts linked image modules from homepage html', () => {
+  const html = `
+    <html><body>
+      <div>【新作入荷!!】注目キャンペーン</div>
+      <a href="https://mzakka.com/pc/detail/category.php?category=1962">
+        <img src="https://i.mzakka.com/free/banner-1.jpg" alt="ローションプレゼントキャンペーン" />
+      </a>
+      <div>特集ページ</div>
+      <a href="/pc/detail/special2.php?sp_id=265">
+        <img src="https://i.mzakka.com/free/feature-360.jpg" />
+      </a>
+    </body></html>
+  `;
+
+  const out = parseMzakkaHomePage(html);
+  assert.equal(out.modules.length, 2);
+  assert.equal(out.modules[0].title, 'ローションプレゼントキャンペーン');
+  assert.equal(out.modules[0].moduleType, 'banner');
+  assert.equal(out.modules[1].moduleType, 'feature_banner');
+  assert.match(out.modules[1].targetUrl, /special2\.php\?sp_id=265/);
 });
 
 test('buildCategoryPageUrl uses zero-based p1 query', () => {
@@ -171,6 +201,8 @@ test('toJsonlRecord prefers detail data and falls back to list data', () => {
       priceYen: 957,
       originalPriceYen: 1650,
       images: ['https://i.mzakka.com/item/M12521/main.jpg'],
+      productInfo: [{ label: '商品番号', value: 'M12521' }],
+      sections: [{ sectionType: 'description', title: '商品介紹', contentText: 'detail desc' }],
       productUrl: 'https://mzakka.com/pc/detail/item.php?item_id=M12521',
       statusText: '予約商品',
     }
@@ -184,6 +216,8 @@ test('toJsonlRecord prefers detail data and falls back to list data', () => {
     priceYen: 957,
     originalPriceYen: 1650,
     images: ['https://i.mzakka.com/item/M12521/main.jpg'],
+    productInfo: [{ label: '商品番号', value: 'M12521' }],
+    sections: [{ sectionType: 'description', title: '商品介紹', contentText: 'detail desc' }],
     productUrl: 'https://mzakka.com/pc/detail/item.php?item_id=M12521',
     statusText: '予約商品',
   });
