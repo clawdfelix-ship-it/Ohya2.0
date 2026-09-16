@@ -79,13 +79,87 @@ test('mzakka sync service crawls records and imports them into DB layer', async 
 test('mzakka sync routes register admin and internal POST endpoints', () => {
   const routes = [];
   const app = {
+    get(pathname) {
+      routes.push(`GET ${pathname}`);
+    },
     post(pathname) {
-      routes.push(pathname);
+      routes.push(`POST ${pathname}`);
     },
   };
 
   require('../routes/mzakka-sync')(app, null);
 
-  assert.ok(routes.includes('/api/admin/catalog/mzakka-sync'));
-  assert.ok(routes.includes('/api/internal/jobs/mzakka-sync'));
+  assert.ok(routes.includes('POST /api/admin/catalog/mzakka-sync'));
+  assert.ok(routes.includes('GET /api/internal/jobs/mzakka-sync'));
+  assert.ok(routes.includes('POST /api/internal/jobs/mzakka-sync'));
+});
+
+test('internal GET sync route accepts CRON_SECRET and forwards query options', async () => {
+  const originalCronSecret = process.env.CRON_SECRET;
+  delete process.env.MZAKKA_SYNC_SECRET;
+  process.env.CRON_SECRET = 'cron-secret';
+
+  let internalHandler = null;
+  const app = {
+    get(pathname, handler) {
+      if (pathname === '/api/internal/jobs/mzakka-sync') internalHandler = handler;
+    },
+    post() {},
+  };
+
+  const syncModulePath = require.resolve('../utils/mzakkaSync');
+  const originalSyncModule = require.cache[syncModulePath];
+  require.cache[syncModulePath] = {
+    exports: {
+      normalizeSyncOptions: (input = {}) => ({
+        pages: Number(input.pages || 1),
+        limit: Number(input.limit || 24),
+      }),
+      syncMzakkaNewItemsToDb: async (options) => ({
+        recordsFetched: 0,
+        import: { productsUpserted: 0, skusUpserted: 0 },
+        pages: options.pages,
+        limit: options.limit,
+      }),
+    },
+  };
+
+  delete require.cache[require.resolve('../routes/mzakka-sync')];
+  require('../routes/mzakka-sync')(app, { fake: true });
+
+  const res = {
+    statusCode: 200,
+    body: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.body = payload;
+      return this;
+    },
+  };
+
+  try {
+    await internalHandler({
+      query: { pages: '3', limit: '9' },
+      body: {},
+      get(name) {
+        if (String(name).toLowerCase() === 'authorization') return 'Bearer cron-secret';
+        return '';
+      },
+    }, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.source, 'internal');
+    assert.equal(res.body.result.pages, 3);
+    assert.equal(res.body.result.limit, 9);
+  } finally {
+    if (originalSyncModule) require.cache[syncModulePath] = originalSyncModule;
+    else delete require.cache[syncModulePath];
+    delete require.cache[require.resolve('../routes/mzakka-sync')];
+    if (originalCronSecret === undefined) delete process.env.CRON_SECRET;
+    else process.env.CRON_SECRET = originalCronSecret;
+  }
 });

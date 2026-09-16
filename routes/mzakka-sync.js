@@ -2,6 +2,14 @@ module.exports = function registerMzakkaSyncRoutes(app, pool) {
   const { requirePermission } = require('./middleware/auth');
   const { normalizeSyncOptions, syncMzakkaNewItemsToDb } = require('../utils/mzakkaSync');
 
+  function getConfiguredSyncSecrets() {
+    return Array.from(new Set(
+      [process.env.MZAKKA_SYNC_SECRET, process.env.CRON_SECRET]
+        .map((value) => (typeof value === 'string' ? value.trim() : ''))
+        .filter(Boolean)
+    ));
+  }
+
   function getSyncSecretFromRequest(req) {
     const headerSecret = req.get('x-sync-secret');
     if (headerSecret) return String(headerSecret);
@@ -19,7 +27,10 @@ module.exports = function registerMzakkaSyncRoutes(app, pool) {
   async function handleSync(req, res, source) {
     if (!ensurePool(res)) return;
     try {
-      const options = normalizeSyncOptions(req.body || {});
+      const options = normalizeSyncOptions({
+        ...(req.query || {}),
+        ...(req.body || {}),
+      });
       const result = await syncMzakkaNewItemsToDb({
         pool,
         ...options,
@@ -34,19 +45,29 @@ module.exports = function registerMzakkaSyncRoutes(app, pool) {
     }
   }
 
+  function ensureInternalSyncAuthorized(req, res) {
+    const expectedSecrets = getConfiguredSyncSecrets();
+    if (expectedSecrets.length === 0) {
+      res.status(503).json({ error: 'MZAKKA_SYNC_SECRET or CRON_SECRET not configured' });
+      return false;
+    }
+    const provided = getSyncSecretFromRequest(req);
+    if (!provided || !expectedSecrets.includes(provided)) {
+      res.status(401).json({ error: 'Invalid sync secret' });
+      return false;
+    }
+    return true;
+  }
+
   app.post('/api/admin/catalog/mzakka-sync', requirePermission('catalog:write'), async (req, res) => {
     await handleSync(req, res, 'admin');
   });
 
-  app.post('/api/internal/jobs/mzakka-sync', async (req, res) => {
-    const expected = process.env.MZAKKA_SYNC_SECRET;
-    if (!expected) {
-      return res.status(503).json({ error: 'MZAKKA_SYNC_SECRET not configured' });
-    }
-    const provided = getSyncSecretFromRequest(req);
-    if (!provided || provided !== expected) {
-      return res.status(401).json({ error: 'Invalid sync secret' });
-    }
+  async function handleInternalSync(req, res) {
+    if (!ensureInternalSyncAuthorized(req, res)) return;
     await handleSync(req, res, 'internal');
-  });
+  }
+
+  app.get('/api/internal/jobs/mzakka-sync', handleInternalSync);
+  app.post('/api/internal/jobs/mzakka-sync', handleInternalSync);
 };

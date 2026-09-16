@@ -1,6 +1,12 @@
 {
   "version": 2,
   "installCommand": "npm install --omit=dev",
+  "crons": [
+    {
+      "path": "/api/internal/jobs/mzakka-sync",
+      "schedule": "0 2 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
