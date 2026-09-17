@@ -8,6 +8,43 @@ module.exports = function(app, pool, requireAdmin) {
     return n;
   }
 
+  async function ensureValidCategoryParent(parentId, currentId = null) {
+    if (parentId === null) return null;
+
+    const parentRow = await pool.query('SELECT id FROM categories WHERE id = $1 LIMIT 1', [parentId]);
+    if (parentRow.rows.length === 0) {
+      return '上級分類不存在';
+    }
+
+    if (currentId === null) return null;
+    if (parentId === currentId) {
+      return '上級分類不可指向自己';
+    }
+
+    const cycleCheck = await pool.query(
+      `WITH RECURSIVE descendants AS (
+         SELECT id
+         FROM categories
+         WHERE parent_id = $1
+         UNION ALL
+         SELECT c.id
+         FROM categories c
+         JOIN descendants d ON c.parent_id = d.id
+       )
+       SELECT 1
+       FROM descendants
+       WHERE id = $2
+       LIMIT 1`,
+      [currentId, parentId]
+    );
+
+    if (cycleCheck.rows.length > 0) {
+      return '上級分類不可設定為自己嘅子孫分類';
+    }
+
+    return null;
+  }
+
   // Get all categories (public)
   app.get('/api/categories', async (req, res) => {
     try {
@@ -54,10 +91,10 @@ module.exports = function(app, pool, requireAdmin) {
       if (Number.isNaN(parentId)) {
         return res.status(400).json({ error: '上級分類不正確' });
       }
-      if (parentId !== null) {
-        const parentRow = await pool.query('SELECT id, parent_id FROM categories WHERE id = $1 LIMIT 1', [parentId]);
-        if (parentRow.rows.length === 0 || parentRow.rows[0].parent_id !== null) {
-          return res.status(400).json({ error: '上級分類必須係大分類' });
+      {
+        const parentError = await ensureValidCategoryParent(parentId, null);
+        if (parentError) {
+          return res.status(400).json({ error: parentError });
         }
       }
 
@@ -91,19 +128,10 @@ module.exports = function(app, pool, requireAdmin) {
         return res.status(400).json({ error: '上級分類不正確' });
       }
 
-      if (parentId !== null && parentId === Number(id)) {
-        return res.status(400).json({ error: '上級分類不可指向自己' });
-      }
-
-      if (parentId !== null) {
-        const parentRow = await pool.query('SELECT id, parent_id FROM categories WHERE id = $1 LIMIT 1', [parentId]);
-        if (parentRow.rows.length === 0 || parentRow.rows[0].parent_id !== null) {
-          return res.status(400).json({ error: '上級分類必須係大分類' });
-        }
-
-        const hasChildren = await pool.query('SELECT 1 FROM categories WHERE parent_id = $1 LIMIT 1', [Number(id)]);
-        if (hasChildren.rows.length > 0) {
-          return res.status(400).json({ error: '已有子分類的大分類不可變成子分類' });
+      {
+        const parentError = await ensureValidCategoryParent(parentId, Number(id));
+        if (parentError) {
+          return res.status(400).json({ error: parentError });
         }
       }
 

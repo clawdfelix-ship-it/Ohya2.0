@@ -463,21 +463,10 @@ function getSampleCategoryData() {
         slug: String(category.slug),
         name: String(category.name),
         count: Number(category.count || 0),
+        parentId: null,
         children: [],
       })),
   };
-}
-
-function normalizeCategoryChildren(children) {
-  if (Array.isArray(children)) return children;
-  if (typeof children === 'string' && children.trim()) {
-    try {
-      return JSON.parse(children);
-    } catch {
-      return [];
-    }
-  }
-  return [];
 }
 
 function parseJsonObject(value, fallback) {
@@ -532,41 +521,24 @@ async function loadStorefrontCategories() {
        LEFT JOIN product_counts pc ON pc.category_id = d.descendant_id
        GROUP BY d.ancestor_id
      )
-     SELECT root.id,
-            root.slug,
-            COALESCE(root.name_zh_hk, root.name) as name,
-            COALESCE(root_total.total_count, 0)::int as count,
-            COALESCE(
-              json_agg(
-                json_build_object(
-                  'id', child.id,
-                  'slug', child.slug,
-                  'name', COALESCE(child.name_zh_hk, child.name),
-                  'count', COALESCE(child_total.total_count, 0)
-                )
-                ORDER BY COALESCE(child_total.total_count, 0) DESC, COALESCE(child.name_zh_hk, child.name) ASC
-              ) FILTER (WHERE child.id IS NOT NULL),
-              '[]'::json
-            ) as children
-     FROM categories root
-     LEFT JOIN category_totals root_total ON root_total.category_id = root.id
-     LEFT JOIN categories child
-       ON child.parent_id = root.id
-      AND child.status = 'active'
-     LEFT JOIN category_totals child_total ON child_total.category_id = child.id
-     WHERE root.parent_id IS NULL
-       AND root.status = 'active'
-     GROUP BY root.id, root.slug, root.name, root.name_zh_hk, root_total.total_count
-     ORDER BY count DESC, name ASC
-     LIMIT 200`
+     SELECT c.id,
+            c.parent_id,
+            c.slug,
+            COALESCE(c.name_zh_hk, c.name) as name,
+            COALESCE(ct.total_count, 0)::int as count
+     FROM categories c
+     LEFT JOIN category_totals ct ON ct.category_id = c.id
+     WHERE c.status = 'active'
+     ORDER BY COALESCE(ct.total_count, 0) DESC, COALESCE(c.name_zh_hk, c.name) ASC
+     LIMIT 500`
   );
 
   const rows = result.rows.map((row) => ({
     id: Number(row.id),
+    parentId: row.parent_id != null ? Number(row.parent_id) : null,
     slug: String(row.slug),
     name: String(row.name),
     count: Number(row.count || 0),
-    children: normalizeCategoryChildren(row.children),
   }));
 
   return buildCategoryTree(rows, { totalCount });

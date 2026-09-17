@@ -73,23 +73,26 @@
     return { roots, childrenByParentId, byId };
   }
 
-  function rootTotalCount(root, childrenByParentId) {
-    const selfCount = Number(root.product_count || 0);
-    const children = childrenByParentId[root.id] || [];
-    const childCount = children.reduce((acc, c) => acc + Number(c.product_count || 0), 0);
-    return selfCount + childCount;
+  function categoryTotalCount(categoryId, childrenByParentId) {
+    const selfCount = Number((state.byId[categoryId] && state.byId[categoryId].product_count) || 0);
+    const children = childrenByParentId[categoryId] || [];
+    return selfCount + children.reduce((acc, child) => acc + categoryTotalCount(child.id, childrenByParentId), 0);
+  }
+
+  function appendParentOptions(nodes, depth) {
+    for (const node of nodes) {
+      const label = `${'　'.repeat(depth)}${node.name_zh_hk || node.name || ''}`;
+      els.parent.appendChild(el('option', { value: String(node.id), text: label }));
+      appendParentOptions(state.childrenByParentId[node.id] || [], depth + 1);
+    }
   }
 
   function setParentOptions(roots) {
     if (!els.parent) return;
     const keepValue = els.parent.value;
     els.parent.innerHTML = '';
-    els.parent.appendChild(el('option', { value: '', text: '（無，上級＝大分類）' }));
-    for (const r of roots) {
-      els.parent.appendChild(
-        el('option', { value: String(r.id), text: r.name_zh_hk || r.name || '' })
-      );
-    }
+    els.parent.appendChild(el('option', { value: '', text: '（無，上級＝頂層）' }));
+    appendParentOptions(roots, 0);
     els.parent.value = keepValue;
   }
 
@@ -100,13 +103,13 @@
   }
 
   function renderRow(c, opts) {
-    const isRoot = opts.isRoot;
     const hasChildren = opts.hasChildren;
     const isCollapsed = opts.isCollapsed;
     const displayCount = opts.displayCount;
+    const depth = opts.depth || 0;
 
     const nameCell = (() => {
-      if (isRoot) {
+      if (depth === 0) {
         const toggleBtn = hasChildren
           ? el('button', {
               class: 'admin-link-btn',
@@ -124,20 +127,18 @@
         ]);
       }
 
-      return el('div', { class: 'pl-6' }, [el('span', { text: c.name_zh_hk || c.name || '' })]);
+      return el('div', { style: `padding-left:${12 + depth * 16}px` }, [el('span', { text: c.name_zh_hk || c.name || '' })]);
     })();
 
     const actions = [];
-    if (isRoot) {
-      actions.push(
-        el('button', {
-          class: 'admin-link-btn',
-          text: '新增子分類',
-          onclick: () => startNewChild(c),
-        }),
-        el('span', { text: ' ' })
-      );
-    }
+    actions.push(
+      el('button', {
+        class: 'admin-link-btn',
+        text: '新增子分類',
+        onclick: () => startNewChild(c),
+      }),
+      el('span', { text: ' ' })
+    );
     actions.push(
       el('button', { class: 'admin-link-btn', text: '編輯', onclick: () => fillForm(c) }),
       el('span', { text: ' ' }),
@@ -170,31 +171,26 @@
 
   function renderCategoryRows() {
     els.tbody.textContent = '';
-    for (const root of state.roots) {
-      const children = state.childrenByParentId[root.id] || [];
-      const isCollapsed = collapsedRootIds.has(root.id);
+    function renderBranch(category, depth) {
+      const children = state.childrenByParentId[category.id] || [];
+      const isCollapsed = depth === 0 && collapsedRootIds.has(category.id);
 
       els.tbody.appendChild(
-        renderRow(root, {
-          isRoot: true,
+        renderRow(category, {
           hasChildren: children.length > 0,
           isCollapsed,
-          displayCount: rootTotalCount(root, state.childrenByParentId),
+          displayCount: categoryTotalCount(category.id, state.childrenByParentId),
+          depth,
         })
       );
 
       if (!isCollapsed) {
-        for (const child of children) {
-          els.tbody.appendChild(
-            renderRow(child, {
-              isRoot: false,
-              hasChildren: false,
-              isCollapsed: false,
-              displayCount: Number(child.product_count || 0),
-            })
-          );
-        }
+        for (const child of children) renderBranch(child, depth + 1);
       }
+    }
+
+    for (const root of state.roots) {
+      renderBranch(root, 0);
     }
   }
 
