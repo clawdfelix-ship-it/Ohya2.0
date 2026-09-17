@@ -1,7 +1,8 @@
 <% const childList = Array.isArray(node.children) ? node.children : []; %>
 <% const isCurrent = activeSlug === node.slug; %>
 <% const hasChildren = childList.length > 0; %>
-<% const isOpen = isCurrent || childList.some((child) => nodeContainsActive(child, activeSlug)); %>
+<% const hasActiveDescendant = childList.some((child) => nodeContainsActive(child, activeSlug)); %>
+<% const isOpen = activeSlug ? (isCurrent || hasActiveDescendant) : depth === 0; %>
 <% const paddingLeftRem = (depth * 0.85) + 0.9; %>
 
 <% if (hasChildren) { %>
