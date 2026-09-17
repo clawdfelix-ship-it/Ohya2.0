@@ -15,6 +15,9 @@ test('translateCategoryName translates known generic category labels', () => {
   assert.equal(translateCategoryName('オナホール・おっぱい').translatedName, '飛機杯・乳交');
   assert.equal(translateCategoryName('その他').translatedName, '其他');
   assert.equal(translateCategoryName('コスチューム').translatedName, '情趣服飾');
+  assert.equal(translateCategoryName('アナル').translatedName, '後庭');
+  assert.equal(translateCategoryName('ローション・クリーナー').translatedName, '潤滑液・清潔劑');
+  assert.equal(translateCategoryName('水着・スイムウエア').translatedName, '泳裝・Swimwear');
 });
 
 test('translateCategoryName preserves brand names and unknown labels', () => {
