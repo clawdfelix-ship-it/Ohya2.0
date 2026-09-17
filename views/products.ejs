@@ -24,8 +24,6 @@
   </style>
 </head>
 <body class="mz-body min-h-screen bg-gray-50 text-black">
-  <% const topCategories = Array.isArray(categoriesTree) ? categoriesTree.slice(0, 8) : []; %>
-
   <%- include('partials/age-modal') %>
 
   <%- include('partials/header') %>
@@ -49,16 +47,7 @@
       </div>
     </section>
 
-    <!-- 手機版分類篩選 -->
-    <div class="mb-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:hidden">
-      <div class="mb-2 flex items-center gap-2"><span class="text-sm font-bold text-gray-700">快速分類</span></div>
-      <div class="flex flex-wrap gap-2">
-        <a href="/products" class="<%= selectedCategorySlug === 'all' || !selectedCategorySlug ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300' %> text-xs px-3 py-1.5 rounded font-medium hover:opacity-80 transition">全部 (<%= (typeof total === 'number' ? total : products.length) %>)</a>
-        <% topCategories.forEach(category => { %>
-          <a href="/products?category=<%= encodeURIComponent(category.slug) %>&page=1" class="<%= selectedCategorySlug === category.slug ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300' %> text-xs px-3 py-1.5 rounded font-medium hover:opacity-80 transition"><%= category.name %></a>
-        <% }) %>
-      </div>
-    </div>
+    <%- include('partials/category-mobile-drawer') %>
 
     <!-- 排序 -->
     <div class="mb-6 flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">

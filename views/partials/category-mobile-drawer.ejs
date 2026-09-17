@@ -1,0 +1,74 @@
+<% const mobileCategoryTree = Array.isArray(categoriesTree) ? categoriesTree : []; %>
+<% const mobileActiveSlug = typeof selectedCategorySlug === 'string' ? selectedCategorySlug : null; %>
+<% const mobileSelectedName = mobileActiveSlug && Array.isArray(categories) ? (categories.find((cat) => cat.slug === mobileActiveSlug)?.name || null) : null; %>
+<%
+  function nodeContainsActive(node, slug) {
+    if (!node || !slug) return false;
+    if (node.slug === slug) return true;
+    return Array.isArray(node.children) && node.children.some((child) => nodeContainsActive(child, slug));
+  }
+%>
+
+<div class="mb-4 lg:hidden" data-mobile-category-drawer>
+  <button type="button" class="flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm" data-category-drawer-open>
+    <span>
+      <span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">商品分類</span>
+      <span class="mt-1 block text-sm font-bold text-gray-900"><%= mobileSelectedName || '展開全部分類' %></span>
+    </span>
+    <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">展開</span>
+  </button>
+
+  <div class="fixed inset-0 z-[70] hidden" data-category-drawer-panel>
+    <button type="button" class="absolute inset-0 bg-black/45" aria-label="關閉分類面板" data-category-drawer-close></button>
+    <div class="absolute inset-y-0 left-0 flex w-full max-w-sm">
+      <div class="flex h-full w-full flex-col bg-white shadow-2xl">
+        <div class="flex items-center justify-between border-b border-gray-200 px-4 py-4">
+          <div>
+            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Category</div>
+            <div class="mt-1 text-lg font-black text-gray-900">商品分類</div>
+          </div>
+          <button type="button" class="rounded-full border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600" data-category-drawer-close>關閉</button>
+        </div>
+
+        <div class="border-b border-gray-100 px-4 py-3">
+          <a href="/products?page=1" class="<%= !mobileActiveSlug || mobileActiveSlug === 'all' ? 'border-red-200 bg-red-50 text-red-700' : 'border-gray-200 text-gray-700' %> flex items-center justify-between rounded-2xl border px-3 py-3 text-sm font-semibold">
+            <span>全部商品</span>
+            <span class="text-[11px] text-gray-400"><%= ((categories || [])[0] && categories[0].count) || 0 %></span>
+          </a>
+        </div>
+
+        <div class="flex-1 space-y-2 overflow-y-auto bg-gray-50 px-3 py-3">
+          <% mobileCategoryTree.forEach((node) => { %>
+            <%- include('category-mobile-node', { node, depth: 0, activeSlug: mobileActiveSlug, nodeContainsActive }) %>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function initMobileCategoryDrawer() {
+    const root = document.querySelector('[data-mobile-category-drawer]');
+    if (!root) return;
+
+    const panel = root.querySelector('[data-category-drawer-panel]');
+    const openButton = root.querySelector('[data-category-drawer-open]');
+    const closeButtons = root.querySelectorAll('[data-category-drawer-close]');
+    if (!panel || !openButton) return;
+
+    function setOpen(nextOpen) {
+      panel.classList.toggle('hidden', !nextOpen);
+      document.body.classList.toggle('overflow-hidden', nextOpen);
+    }
+
+    openButton.addEventListener('click', () => setOpen(true));
+    closeButtons.forEach((button) => button.addEventListener('click', () => setOpen(false)));
+    panel.addEventListener('click', (event) => {
+      if (event.target.closest('a')) setOpen(false);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    });
+  })();
+</script>
