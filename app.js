@@ -895,6 +895,7 @@ app.use(async (req, res, next) => {
           relatedProducts,
           user: res.locals.user,
           formatPrice,
+          selectedCategorySlug: null,
         });
       }
 
@@ -904,6 +905,7 @@ app.use(async (req, res, next) => {
                 COALESCE(p.name_zh_hk, p.name) as name,
                 COALESCE(NULLIF(p.description_zh_hk, ''), NULLIF(p.description, '')) as description,
                 COALESCE(pc.name_zh_hk, pc.name, c.name_zh_hk, c.name) as category_name,
+                c.slug as category_slug,
                 p.category_id,
                 (p.price * 100)::int as price_cents,
                 CASE WHEN p.original_price IS NULL THEN NULL ELSE (p.original_price * 100)::int END as original_price_cents,
@@ -998,6 +1000,7 @@ app.use(async (req, res, next) => {
         relatedProducts,
         user: res.locals.user,
         formatPrice,
+        selectedCategorySlug: product.categorySlug || null,
       });
     } catch (err) {
       console.error('Product page error:', err);

@@ -3,6 +3,7 @@ function mapDbProductToStorefrontProduct(row, { toProxyUrl }) {
   const name = row && row.name != null ? String(row.name) : '';
   const description = row && row.description != null ? String(row.description) : '';
   const category = row && row.category_name ? String(row.category_name) : '未分類';
+  const categorySlug = row && row.category_slug ? String(row.category_slug) : null;
 
   const price = row && row.price_cents != null ? Number(row.price_cents) : 0;
   const originalPrice = row && row.original_price_cents != null ? Number(row.original_price_cents) : null;
@@ -55,6 +56,7 @@ function mapDbProductToStorefrontProduct(row, { toProxyUrl }) {
     name,
     description,
     category,
+    categorySlug,
     price,
     originalPrice,
     stock,

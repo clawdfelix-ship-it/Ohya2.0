@@ -1,61 +1,75 @@
 <% const categoryTreeData = Array.isArray(categoriesTree) ? categoriesTree : []; %>
-<% const leftModules = homeModules && Array.isArray(homeModules.left) && homeModules.left.length ? homeModules.left : [
-  { key: 'fallback-left-1', href: '/products?page=1', image_url: '/assets/mzakka/banners/214x78.jpg', title: '活動' },
-  { key: 'fallback-left-2', href: '/products?page=1', image_url: '/assets/mzakka/banners/M_zakka_214x78.jpg', title: '活動' },
-]; %>
-<aside id="wrap_left" class="lg:w-56 flex-shrink-0">
-  <div class="border border-gray-300 bg-white mb-3">
-    <div class="mz-sidebar-title px-3 py-2 text-xs font-black">【商品分類】</div>
-    <ul class="divide-y divide-gray-200">
-      <li>
-        <a href="/products?page=1" class="block px-3 py-2 text-xs hover:bg-gray-100 font-semibold">
-          全部商品 <span class="text-gray-400">(<%= ((categories || [])[0] && categories[0].count) || 0 %>)</span>
+<% const activeSlug = typeof selectedCategorySlug === 'string' ? selectedCategorySlug : null; %>
+<aside id="wrap_left" class="hidden lg:block lg:w-64 lg:flex-shrink-0">
+  <div class="sticky top-24">
+    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div class="border-b border-gray-200 px-4 py-4">
+        <div class="text-sm font-black text-gray-900">商品分類</div>
+        <p class="mt-1 text-xs text-gray-500">只展開你而家瀏覽緊嘅分類，睇落會清楚好多。</p>
+      </div>
+
+      <div class="max-h-[calc(100vh-10rem)] overflow-y-auto px-3 py-3">
+        <a href="/products?page=1" class="<%= !activeSlug || activeSlug === 'all' ? 'bg-red-50 text-red-700 border-red-200' : 'border-transparent text-gray-700 hover:bg-gray-50' %> mb-2 flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-semibold transition">
+          <span>全部商品</span>
+          <span class="text-xs text-gray-400"><%= ((categories || [])[0] && categories[0].count) || 0 %></span>
         </a>
-      </li>
-      <% categoryTreeData.forEach(cat => { %>
-        <li>
-          <a href="/products?category=<%= encodeURIComponent(cat.slug) %>&page=1" class="block px-3 py-2 text-xs hover:bg-gray-100 font-semibold">
-            <%= cat.name %> <span class="text-gray-400">(<%= cat.count %>)</span>
-          </a>
-          <% if (cat.children && cat.children.length) { %>
-            <ul class="border-t border-gray-100 bg-gray-50">
-              <% cat.children.forEach(child => { %>
-                <li>
-                  <a href="/products?category=<%= encodeURIComponent(child.slug) %>&page=1" class="block px-5 py-2 text-xs hover:bg-gray-100 text-gray-700">
-                    <span class="text-gray-400 mr-1">-</span><%= child.name %> <span class="text-gray-400">(<%= child.count %>)</span>
+
+        <div class="space-y-2" data-sidebar-accordion>
+          <% categoryTreeData.forEach(cat => { %>
+            <% const childList = Array.isArray(cat.children) ? cat.children : []; %>
+            <% const childMatch = childList.some(child => child.slug === activeSlug); %>
+            <% const isCurrentRoot = activeSlug === cat.slug; %>
+            <% const isOpen = isCurrentRoot || childMatch; %>
+            <% if (childList.length) { %>
+              <details class="group rounded-xl border border-gray-200 bg-gray-50/70" <%= isOpen ? 'open' : '' %>>
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-gray-800 marker:content-none">
+                  <a href="/products?category=<%= encodeURIComponent(cat.slug) %>&page=1" class="<%= isCurrentRoot ? 'text-red-700' : 'text-gray-800 hover:text-red-700' %> min-w-0 flex-1">
+                    <span class="block truncate"><%= cat.name %></span>
                   </a>
-                </li>
-              <% }) %>
-            </ul>
-          <% } %>
-        </li>
-      <% }) %>
-    </ul>
-  </div>
-
-  <div class="border border-gray-300 bg-white mb-3">
-    <div class="mz-sidebar-title px-3 py-2 text-xs font-black">【會員】</div>
-    <div class="p-3 text-xs">
-      <% if (user) { %>
-        <div class="mb-2">已登入</div>
-        <a class="underline" href="/logout">登出</a>
-      <% } else { %>
-        <div class="flex gap-2">
-          <a class="underline" href="/login"><%= t('nav.login') %></a>
-          <a class="underline" href="/register"><%= t('nav.register') %></a>
+                  <div class="flex items-center gap-2 text-xs text-gray-400">
+                    <span><%= cat.count %></span>
+                    <span class="transition group-open:rotate-180">⌄</span>
+                  </div>
+                </summary>
+                <div class="border-t border-gray-200 bg-white px-2 py-2">
+                  <% childList.forEach(child => { %>
+                    <a href="/products?category=<%= encodeURIComponent(child.slug) %>&page=1" class="<%= activeSlug === child.slug ? 'bg-red-50 text-red-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' %> mb-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm transition">
+                      <span class="min-w-0 truncate"><%= child.name %></span>
+                      <span class="ml-3 text-[11px] text-gray-400"><%= child.count %></span>
+                    </a>
+                  <% }) %>
+                </div>
+              </details>
+            <% } else { %>
+              <a href="/products?category=<%= encodeURIComponent(cat.slug) %>&page=1" class="<%= isCurrentRoot ? 'bg-red-50 text-red-700 border-red-200' : 'border-transparent text-gray-700 hover:bg-gray-50' %> flex items-center justify-between rounded-xl border px-3 py-3 text-sm font-semibold transition">
+                <span class="min-w-0 truncate"><%= cat.name %></span>
+                <span class="text-xs text-gray-400"><%= cat.count %></span>
+              </a>
+            <% } %>
+          <% }) %>
         </div>
-      <% } %>
-    </div>
-  </div>
-
-  <div class="border border-gray-300 bg-white">
-    <div class="mz-sidebar-title px-3 py-2 text-xs font-black">【公告】</div>
-    <div class="p-2 space-y-2">
-      <% leftModules.forEach(module => { %>
-        <a href="<%= module.href || '/products?page=1' %>" class="block border border-gray-200 bg-white">
-          <img src="<%= module.image_url %>" alt="<%= module.title || '活動' %>" class="w-full">
-        </a>
-      <% }) %>
+      </div>
     </div>
   </div>
 </aside>
+
+<script>
+  (function initSidebarAccordion() {
+    const root = document.querySelector('[data-sidebar-accordion]');
+    if (!root) return;
+    const items = Array.from(root.querySelectorAll('details'));
+    items.forEach((item) => {
+      item.addEventListener('toggle', () => {
+        if (!item.open) return;
+        const opened = items.filter((entry) => entry.open);
+        if (opened.length <= 2) return;
+        for (const entry of opened) {
+          if (entry !== item && opened.length > 2) {
+            entry.open = false;
+            opened.splice(opened.indexOf(entry), 1);
+          }
+        }
+      });
+    });
+  })();
+</script>

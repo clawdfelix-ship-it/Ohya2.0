@@ -23,39 +23,48 @@
     }
   </style>
 </head>
-<body class="mz-body text-black min-h-screen">
+<body class="mz-body min-h-screen bg-gray-50 text-black">
+  <% const topCategories = Array.isArray(categoriesTree) ? categoriesTree.slice(0, 8) : []; %>
 
   <%- include('partials/age-modal') %>
 
   <%- include('partials/header') %>
 
-  <div id="mz-wrapper" class="mz-wrapper max-w-7xl mx-auto px-2 mt-4 mb-4">
-    <div class="mz-3col">
+  <div id="mz-wrapper" class="max-w-7xl mx-auto px-3 py-6">
+    <div class="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-6">
       <%- include('partials/sidebar-left') %>
 
       <div id="wrap_center" class="min-w-0">
-  <main class="max-w-7xl mx-auto px-0 py-2">
-    <div class="mb-6">
-      <h1 class="text-xl font-black jpn-bracket inline-block"><%= selectedCategory && selectedCategory !== '全部商品' ? selectedCategory : '全部商品' %></h1>
-      <span class="text-sm text-gray-500 ml-2">共 <%= (typeof total === 'number' ? total : products.length) %> 件</span>
-    </div>
+  <main class="px-0 py-0">
+    <section class="mb-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Product Listing</p>
+          <h1 class="mt-2 text-3xl font-black text-gray-900"><%= selectedCategory && selectedCategory !== '全部商品' ? selectedCategory : '全部商品' %></h1>
+          <p class="mt-2 text-sm text-gray-500">將分類留喺左欄，主內容只專心顯示商品、排序同結果數量。</p>
+        </div>
+        <div class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-500">
+          已找到 <span class="font-black text-gray-900"><%= (typeof total === 'number' ? total : products.length) %></span> 件商品
+        </div>
+      </div>
+    </section>
 
     <!-- 手機版分類篩選 -->
-    <div class="md:hidden bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
-      <div class="flex items-center gap-2 mb-2"><span class="text-sm font-bold text-gray-700">分類：</span></div>
+    <div class="mb-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:hidden">
+      <div class="mb-2 flex items-center gap-2"><span class="text-sm font-bold text-gray-700">快速分類</span></div>
       <div class="flex flex-wrap gap-2">
         <a href="/products" class="<%= selectedCategorySlug === 'all' || !selectedCategorySlug ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300' %> text-xs px-3 py-1.5 rounded font-medium hover:opacity-80 transition">全部 (<%= (typeof total === 'number' ? total : products.length) %>)</a>
-        <% categories.slice(1).forEach(category => { %>
+        <% topCategories.forEach(category => { %>
           <a href="/products?category=<%= encodeURIComponent(category.slug) %>&page=1" class="<%= selectedCategorySlug === category.slug ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300' %> text-xs px-3 py-1.5 rounded font-medium hover:opacity-80 transition"><%= category.name %></a>
         <% }) %>
       </div>
     </div>
 
     <!-- 排序 -->
-    <div class="flex justify-between items-center mb-6 bg-white border border-gray-200 rounded-lg p-3">
-      <div class="text-sm text-gray-500">已找到 <span class="font-bold text-black"><%= (typeof total === 'number' ? total : products.length) %></span> 件商品</div>
+    <div class="mb-6 flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div class="text-sm text-gray-500">排序結果已按你目前分類與搜尋條件更新</div>
       <div class="flex gap-2">
-        <select id="mz-sort" class="border border-gray-300 rounded px-2 py-1 text-sm focus:border-red-500 focus:outline-none">
+        <select id="mz-sort" class="rounded-full border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none">
           <option value="recommend" <%= (typeof sort === 'string' ? sort : 'recommend') === 'recommend' ? 'selected' : '' %>>推介排序</option>
           <option value="price_asc" <%= (typeof sort === 'string' ? sort : 'recommend') === 'price_asc' ? 'selected' : '' %>>價格由低至高</option>
           <option value="price_desc" <%= (typeof sort === 'string' ? sort : 'recommend') === 'price_desc' ? 'selected' : '' %>>價格由高至低</option>
@@ -67,41 +76,41 @@
 
     <!-- 產品列表 -->
     <% if (products && products.length > 0) { %>
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
         <% products.forEach(product => { %>
-          <div class="bg-white border border-gray-200 rounded-lg hover:shadow-lg transition duration-300 overflow-hidden group">
+          <div class="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg">
             <a href="/product/<%= product.id %>" class="block">
-              <div class="aspect-square bg-gray-50 relative overflow-hidden">
-                <div class="absolute top-2 left-2 z-10 flex flex-col gap-1">
+              <div class="relative aspect-square overflow-hidden bg-gray-50">
+                <div class="absolute left-2 top-2 z-10 flex flex-col gap-1">
                   <% if (product.originalPrice && product.originalPrice > product.price) { %>
-                    <span class="bg-red-600 text-white text-xs px-2 py-1 rounded font-bold"><%= t('product.badge.deal') %></span>
-                    <span class="bg-orange-500 text-white text-xs px-2 py-1 rounded font-bold">-<%= Math.round((1 - product.price / product.originalPrice) * 100) %>%OFF</span>
+                    <span class="rounded-full bg-red-600 px-2 py-1 text-xs font-bold text-white"><%= t('product.badge.deal') %></span>
+                    <span class="rounded-full bg-orange-500 px-2 py-1 text-xs font-bold text-white">-<%= Math.round((1 - product.price / product.originalPrice) * 100) %>%OFF</span>
                   <% } %>
                   <% if (product.stock <= 20) { %>
-                    <span class="bg-yellow-500 text-black text-xs px-2 py-1 rounded font-bold"><%= t('product.badge.lowStock') %></span>
+                    <span class="rounded-full bg-yellow-500 px-2 py-1 text-xs font-bold text-black"><%= t('product.badge.lowStock') %></span>
                   <% } %>
                 </div>
                 <% if (product.image) { %>
-                  <img src="<%= product.image %>" alt="<%= product.name %>" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                  <img src="<%= product.image %>" alt="<%= product.name %>" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
                 <% } else { %>
-                  <div class="w-full h-full flex items-center justify-center text-6xl bg-gradient-to-br from-gray-100 to-gray-200">📦</div>
+                  <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-6xl">📦</div>
                 <% } %>
               </div>
-              <div class="p-3">
-                <span class="text-xs text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded"><%= product.category %></span>
-                <h3 class="font-medium text-sm mt-2 mb-2 line-clamp-2 h-10 leading-tight"><%= product.name %></h3>
+              <div class="p-4">
+                <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-bold text-red-600"><%= product.category %></span>
+                <h3 class="mt-3 mb-2 h-10 line-clamp-2 text-sm font-medium leading-tight"><%= product.name %></h3>
                 <div class="mb-3">
                   <span class="text-xl font-black text-red-600"><%= formatPrice(product.price) %></span>
                   <% if (product.originalPrice && product.originalPrice > product.price) { %>
                     <span class="text-xs text-gray-400 line-through ml-1"><%= formatPrice(product.originalPrice) %></span>
                   <% } %>
                 </div>
-                <div class="text-xs text-red-600 mb-3">
+                <div class="mb-3 text-xs text-red-600">
                   <span class="font-bold">積分：<%= Math.floor(product.price / 100) %>pt</span><span class="text-gray-400">（1 倍）</span>
                 </div>
                 <div class="flex gap-2">
-                  <a href="/product/<%= product.id %>" class="flex-1 bg-red-600 hover:bg-red-700 text-white text-center py-2 rounded font-bold text-xs transition"><%= t('product.cta.details') %></a>
-                  <button onclick="addToCart(this)" data-product-id="<%= product.id %>" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded font-bold text-xs transition">🛒</button>
+                  <a href="/product/<%= product.id %>" class="flex-1 rounded-full bg-red-600 py-2 text-center text-xs font-bold text-white transition hover:bg-red-700"><%= t('product.cta.details') %></a>
+                  <button onclick="addToCart(this)" data-product-id="<%= product.id %>" class="rounded-full bg-orange-500 px-3 py-2 text-xs font-bold text-white transition hover:bg-orange-600">🛒</button>
                 </div>
               </div>
             </a>
@@ -157,16 +166,14 @@
         </div>
       </div>
     <% } else { %>
-      <div class="text-center py-20 bg-white rounded-lg border border-gray-200">
+      <div class="rounded-2xl border border-gray-200 bg-white py-20 text-center shadow-sm">
         <span class="text-6xl mb-4 block">📦</span>
         <p class="text-gray-500 mb-4">未找到相關商品</p>
-        <a href="/products" class="inline-block bg-red-600 text-white font-bold py-2 px-8 rounded-lg hover:bg-red-700 transition">查看全部商品</a>
+        <a href="/products" class="inline-block rounded-full bg-red-600 px-8 py-2 text-white font-bold transition hover:bg-red-700">查看全部商品</a>
       </div>
     <% } %>
   </main>
       </div>
-
-      <%- include('partials/sidebar-right') %>
     </div>
   </div>
 
