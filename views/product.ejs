@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <meta name="csrf-token" content="<%= csrfToken || '' %>">
   <style>
     body {
       font-family: 'Noto Sans TC', sans-serif;
@@ -22,7 +23,7 @@
     }
   </style>
 </head>
-<body class="mz-body min-h-screen bg-gray-50 text-black">
+<body class="mz-body min-h-screen bg-gray-50 text-black" data-logged-in="<%= user ? '1' : '0' %>">
 
   <%- include('partials/age-modal') %>
 
@@ -234,6 +235,8 @@
 
   <script>
     const currentProduct = JSON.parse(document.getElementById('current-product').textContent || '{}');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const isLoggedIn = document.body.dataset.loggedIn === '1';
     
     // 年齡確認
     function checkAgeVerification() {
@@ -278,18 +281,73 @@
     }
     
     // 購物車
-    function updateCartCount() {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-      document.getElementById('cart-count').textContent = count;
+    async function updateCartCount() {
+      const badge = document.getElementById('cart-count');
+      if (!badge) return;
+
+      if (!isLoggedIn) {
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+        badge.textContent = String(count);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/cart', { credentials: 'same-origin' });
+        if (!response.ok) {
+          throw new Error('cart count request failed');
+        }
+        const data = await response.json();
+        const count = Array.isArray(data.items)
+          ? data.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+          : 0;
+        badge.textContent = String(count);
+      } catch (error) {
+        console.error('Failed to refresh cart count:', error);
+      }
     }
     
-    function addToCart() {
+    async function addToCart() {
       const quantity = parseInt(document.getElementById('quantity').value);
-      
+
+      if (!Number.isFinite(quantity) || quantity < 1) {
+        alert('請選擇正確數量');
+        return;
+      }
+
+      if (isLoggedIn) {
+        try {
+          const response = await fetch('/api/cart/add', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'content-type': 'application/json',
+              'csrf-token': csrfToken,
+            },
+            body: JSON.stringify({
+              product_id: currentProduct.id,
+              quantity,
+            }),
+          });
+
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(data.error || '加入購物車失敗');
+          }
+
+          await updateCartCount();
+          alert('已加入購物車！');
+          return;
+        } catch (error) {
+          console.error('Failed to add cart item:', error);
+          alert(error.message || '加入購物車失敗');
+          return;
+        }
+      }
+
       let cart = JSON.parse(localStorage.getItem('cart') || '[]');
       const existingItem = cart.find(item => item.id === currentProduct.id);
-      
+
       if (existingItem) {
         existingItem.quantity += quantity;
       } else {
@@ -298,13 +356,12 @@
           name: currentProduct.name,
           price: currentProduct.price,
           image: currentProduct.image,
-          quantity: quantity
+          quantity,
         });
       }
-      
+
       localStorage.setItem('cart', JSON.stringify(cart));
-      updateCartCount();
-      
+      await updateCartCount();
       alert('已加入購物車！');
     }
 
@@ -328,9 +385,9 @@
     }
     
     // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
       checkAgeVerification();
-      updateCartCount();
+      await updateCartCount();
       initGalleryThumbs();
     });
   </script>

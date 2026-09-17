@@ -43,10 +43,12 @@
         </div>
       <% } %>
       
+      <% const loginFormData = formData || {}; %>
       <form method="POST" action="/login">
+        <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2">電郵地址</label>
-          <input type="email" name="email" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-red-500 focus:outline-none transition" placeholder="your@email.com">
+          <label class="block text-sm font-medium text-gray-700 mb-2">電郵地址或用戶名</label>
+          <input type="text" name="email" value="<%= loginFormData.email || '' %>" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-red-500 focus:outline-none transition" placeholder="your@email.com / username">
         </div>
         
         <div class="mb-6">

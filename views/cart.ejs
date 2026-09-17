@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <meta name="csrf-token" content="<%= csrfToken || '' %>">
   <style>
     body {
       font-family: 'Noto Sans TC', sans-serif;
@@ -22,7 +23,7 @@
     }
   </style>
 </head>
-<body class="mz-body text-black min-h-screen">
+<body class="mz-body text-black min-h-screen" data-logged-in="<%= user ? '1' : '0' %>">
 
   <%- include('partials/age-modal') %>
 
@@ -35,6 +36,7 @@
       <div id="wrap_center" class="min-w-0">
   <div class="max-w-4xl mx-auto px-0 sm:px-6 lg:px-8 py-6">
     <h1 class="text-3xl font-bold text-gray-900 mb-8 jpn-bracket inline-block">🛒 我的購物車</h1>
+    <div id="cart-message" class="hidden mb-4 rounded-xl border px-4 py-3 text-sm"></div>
     
     <div id="cart-items" class="space-y-4">
       <!-- 動態加載 -->
@@ -53,7 +55,16 @@
         <span class="text-xl font-bold text-gray-900">總計</span>
         <span class="text-2xl font-bold text-red-600" id="total-price">¥0</span>
       </div>
-      <button onclick="checkout()" class="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-red-700 transition">
+      <p id="guest-checkout-hint" class="hidden mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        請先登入，登入後會自動將暫存購物車轉入會員購物車並可正式下單。
+      </p>
+      <div id="checkout-fields" class="hidden space-y-3 mb-4">
+        <input id="checkout-name" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-red-500 focus:outline-none" placeholder="收件人姓名">
+        <input id="checkout-phone" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-red-500 focus:outline-none" placeholder="聯絡電話">
+        <textarea id="checkout-address" rows="3" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-red-500 focus:outline-none" placeholder="送貨地址"></textarea>
+        <textarea id="checkout-note" rows="2" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-red-500 focus:outline-none" placeholder="訂單備註（可選）"></textarea>
+      </div>
+      <button id="checkout-button" onclick="checkout()" class="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-red-700 transition">
         📦 結帳
       </button>
     </div>
@@ -100,41 +111,177 @@
       }
     }
 
-    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    
-    function updateCartCount() {
-      const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-      document.getElementById('cart-count').textContent = count;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const isLoggedIn = document.body.dataset.loggedIn === '1';
+    let cart = [];
+
+    function readGuestCart() {
+      return JSON.parse(localStorage.getItem('cart') || '[]');
     }
-    
+
+    function writeGuestCart(nextCart) {
+      localStorage.setItem('cart', JSON.stringify(nextCart));
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatPriceValue(price) {
+      return '¥' + (Number(price || 0) / 100).toFixed(0);
+    }
+
+    function setCartCount(count) {
+      const badge = document.getElementById('cart-count');
+      if (badge) {
+        badge.textContent = String(count);
+      }
+    }
+
+    function showCartMessage(message, tone = 'error') {
+      const box = document.getElementById('cart-message');
+      if (!box) return;
+
+      const toneClasses = tone === 'success'
+        ? ['border-green-200', 'bg-green-50', 'text-green-700']
+        : ['border-red-200', 'bg-red-50', 'text-red-700'];
+
+      box.className = `mb-4 rounded-xl border px-4 py-3 text-sm ${toneClasses.join(' ')}`;
+      box.textContent = message;
+      box.classList.remove('hidden');
+    }
+
+    function clearCartMessage() {
+      const box = document.getElementById('cart-message');
+      if (box) {
+        box.classList.add('hidden');
+        box.textContent = '';
+      }
+    }
+
+    async function requestJson(url, options = {}) {
+      const finalOptions = { credentials: 'same-origin', ...options };
+      const headers = new Headers(finalOptions.headers || {});
+      const method = String(finalOptions.method || 'GET').toUpperCase();
+
+      if (finalOptions.body && !headers.has('content-type')) {
+        headers.set('content-type', 'application/json');
+      }
+      if (method !== 'GET' && method !== 'HEAD' && csrfToken) {
+        headers.set('csrf-token', csrfToken);
+      }
+
+      finalOptions.headers = headers;
+
+      const response = await fetch(url, finalOptions);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(data.error || '請稍後再試');
+        error.status = response.status;
+        throw error;
+      }
+
+      return data;
+    }
+
+    async function syncGuestCartToServer() {
+      const guestCart = readGuestCart();
+      if (!isLoggedIn || guestCart.length === 0) {
+        return;
+      }
+
+      const failures = [];
+      for (const item of guestCart) {
+        try {
+          await requestJson('/api/cart/add', {
+            method: 'POST',
+            body: JSON.stringify({
+              product_id: item.id,
+              quantity: item.quantity,
+            }),
+          });
+        } catch (error) {
+          console.error('Failed to sync guest cart item:', error);
+          failures.push(item);
+        }
+      }
+
+      writeGuestCart(failures);
+      if (failures.length > 0) {
+        showCartMessage('部分暫存商品未能轉入會員購物車，請檢查庫存後再試。');
+      }
+    }
+
+    async function loadCart() {
+      clearCartMessage();
+
+      if (isLoggedIn) {
+        await syncGuestCartToServer();
+        const data = await requestJson('/api/cart');
+        cart = Array.isArray(data.items) ? data.items.map(item => ({
+          id: Number(item.id),
+          productId: Number(item.product_id),
+          quantity: Number(item.quantity),
+          price: Number(item.price),
+          name: item.name,
+          image: item.image_url,
+          slug: item.slug,
+        })) : [];
+      } else {
+        cart = readGuestCart().map(item => ({
+          id: Number(item.id),
+          productId: Number(item.id),
+          quantity: Number(item.quantity),
+          price: Number(item.price),
+          name: item.name,
+          image: item.image,
+        }));
+      }
+
+      renderCart();
+    }
+
     function renderCart() {
       const container = document.getElementById('cart-items');
       const emptyCart = document.getElementById('empty-cart');
       const summary = document.getElementById('cart-summary');
+      const guestHint = document.getElementById('guest-checkout-hint');
+      const checkoutFields = document.getElementById('checkout-fields');
+      const checkoutButton = document.getElementById('checkout-button');
       
       if (cart.length === 0) {
         emptyCart.classList.remove('hidden');
         summary.classList.add('hidden');
         container.innerHTML = '';
+        setCartCount(0);
         return;
       }
       
       emptyCart.classList.add('hidden');
       summary.classList.remove('hidden');
+      guestHint.classList.toggle('hidden', isLoggedIn);
+      checkoutFields.classList.toggle('hidden', !isLoggedIn);
+      checkoutButton.textContent = isLoggedIn ? '📦 提交訂單' : '🔐 登入後結帳';
       
       let total = 0;
       container.innerHTML = cart.map(item => {
-        const itemTotal = (item.price / 100) * item.quantity;
+        const itemTotal = Number(item.price) * Number(item.quantity);
         total += itemTotal;
+        const detailHref = item.productId ? `/product/${item.productId}` : '/products';
         
         return `
           <div class="bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 border border-gray-200">
           <div class="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-            ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover">` : '📦'}
+            ${item.image ? `<img src="${escapeHtml(item.image)}" class="w-full h-full object-cover" alt="${escapeHtml(item.name)}">` : '📦'}
           </div>
           <div class="flex-grow">
-            <h3 class="font-semibold text-gray-900">${item.name}</h3>
-            <p class="text-red-600 font-bold">¥${(item.price / 100).toFixed(0)}</p>
+            <a href="${detailHref}" class="font-semibold text-gray-900 hover:text-red-600">${escapeHtml(item.name)}</a>
+            <p class="text-red-600 font-bold">${formatPriceValue(item.price)}</p>
           </div>
           <div class="flex items-center gap-2">
             <button onclick="updateQuantity(${item.id}, -1)" class="w-8 h-8 bg-gray-100 rounded-lg hover:bg-gray-200 transition">-</button>
@@ -142,52 +289,108 @@
             <button onclick="updateQuantity(${item.id}, 1)" class="w-8 h-8 bg-gray-100 rounded-lg hover:bg-gray-200 transition">+</button>
           </div>
           <div class="text-right">
-            <p class="font-bold text-gray-900">¥${itemTotal.toFixed(0)}</p>
+            <p class="font-bold text-gray-900">${formatPriceValue(itemTotal)}</p>
             <button onclick="removeItem(${item.id})" class="text-red-500 text-sm hover:text-red-600">移除</button>
           </div>
         </div>
         `;
       }).join('');
       
-      document.getElementById('total-price').textContent = '¥' + total.toFixed(0);
+      document.getElementById('total-price').textContent = formatPriceValue(total);
+      setCartCount(cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
     }
     
-    function updateQuantity(id, delta) {
+    async function updateQuantity(id, delta) {
       const item = cart.find(i => i.id === id);
-      if (item) {
-        item.quantity += delta;
-        if (item.quantity <= 0) {
-          cart = cart.filter(i => i.id !== id);
-        }
-        localStorage.setItem('cart', JSON.stringify(cart));
-        renderCart();
+      if (!item) {
+        return;
       }
-    }
-    
-    function removeItem(id) {
-      cart = cart.filter(i => i.id !== id);
-      localStorage.setItem('cart', JSON.stringify(cart));
+
+      if (isLoggedIn) {
+        try {
+          await requestJson(`/api/cart/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ quantity: item.quantity + delta }),
+          });
+          await loadCart();
+        } catch (error) {
+          console.error('Failed to update cart item:', error);
+          showCartMessage(error.message);
+        }
+        return;
+      }
+
+      const nextCart = readGuestCart()
+        .map(entry => entry.id === id ? { ...entry, quantity: entry.quantity + delta } : entry)
+        .filter(entry => entry.quantity > 0);
+      writeGuestCart(nextCart);
+      cart = nextCart.map(entry => ({ ...entry, productId: entry.id }));
       renderCart();
     }
     
-    function checkout() {
-      const isLoggedIn = document.body.dataset.loggedIn === '1';
+    async function removeItem(id) {
       if (isLoggedIn) {
-        alert('✅ 訂單已提交！');
-        cart = [];
-        localStorage.setItem('cart', JSON.stringify(cart));
-        renderCart();
-      } else {
-        alert('請先登入！');
+        try {
+          await requestJson(`/api/cart/${id}`, { method: 'DELETE' });
+          await loadCart();
+        } catch (error) {
+          console.error('Failed to remove cart item:', error);
+          showCartMessage(error.message);
+        }
+        return;
+      }
+
+      const nextCart = readGuestCart().filter(entry => entry.id !== id);
+      writeGuestCart(nextCart);
+      cart = nextCart.map(entry => ({ ...entry, productId: entry.id }));
+      renderCart();
+    }
+    
+    async function checkout() {
+      if (!isLoggedIn) {
         window.location.href = '/login';
+        return;
+      }
+
+      const contact_name = document.getElementById('checkout-name').value.trim();
+      const contact_phone = document.getElementById('checkout-phone').value.trim();
+      const contact_address = document.getElementById('checkout-address').value.trim();
+      const note = document.getElementById('checkout-note').value.trim();
+
+      if (!contact_name || !contact_phone || !contact_address) {
+        showCartMessage('請先填寫收件人姓名、電話同送貨地址。');
+        return;
+      }
+
+      try {
+        const data = await requestJson('/api/orders', {
+          method: 'POST',
+          body: JSON.stringify({
+            contact_name,
+            contact_phone,
+            contact_address,
+            note,
+          }),
+        });
+
+        document.getElementById('checkout-note').value = '';
+        await loadCart();
+        showCartMessage(`訂單已提交，訂單編號 #${data.orderId}`, 'success');
+      } catch (error) {
+        console.error('Checkout failed:', error);
+        showCartMessage(error.message);
       }
     }
     
     // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
       checkAgeVerification();
-      renderCart();
-      updateCartCount();
+      try {
+        await loadCart();
+      } catch (error) {
+        console.error('Failed to load cart:', error);
+        showCartMessage(error.message || '載入購物車失敗');
+      }
     });
   </script>
 </body>
