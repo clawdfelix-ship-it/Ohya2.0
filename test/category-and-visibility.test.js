@@ -25,3 +25,12 @@ test('storefront should not hide products just because zh_hk fields are NULL', (
   assert.doesNotMatch(app, /name_zh_hk\s+IS\s+NOT\s+NULL/i);
   assert.doesNotMatch(app, /description_zh_hk\s+IS\s+NOT\s+NULL/i);
 });
+
+test('storefront category filtering and counts recurse through deep descendants', () => {
+  const app = readFile('app.js');
+  assert.match(app, /WITH RECURSIVE descendants AS/i, 'products route should fetch all descendant category ids');
+  assert.match(app, /JOIN descendants d[\s\S]*c\.parent_id = d\.id/i, 'descendant lookup should recurse through every level');
+  assert.match(app, /WITH RECURSIVE product_counts AS/i, 'category tree counts should use recursive aggregation');
+  assert.match(app, /category_descendants AS/i, 'category count query should build descendant mapping');
+  assert.match(app, /child_total\.total_count/i, 'child category counts should include descendant products');
+});

@@ -507,38 +507,56 @@ async function loadStorefrontCategories() {
   const totalCount = totalResult.rows[0] ? Number(totalResult.rows[0].total) : 0;
 
   const result = await pool.query(
-    `WITH product_counts AS (
+    `WITH RECURSIVE product_counts AS (
        SELECT p.category_id, COUNT(*)::int as direct_count
        FROM products p
        WHERE p.status = 'active'
          AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
        GROUP BY p.category_id
+     ),
+     category_descendants AS (
+       SELECT c.id as ancestor_id, c.id as descendant_id
+       FROM categories c
+       WHERE c.status = 'active'
+       UNION ALL
+       SELECT d.ancestor_id, c.id
+       FROM category_descendants d
+       JOIN categories c
+         ON c.parent_id = d.descendant_id
+        AND c.status = 'active'
+     ),
+     category_totals AS (
+       SELECT d.ancestor_id as category_id,
+              COALESCE(SUM(pc.direct_count), 0)::int as total_count
+       FROM category_descendants d
+       LEFT JOIN product_counts pc ON pc.category_id = d.descendant_id
+       GROUP BY d.ancestor_id
      )
      SELECT root.id,
             root.slug,
             COALESCE(root.name_zh_hk, root.name) as name,
-            (COALESCE(root_count.direct_count, 0) + COALESCE(SUM(child_count.direct_count), 0))::int as count,
+            COALESCE(root_total.total_count, 0)::int as count,
             COALESCE(
               json_agg(
                 json_build_object(
                   'id', child.id,
                   'slug', child.slug,
                   'name', COALESCE(child.name_zh_hk, child.name),
-                  'count', COALESCE(child_count.direct_count, 0)
+                  'count', COALESCE(child_total.total_count, 0)
                 )
-                ORDER BY COALESCE(child_count.direct_count, 0) DESC, COALESCE(child.name_zh_hk, child.name) ASC
+                ORDER BY COALESCE(child_total.total_count, 0) DESC, COALESCE(child.name_zh_hk, child.name) ASC
               ) FILTER (WHERE child.id IS NOT NULL),
               '[]'::json
             ) as children
      FROM categories root
-     LEFT JOIN product_counts root_count ON root_count.category_id = root.id
+     LEFT JOIN category_totals root_total ON root_total.category_id = root.id
      LEFT JOIN categories child
        ON child.parent_id = root.id
       AND child.status = 'active'
-     LEFT JOIN product_counts child_count ON child_count.category_id = child.id
+     LEFT JOIN category_totals child_total ON child_total.category_id = child.id
      WHERE root.parent_id IS NULL
        AND root.status = 'active'
-     GROUP BY root.id, root.slug, root.name, root.name_zh_hk, root_count.direct_count
+     GROUP BY root.id, root.slug, root.name, root.name_zh_hk, root_total.total_count
      ORDER BY count DESC, name ASC
      LIMIT 200`
   );
@@ -760,14 +778,25 @@ app.use(async (req, res, next) => {
       const params = [];
       let paramIndex = 1;
       if (categoryId) {
-        const childIds = await pool.query(
-          `SELECT id
-           FROM categories
-           WHERE parent_id = $1
+        const descendantIds = await pool.query(
+          `WITH RECURSIVE descendants AS (
+             SELECT id
+             FROM categories
+             WHERE id = $1
+               AND status = 'active'
+             UNION ALL
+             SELECT c.id
+             FROM categories c
+             JOIN descendants d
+               ON c.parent_id = d.id
+             WHERE c.status = 'active'
+           )
+           SELECT id
+           FROM descendants
            ORDER BY id ASC`,
           [categoryId]
         );
-        categoryIds = (childIds.rows || []).map(r => Number(r.id));
+        categoryIds = (descendantIds.rows || []).map(r => Number(r.id));
         if (!categoryIds.length) categoryIds = [categoryId];
         where += ` AND p.category_id = ANY($${paramIndex})`;
         params.push(categoryIds);
