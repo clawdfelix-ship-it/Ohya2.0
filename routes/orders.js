@@ -1,6 +1,19 @@
 module.exports = function(app, pool, requireAuth, requireAdmin) {
   const { requirePermission } = require('./middleware/auth');
 
+  async function loadLockedCartItems(client, userId) {
+    const result = await client.query(`
+      SELECT ci.*, p.price, p.stock, p.name
+      FROM cart_items ci
+      JOIN products p ON ci.product_id = p.id
+      WHERE ci.user_id = $1
+      ORDER BY ci.product_id ASC, ci.id ASC
+      FOR UPDATE OF p
+    `, [userId]);
+
+    return Array.isArray(result.rows) ? result.rows : [];
+  }
+
   // Get my orders (current user)
   app.get('/api/orders', requireAuth, async (req, res) => {
     try {
@@ -80,35 +93,28 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         return res.status(400).json({ error: '聯絡資訊不全' });
       }
 
-      // Get cart items
-      const cartResult = await pool.query(`
-        SELECT ci.*, p.price, p.stock, p.name
-        FROM cart_items ci
-        JOIN products p ON ci.product_id = p.id
-        WHERE ci.user_id = $1
-      `, [userId]);
-
-      if (cartResult.rows.length === 0) {
-        return res.status(400).json({ error: '購物車是空的' });
-      }
-
-      // Check stock for all items
-      for (const item of cartResult.rows) {
-        if (item.stock < item.quantity) {
-          return res.status(400).json({ error: `產品 ${item.name} 庫存不足` });
-        }
-      }
-
-      // Calculate total
-      let total = 0;
-      cartResult.rows.forEach(item => {
-        total += item.price * item.quantity;
-      });
-
       // Start transaction
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
+
+        const cartItems = await loadLockedCartItems(client, userId);
+        if (cartItems.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: '購物車是空的' });
+        }
+
+        for (const item of cartItems) {
+          if (Number(item.stock) < Number(item.quantity)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: `產品 ${item.name} 庫存不足` });
+          }
+        }
+
+        let total = 0;
+        cartItems.forEach(item => {
+          total += item.price * item.quantity;
+        });
 
         // Create order
         const orderResult = await client.query(`
@@ -120,16 +126,22 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         const orderId = orderResult.rows[0].id;
 
         // Create order items + decrease stock
-        for (const item of cartResult.rows) {
+        for (const item of cartItems) {
           await client.query(`
             INSERT INTO order_items (order_id, product_id, quantity, unit_price)
             VALUES ($1, $2, $3, $4)
           `, [orderId, item.product_id, item.quantity, item.price]);
 
           // Decrease stock
-          await client.query(`
-            UPDATE products SET stock = stock - $1 WHERE id = $2
+          const stockUpdate = await client.query(`
+            UPDATE products
+            SET stock = stock - $1
+            WHERE id = $2 AND stock >= $1
+            RETURNING stock
           `, [item.quantity, item.product_id]);
+          if (stockUpdate.rows.length === 0) {
+            throw new Error(`庫存更新失敗: product_id=${item.product_id}`);
+          }
         }
 
         // Clear cart
