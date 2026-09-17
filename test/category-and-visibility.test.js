@@ -16,7 +16,10 @@ test('category filter uses category slug (stable, no name mismatch)', () => {
   assert.match(sidebarLeft, /include\('category-tree-node'/, 'sidebar-left should render categories recursively through a dedicated partial');
 
   const products = readFile(path.join('views', 'products.ejs'));
-  assert.match(products, /category=<%= encodeURIComponent\(category\.slug\)/, 'mobile category chips should link using category.slug');
+  assert.match(products, /include\('partials\/category-mobile-drawer'\)/, 'products page should include the mobile category drawer');
+
+  const mobileNode = readFile(path.join('views', 'partials', 'category-mobile-node.ejs'));
+  assert.match(mobileNode, /encodeURIComponent\(node\.slug\)/, 'mobile category drawer should link using category.slug');
 });
 
 test('storefront should not hide products just because zh_hk fields are NULL', () => {

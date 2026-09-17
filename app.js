@@ -19,6 +19,7 @@ const { mapDbProductToStorefrontProduct } = require('./utils/storefrontDbMapper'
 const { mapRowsToRankingProducts } = require('./utils/homepageQuery');
 const { buildCategoryTree } = require('./utils/storefrontCategories');
 const { partitionHomeModules } = require('./utils/storefrontHomeModules');
+const { resolveStorefrontCategoryName } = require('./utils/categoryTranslations');
 const { getProductsOrderBy, normalizeProductsSort } = require('./lib/productsSort');
 const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch-mzakka-description');
 const { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
@@ -524,7 +525,8 @@ async function loadStorefrontCategories() {
      SELECT c.id,
             c.parent_id,
             c.slug,
-            COALESCE(c.name_zh_hk, c.name) as name,
+            c.name,
+            c.name_zh_hk,
             COALESCE(ct.total_count, 0)::int as count
      FROM categories c
      LEFT JOIN category_totals ct ON ct.category_id = c.id
@@ -537,7 +539,7 @@ async function loadStorefrontCategories() {
     id: Number(row.id),
     parentId: row.parent_id != null ? Number(row.parent_id) : null,
     slug: String(row.slug),
-    name: String(row.name),
+    name: resolveStorefrontCategoryName(row.name, row.name_zh_hk),
     count: Number(row.count || 0),
   }));
 
@@ -733,7 +735,7 @@ app.use(async (req, res, next) => {
 
       if (categoryFilter && categoryFilter !== 'all') {
         const c = await pool.query(
-          `SELECT id, COALESCE(name_zh_hk, name) as name
+          `SELECT id, name, name_zh_hk
            FROM categories
            WHERE slug = $1
            LIMIT 1`,
@@ -741,7 +743,7 @@ app.use(async (req, res, next) => {
         );
         if (c.rows[0]) {
           categoryId = Number(c.rows[0].id);
-          selectedCategory = String(c.rows[0].name);
+          selectedCategory = resolveStorefrontCategoryName(c.rows[0].name, c.rows[0].name_zh_hk);
           selectedCategorySlug = String(categoryFilter);
         }
       }
