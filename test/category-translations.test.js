@@ -11,6 +11,10 @@ test('translateCategoryName translates known generic category labels', () => {
   const out = translateCategoryName('メーカー別');
   assert.equal(out.translatedName, '按品牌');
   assert.equal(out.didTranslate, true);
+
+  assert.equal(translateCategoryName('オナホール・おっぱい').translatedName, '飛機杯・乳交');
+  assert.equal(translateCategoryName('その他').translatedName, '其他');
+  assert.equal(translateCategoryName('コスチューム').translatedName, '情趣服飾');
 });
 
 test('translateCategoryName preserves brand names and unknown labels', () => {
