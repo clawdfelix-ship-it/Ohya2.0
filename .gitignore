@@ -36,3 +36,5 @@ QA測試報告_*.md
 
 # Data samples
 data/*sample*.json
+.vercel
+.env*

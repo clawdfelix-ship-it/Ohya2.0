@@ -73,7 +73,7 @@ const csrf = require('csurf');
 const csrfProtection = csrf({ cookie: false });
 function shouldSkipCsrf(req) {
   const m = String(req.method || 'GET').toUpperCase();
-  if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return true;
+  if (m === 'HEAD' || m === 'OPTIONS') return true;
   const p = String(req.path || '');
   if (p.startsWith('/webhooks/')) return true;
   if (p === cspReportPath) return true;

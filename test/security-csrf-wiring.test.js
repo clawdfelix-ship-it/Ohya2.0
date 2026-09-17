@@ -7,6 +7,8 @@ test('csrf middleware is wired and webhooks are exempt', () => {
   const s = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   assert.match(s, /csurf/);
   assert.ok(s.includes("startsWith('/webhooks/')"));
+  assert.ok(!s.includes("if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return true;"));
+  assert.ok(s.includes("if (m === 'HEAD' || m === 'OPTIONS') return true;"));
 });
 
 test('adminApiRequest sends X-CSRF-Token on non-GET', () => {

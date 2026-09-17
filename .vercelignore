@@ -4,9 +4,6 @@ node_modules
 test
 docs
 migrations
-scripts
-!scripts/
-!scripts/fetch-mzakka-description.js
 data
 *.md
 *.sql
