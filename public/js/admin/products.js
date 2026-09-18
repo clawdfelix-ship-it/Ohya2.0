@@ -173,13 +173,39 @@
       const activeSkuCount = Number(p.active_sku_count || 0);
       const totalStock = Number(p.total_stock || 0);
       const stockLabel = activeSkuCount > 0 ? String(totalStock) : '—';
+      const lowStock = activeSkuCount > 0 && totalStock <= 5;
+      const isActive = p.status === 'active';
+
+      // 縮圖 + 名稱（同一欄）
+      const thumb = el('div', { class: 'flex items-center gap-3' }, [
+        el('div', {
+          class: 'h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50',
+        }, [
+          p.image_url
+            ? el('img', { src: p.image_url, alt: '', loading: 'lazy', class: 'h-full w-full object-cover' })
+            : el('div', { class: 'flex h-full w-full items-center justify-center text-lg text-gray-300' }, ['📦']),
+        ]),
+        el('span', { class: 'font-medium text-gray-900', text: p.name_zh_hk || p.name || '' }),
+      ]);
+
+      const stockCell = el('td', { class: 'whitespace-nowrap' }, [
+        el('span', {
+          class: lowStock ? 'admin-badge badge-danger' : 'tabular-nums',
+          text: lowStock ? `僅餘 ${totalStock}` : stockLabel,
+        }),
+      ]);
 
       const tr = el('tr', {}, [
-        el('td', { text: String(p.id) }),
-        el('td', { text: p.name_zh_hk || p.name || '' }),
-        el('td', { text: categoryLabel }),
-        el('td', { text: stockLabel }),
-        el('td', { text: p.status === 'active' ? '上架' : '下架' }),
+        el('td', { class: 'text-gray-400 tabular-nums', text: String(p.id) }),
+        el('td', {}, [thumb]),
+        el('td', { class: 'text-gray-500', text: categoryLabel }),
+        stockCell,
+        el('td', {}, [
+          el('span', {
+            class: isActive ? 'admin-badge badge-active' : 'admin-badge badge-inactive',
+            text: isActive ? '上架' : '下架',
+          }),
+        ]),
         el('td', {}, [
           el('button', { class: 'admin-link-btn', text: '編輯', onclick: () => loadProductForEdit(p.id) }),
         ]),

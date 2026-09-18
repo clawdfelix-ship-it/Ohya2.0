@@ -38,6 +38,22 @@
     cancelled: '已取消',
   };
 
+  const statusBadge = {
+    pending: 'admin-badge badge-pending',
+    paid: 'admin-badge badge-paid',
+    shipping: 'admin-badge badge-shipping',
+    completed: 'admin-badge badge-completed',
+    cancelled: 'admin-badge badge-cancelled',
+  };
+
+  function fmtTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return String(iso);
+    const pad = (x) => String(x).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   function toWaE164(hkNumber) {
     const digits = String(hkNumber || '').replace(/[^\d]/g, '');
     if (!digits) return null;
@@ -221,19 +237,23 @@
         'data-order-id': String(id),
         checked: selectedIds.has(id),
         onchange: () => {
-          if (checkbox.checked) selectedIds.add(id);
-          else selectedIds.delete(id);
+          if (checkbox.checked) { selectedIds.add(id); tr.classList.add('is-selected'); }
+          else { selectedIds.delete(id); tr.classList.remove('is-selected'); }
           setBulkButtonEnabled();
           setSelectAllChecked();
         },
       });
       const tr = el('tr', {}, [
         el('td', {}, [checkbox]),
-        el('td', { text: String(o.id) }),
+        el('td', { class: 'font-semibold' }, [
+          el('button', { class: 'admin-link-btn', text: '#' + id, onclick: () => openOrder(o.id) }),
+        ]),
         el('td', { text: o.username || '' }),
-        el('td', { text: money(o.total_amount) }),
-        el('td', { text: statusLabel[o.status] || o.status }),
-        el('td', { text: o.created_at ? String(o.created_at) : '' }),
+        el('td', { class: 'font-semibold tabular-nums', text: money(o.total_amount) }),
+        el('td', {}, [
+          el('span', { class: statusBadge[o.status] || 'admin-badge badge-inactive', text: statusLabel[o.status] || o.status }),
+        ]),
+        el('td', { class: 'text-gray-500 tabular-nums whitespace-nowrap', text: fmtTime(o.created_at) }),
         el('td', {}, [
           el('button', {
             class: 'admin-link-btn',
@@ -242,6 +262,7 @@
           }),
         ]),
       ]);
+      if (selectedIds.has(id)) tr.classList.add('is-selected');
       els.tbody.appendChild(tr);
     }
 
