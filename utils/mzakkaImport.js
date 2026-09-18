@@ -121,7 +121,11 @@ function toProductMediaRows(item, productId) {
 function toProductSectionRows(item, productId) {
   const rows = [];
   const baseId = String(item && item.id ? item.id : '').trim();
-  const infoRows = Array.isArray(item && item.productInfo) ? item.productInfo.filter(Boolean) : [];
+  // 價格由本店 HKD 價位區顯示，唔收錄 mzakka 日元「販売価格」，避免產品頁重複/誤導
+  const HIDDEN_INFO_LABELS = ['販売価格'];
+  const infoRows = Array.isArray(item && item.productInfo)
+    ? item.productInfo.filter((row) => row && !HIDDEN_INFO_LABELS.includes(String(row.label || '').trim()))
+    : [];
   const sections = Array.isArray(item && item.sections) ? item.sections.filter(Boolean) : [];
 
   if (infoRows.length) {

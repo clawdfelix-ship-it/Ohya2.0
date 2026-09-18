@@ -87,7 +87,14 @@
           <span class="mb-3 w-fit rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-600"><%= product.category %></span>
           <h1 class="text-2xl font-black text-gray-900 mb-4"><%= product.name %></h1>
           <% const detailSections = Array.isArray(product && product.sections) ? product.sections : []; %>
-          <% const productInfoSection = detailSections.find(section => section && section.sectionType === 'product_info' && section.contentJson && Array.isArray(section.contentJson.rows)); %>
+<%# 價格已由本店 HKD 價位區顯示，唔重複顯示 mzakka 日元販売価格 %>
+          <% const HIDDEN_INFO_LABELS = ['販売価格']; %>
+          <% const productInfoSection = (() => {
+            const sec = detailSections.find(section => section && section.sectionType === 'product_info' && section.contentJson && Array.isArray(section.contentJson.rows));
+            if (!sec) return null;
+            const rows = (sec.contentJson.rows || []).filter(row => !HIDDEN_INFO_LABELS.includes(String((row && row.label) || '').trim()));
+            return rows.length ? Object.assign({}, sec, { contentJson: Object.assign({}, sec.contentJson, { rows }) }) : null;
+          })(); %>
           <% const narrativeSections = detailSections.filter(section => section && section.sectionType !== 'product_info' && ((section.contentHtml && String(section.contentHtml).trim()) || (section.contentText && String(section.contentText).trim()))); %>
           <% const fallbackDescription = (() => {
                const rawDesc = (product && product.description != null) ? String(product.description).trim() : '';

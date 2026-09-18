@@ -19,3 +19,16 @@ test('product page renders mzakka product sections when available', () => {
   assert.match(html, /contentJson\.rows/, 'product.ejs should render product_info rows from contentJson');
   assert.match(html, /section\.contentHtml/, 'product.ejs should support HTML-based detail sections');
 });
+
+test('product page hides mzakka 販売価格 row in 商品情報', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'views', 'product.ejs'), 'utf8');
+  assert.match(html, /HIDDEN_INFO_LABELS/, 'product.ejs should define hidden info labels');
+  assert.match(html, /販売価格/, 'should list 販売価格 as a hidden label');
+  assert.match(html, /\.filter\(row/, 'should filter product_info rows before rendering');
+});
+
+test('mzakka import drops 販売価格 from product info rows', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'utils', 'mzakkaImport.js'), 'utf8');
+  assert.match(src, /HIDDEN_INFO_LABELS/, 'importer should define hidden labels');
+  assert.match(src, /販売価格/, 'importer should hide 販売価格');
+});
