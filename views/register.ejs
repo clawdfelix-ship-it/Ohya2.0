@@ -43,7 +43,7 @@
         </div>
       <% } %>
       
-      <% const registerFormData = formData || {}; %>
+      <% const registerFormData = typeof formData !== 'undefined' && formData ? formData : {}; %>
       <form method="POST" action="/register">
         <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
         <div class="mb-6">

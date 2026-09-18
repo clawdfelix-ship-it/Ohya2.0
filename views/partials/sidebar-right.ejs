@@ -1,4 +1,5 @@
-<% const rightModules = homeModules && Array.isArray(homeModules.right) && homeModules.right.length ? homeModules.right : [
+<% const _hm = typeof homeModules !== 'undefined' && homeModules ? homeModules : {}; %>
+<% const rightModules = Array.isArray(_hm.right) && _hm.right.length ? _hm.right : [
   { key: 'fallback-right-1', href: '/products?page=1', image_url: '/assets/mzakka/banners/214_78(1).png', title: '推薦' },
 ]; %>
 <aside id="wrap_right" class="lg:w-56 flex-shrink-0">

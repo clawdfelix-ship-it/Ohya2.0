@@ -43,7 +43,7 @@
         </div>
       <% } %>
       
-      <% const loginFormData = formData || {}; %>
+      <% const loginFormData = typeof formData !== 'undefined' && formData ? formData : {}; %>
       <form method="POST" action="/login">
         <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
         <input type="hidden" name="redirect" value="<%= typeof redirect === 'string' && /^\/[a-zA-Z0-9_\-\/.?=&%]*$/.test(redirect) && !redirect.startsWith('//') ? redirect : '' %>">
