@@ -6,14 +6,14 @@ module.exports = function(app, pool, requireAuth) {
       const userId = req.session.userId;
 
       const result = await pool.query(`
-        SELECT ci.*, p.name, p.price, p.image_url, p.stock, p.slug
+        SELECT ci.*, p.name, (p.price * 100)::int AS price, p.image_url, p.stock, p.slug
         FROM cart_items ci
         JOIN products p ON ci.product_id = p.id
         WHERE ci.user_id = $1
         ORDER BY ci.created_at DESC
       `, [userId]);
 
-      // Calculate total
+      // Calculate total（price 已統一為 cents，與訪客購物車一致）
       let total = 0;
       result.rows.forEach(item => {
         total += item.price * item.quantity;

@@ -51,11 +51,40 @@
     </div>
     
     <div id="cart-summary" class="mt-8 bg-white rounded-xl p-6 border border-gray-200 hidden">
-      <div class="flex justify-between items-center mb-4">
-        <span class="text-xl font-bold text-gray-900">總計</span>
-        <span class="text-2xl font-bold text-red-600" id="total-price">HK$0</span>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-gray-600">商品小計</span>
+          <span class="font-bold text-gray-900" id="subtotal-price">HK$0</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-600">運費</span>
+          <span class="font-bold text-orange-600">到付（收貨時支付）</span>
+        </div>
+        <div class="flex justify-between items-center border-t border-gray-100 pt-3">
+          <span class="text-xl font-bold text-gray-900">而家需付款</span>
+          <span class="text-2xl font-bold text-red-600" id="total-price">HK$0</span>
+        </div>
       </div>
-      <p id="guest-checkout-hint" class="hidden mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700">
+
+      <div class="mt-5 rounded-xl bg-gray-50 p-4">
+        <p class="text-sm font-bold text-gray-900 mb-3">付款方式</p>
+        <label class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 cursor-pointer has-[:checked]:border-red-400 has-[:checked]:ring-1 has-[:checked]:ring-red-400">
+          <input type="radio" name="payment_method" value="bank_transfer" class="mt-1 accent-red-600" checked>
+          <span class="text-sm">
+            <span class="font-bold text-gray-900 block">銀行轉帳</span>
+            <span class="text-gray-500">落單後顯示收款戶口，24 小時內過數並傳回入數收據</span>
+          </span>
+        </label>
+        <label class="mt-2 flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 cursor-pointer has-[:checked]:border-red-400 has-[:checked]:ring-1 has-[:checked]:ring-red-400">
+          <input type="radio" name="payment_method" value="fps" class="mt-1 accent-red-600">
+          <span class="text-sm">
+            <span class="font-bold text-gray-900 block">FPS 轉數快</span>
+            <span class="text-gray-500">落單後顯示 FPS ID，即時過數，備註填訂單編號</span>
+          </span>
+        </label>
+      </div>
+
+      <p id="guest-checkout-hint" class="hidden mt-4 mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700">
         請先登入，登入後會自動將暫存購物車轉入會員購物車並可正式下單。
       </p>
       <div id="checkout-fields" class="hidden space-y-3 mb-4">
@@ -298,6 +327,8 @@
       }).join('');
       
       document.getElementById('total-price').textContent = formatPriceValue(total);
+      const subtotalEl = document.getElementById('subtotal-price');
+      if (subtotalEl) subtotalEl.textContent = formatPriceValue(total);
       setCartCount(cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
     }
     
@@ -357,9 +388,15 @@
       const contact_phone = document.getElementById('checkout-phone').value.trim();
       const contact_address = document.getElementById('checkout-address').value.trim();
       const note = document.getElementById('checkout-note').value.trim();
+      const paymentRadio = document.querySelector('input[name="payment_method"]:checked');
+      const selectedPayment = paymentRadio ? paymentRadio.value : '';
 
       if (!contact_name || !contact_phone || !contact_address) {
         showCartMessage('請先填寫收件人姓名、電話同送貨地址。');
+        return;
+      }
+      if (!selectedPayment) {
+        showCartMessage('請選擇付款方式。');
         return;
       }
 
@@ -371,12 +408,12 @@
             contact_phone,
             contact_address,
             note,
+            payment_method: selectedPayment,
           }),
         });
 
-        document.getElementById('checkout-note').value = '';
-        await loadCart();
-        showCartMessage(`訂單已提交，訂單編號 #${data.orderId}`, 'success');
+        // 跳轉訂單確認頁（顯示收款指示）
+        window.location.href = '/order/' + data.orderId;
       } catch (error) {
         console.error('Checkout failed:', error);
         showCartMessage(error.message);

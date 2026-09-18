@@ -71,82 +71,104 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
   });
 
   // Create new order from cart
+  // 付款：銀行轉帳 / FPS（人工核實，payment_status 起步 pending）；運費：到付（shipping_fee=0）
   app.post('/api/orders', requireAuth, async (req, res) => {
+    const client = await pool.connect();
     try {
       const userId = req.session.userId;
-      const { contact_name, contact_phone, contact_address, note } = req.body;
+      const { contact_name, contact_phone, contact_address, note, payment_method } = req.body;
 
       if (!contact_name || !contact_phone || !contact_address) {
         return res.status(400).json({ error: '聯絡資訊不全' });
       }
 
-      // Get cart items
-      const cartResult = await pool.query(`
-        SELECT ci.*, p.price, p.stock, p.name
+      // 暫時只開放銀行轉帳 / FPS
+      const ALLOWED_PAYMENT = { bank_transfer: '銀行轉帳', fps: 'FPS 轉數快' };
+      const paymentCode = ALLOWED_PAYMENT[payment_method] ? payment_method : null;
+      if (!paymentCode) {
+        return res.status(400).json({ error: '請選擇付款方式（銀行轉帳或 FPS 轉數快）' });
+      }
+
+      await client.query('BEGIN');
+
+      // Get cart items（FOR UPDATE 鎖實商品行，防止落單扣庫存競態超賣）
+      const cartResult = await client.query(`
+        SELECT ci.id AS cart_item_id, ci.product_id, ci.quantity,
+               p.price, p.stock, p.name, p.status
         FROM cart_items ci
         JOIN products p ON ci.product_id = p.id
         WHERE ci.user_id = $1
+        FOR UPDATE OF p
       `, [userId]);
 
       if (cartResult.rows.length === 0) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: '購物車是空的' });
       }
 
-      // Check stock for all items
+      // 商品仍有效 + 庫存足夠
       for (const item of cartResult.rows) {
-        if (item.stock < item.quantity) {
-          return res.status(400).json({ error: `產品 ${item.name} 庫存不足` });
+        if (item.status !== 'active') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: `商品「${item.name}」已落架` });
+        }
+        if (Number(item.stock) < Number(item.quantity)) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: `商品「${item.name}」庫存不足` });
         }
       }
 
-      // Calculate total
-      let total = 0;
+      // 小計（DB products.price 單位為 HKD；運費到付，落單唔收運費）
+      let subtotal = 0;
       cartResult.rows.forEach(item => {
-        total += item.price * item.quantity;
+        subtotal += Number(item.price) * Number(item.quantity);
       });
+      const subtotalMoney = Number(subtotal.toFixed(2));
 
-      // Start transaction
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
+      const orderResult = await client.query(`
+        INSERT INTO orders
+          (user_id, contact_name, contact_phone, contact_address, note,
+           subtotal_amount, shipping_fee, freight_collect, total_amount,
+           payment_method_code, payment_status, status)
+        VALUES ($1, $2, $3, $4, $5, $6, 0, true, $6, $7, 'pending', 'pending')
+        RETURNING id
+      `, [userId, contact_name, contact_phone, contact_address, note || null,
+           subtotalMoney, paymentCode]);
 
-        // Create order
-        const orderResult = await client.query(`
-          INSERT INTO orders (user_id, contact_name, contact_phone, contact_address, note, total_amount, status)
-          VALUES ($1, $2, $3, $4, $5, $6, 'pending')
-          RETURNING id
-        `, [userId, contact_name, contact_phone, contact_address, note || null, total]);
+      const orderId = orderResult.rows[0].id;
 
-        const orderId = orderResult.rows[0].id;
+      // 人睇嘅訂單編號 OHYA-YYMMDD-000123
+      const now = new Date();
+      const ym = String(now.getFullYear()).slice(2) +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0');
+      const orderNumber = `OHYA-${ym}-${String(orderId).padStart(6, '0')}`;
+      await client.query('UPDATE orders SET order_number = $1 WHERE id = $2', [orderNumber, orderId]);
 
-        // Create order items + decrease stock
-        for (const item of cartResult.rows) {
-          await client.query(`
-            INSERT INTO order_items (order_id, product_id, quantity, unit_price)
-            VALUES ($1, $2, $3, $4)
-          `, [orderId, item.product_id, item.quantity, item.price]);
+      // Create order items + decrease stock
+      for (const item of cartResult.rows) {
+        await client.query(`
+          INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+          VALUES ($1, $2, $3, $4)
+        `, [orderId, item.product_id, item.quantity, item.price]);
 
-          // Decrease stock
-          await client.query(`
-            UPDATE products SET stock = stock - $1 WHERE id = $2
-          `, [item.quantity, item.product_id]);
-        }
-
-        // Clear cart
-        await client.query('DELETE FROM cart_items WHERE user_id = $1', [userId]);
-
-        await client.query('COMMIT');
-
-        res.json({ success: true, orderId });
-      } catch (txErr) {
-        await client.query('ROLLBACK');
-        throw txErr;
-      } finally {
-        client.release();
+        await client.query(`
+          UPDATE products SET stock = stock - $1 WHERE id = $2
+        `, [item.quantity, item.product_id]);
       }
+
+      // Clear cart
+      await client.query('DELETE FROM cart_items WHERE user_id = $1', [userId]);
+
+      await client.query('COMMIT');
+
+      res.json({ success: true, orderId, orderNumber, paymentMethod: paymentCode });
     } catch (err) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
       console.error(err);
       res.status(500).json({ error: '服務器錯誤' });
+    } finally {
+      client.release();
     }
   });
 

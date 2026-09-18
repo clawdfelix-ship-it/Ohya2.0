@@ -448,6 +448,21 @@ function formatPrice(price) {
   return 'HK$' + (price / 100).toFixed(0);
 }
 
+// 銀行轉帳 / FPS 收款資料（敏感資料由環境變數注入，唔 hardcode 入源碼）
+function getPaymentInfo() {
+  return {
+    bank: {
+      bankName: process.env.PAYMENT_BANK_NAME || '',
+      accountName: process.env.PAYMENT_BANK_ACCOUNT_NAME || '',
+      accountNumber: process.env.PAYMENT_BANK_ACCOUNT_NUMBER || '',
+    },
+    fps: {
+      fpsId: process.env.PAYMENT_FPS_ID || '',
+      fpsPhone: process.env.PAYMENT_FPS_PHONE || '',
+    },
+  };
+}
+
 // Make image proxy utility available to templates
 app.locals.toProxyUrl = toProxyUrl;
 
@@ -1048,8 +1063,66 @@ app.use(async (req, res, next) => {
     res.render('cart', {
       title: '購物車 - OHYA2.0',
       user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
-      formatPrice: formatPrice
+      formatPrice: formatPrice,
+      paymentInfo: getPaymentInfo(),
     });
+  });
+
+  // 訂單確認頁（落單成功後跳轉；只准本人睇）
+  app.get('/order/:id', async (req, res) => {
+    const sessUser = req.session && req.session.userId;
+    if (!sessUser) {
+      return res.redirect('/login');
+    }
+    if (!connectionString) {
+      return res.status(500).render('order-confirm', {
+        title: '訂單確認 - OHYA2.0', user: null, order: null, items: [],
+        formatPrice, paymentInfo: getPaymentInfo(), error: '數據庫未配置',
+      });
+    }
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isFinite(id)) return res.status(404).render('order-confirm', {
+        title: '訂單確認 - OHYA2.0', user: null, order: null, items: [],
+        formatPrice, paymentInfo: getPaymentInfo(), error: '訂單不存在',
+      });
+      const orderResult = await pool.query(
+        'SELECT * FROM orders WHERE id = $1 AND user_id = $2',
+        [id, sessUser]
+      );
+      if (orderResult.rows.length === 0) {
+        return res.status(404).render('order-confirm', {
+          title: '訂單確認 - OHYA2.0',
+          user: { id: sessUser, isAdmin: req.session.isAdmin },
+          order: null, items: [], formatPrice,
+          paymentInfo: getPaymentInfo(), error: '訂單不存在',
+        });
+      }
+      const itemsResult = await pool.query(`
+        SELECT oi.*,
+               COALESCE(p.name_zh_hk, p.name) AS product_name,
+               p.image_url, p.slug
+        FROM order_items oi
+        LEFT JOIN products p ON p.id = oi.product_id
+        WHERE oi.order_id = $1
+        ORDER BY oi.id
+      `, [id]);
+      res.render('order-confirm', {
+        title: '訂單確認 - OHYA2.0',
+        user: { id: sessUser, isAdmin: req.session.isAdmin },
+        order: orderResult.rows[0],
+        items: itemsResult.rows,
+        formatPrice,
+        paymentInfo: getPaymentInfo(),
+        error: null,
+      });
+    } catch (err) {
+      console.error('Order confirm page error:', err);
+      res.status(500).render('order-confirm', {
+        title: '訂單確認 - OHYA2.0', user: null, order: null, items: [],
+        formatPrice, paymentInfo: getPaymentInfo(), error: '服務器錯誤',
+      });
+    }
   });
 
 // Start server for local development
