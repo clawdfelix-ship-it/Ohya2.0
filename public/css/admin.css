@@ -1,111 +1,341 @@
+/* ============================================================
+   Ohya2.0 Admin Design System (2026-09-18 UI Designer pass)
+   Modern e-commerce back-office（Shopify/Shopline 風格基礎）
+   保留全部舊 class 名向後兼容；舊頁無需改即自動升級外觀。
+   ============================================================ */
+
+:root {
+  /* Brand */
+  --ad-primary: #b91c1c;        /* red-700，與前台一致 */
+  --ad-primary-600: #dc2626;
+  --ad-primary-soft: #fef2f2;
+  --ad-accent: #ea580c;         /* orange-600 */
+
+  /* Neutrals */
+  --ad-ink: #111827;
+  --ad-body: #4b5563;
+  --ad-muted: #6b7280;
+  --ad-line: #e5e7eb;
+  --ad-line-soft: #f1f5f9;
+  --ad-bg: #f6f7f9;
+  --ad-surface: #ffffff;
+  --ad-sidebar: #111827;
+  --ad-sidebar-ink: #c7cbd4;
+  --ad-sidebar-active: #ffffff;
+
+  /* Status */
+  --ad-success: #059669;
+  --ad-success-bg: #ecfdf5;
+  --ad-warning: #d97706;
+  --ad-warning-bg: #fffbeb;
+  --ad-danger: #dc2626;
+  --ad-danger-bg: #fef2f2;
+  --ad-info: #2563eb;
+  --ad-info-bg: #eff6ff;
+
+  /* Radius / shadow / spacing rhythm */
+  --ad-radius: 12px;
+  --ad-radius-sm: 8px;
+  --ad-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --ad-shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --ad-shadow-md: 0 6px 16px -6px rgba(16, 24, 40, 0.14);
+}
+
+/* ---------- Base ---------- */
+.mz-body { background: var(--ad-bg); }
+
+/* ---------- App shell ---------- */
+.admin-shell {
+  border: none !important;
+  background: transparent !important;
+}
+.admin-shell .mz-wrapper,
+.mz-wrapper { border: none; box-shadow: none; }
+
 .admin-grid {
   display: grid;
   grid-template-columns: 1fr;
+  gap: 0;
 }
-
 @media (min-width: 1024px) {
   .admin-grid {
-    grid-template-columns: 14rem minmax(0, 1fr);
+    grid-template-columns: 15.5rem minmax(0, 1fr);
+    align-items: start;
   }
 }
 
+/* ---------- Sidebar ---------- */
+.admin-nav {
+  border: none !important;
+  border-right: 1px solid var(--ad-line) !important;
+  background: var(--ad-sidebar);
+  padding: 1rem 0.75rem !important;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+@media (min-width: 1024px) {
+  .admin-nav {
+    position: sticky;
+    top: 0.75rem;
+    min-height: calc(100vh - 1.5rem);
+    border-radius: var(--ad-radius);
+  }
+}
+.admin-nav .admin-nav-group {
+  margin-top: 0.85rem;
+  padding: 0 0.75rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.admin-nav .admin-nav-group:first-child { margin-top: 0.25rem; }
+
 .admin-link {
-  display: block;
-  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
   border: 1px solid transparent;
-  color: #111827;
+  border-radius: var(--ad-radius-sm);
+  color: var(--ad-sidebar-ink);
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.admin-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: transparent;
+  color: #fff;
+}
+.admin-link.active {
+  background: var(--ad-sidebar-active);
+  border-color: var(--ad-sidebar-active);
+  color: var(--ad-ink);
+  box-shadow: var(--ad-shadow-sm);
+}
+
+/* ---------- Main column ---------- */
+.admin-main {
+  padding: 1.25rem !important;
+  min-width: 0;
+}
+.admin-page-title {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--ad-ink);
+  margin: 0 0 0.25rem;
+}
+.admin-page-sub {
+  font-size: 0.85rem;
+  color: var(--ad-muted);
+  margin: 0 0 1.1rem;
+}
+
+/* ---------- Top bar ---------- */
+.admin-top {
+  border: none !important;
+  background: var(--ad-surface) !important;
+  border-radius: var(--ad-radius);
+  box-shadow: var(--ad-shadow-sm);
+  padding: 0.7rem 1rem !important;
+  margin-bottom: 0.75rem;
+}
+.admin-top .admin-brand { font-weight: 900; color: var(--ad-primary); letter-spacing: -0.01em; }
+.admin-top .admin-brand small { color: var(--ad-muted); font-weight: 600; margin-left: 0.4rem; }
+
+/* ---------- Cards ---------- */
+.admin-card {
+  border: 1px solid var(--ad-line);
+  border-radius: var(--ad-radius);
+  padding: 1rem;
+  background: var(--ad-surface);
+  box-shadow: var(--ad-shadow-sm);
+}
+
+/* KPI cards（dashboard） */
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.9rem;
+}
+@media (min-width: 768px) { .admin-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1024px) { .admin-kpi-grid { grid-template-columns: repeat(5, 1fr); } }
+.admin-kpi {
+  background: var(--ad-surface);
+  border: 1px solid var(--ad-line);
+  border-radius: var(--ad-radius);
+  padding: 1rem 1.05rem;
+  box-shadow: var(--ad-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.admin-kpi .kpi-label {
+  font-size: 0.75rem;
   font-weight: 700;
+  color: var(--ad-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.admin-kpi .kpi-value {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: var(--ad-ink);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.admin-kpi .kpi-hint { font-size: 0.72rem; color: var(--ad-muted); }
+.admin-kpi.accent .kpi-value { color: var(--ad-primary); }
+
+/* ---------- Tables ---------- */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 0.875rem;
 }
+.admin-table thead th {
+  background: var(--ad-line-soft);
+  color: var(--ad-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.65rem 0.8rem;
+  border-bottom: 1px solid var(--ad-line);
+  white-space: nowrap;
+}
+.admin-table th,
+.admin-table td {
+  border-bottom: 1px solid var(--ad-line-soft);
+  padding: 0.7rem 0.8rem;
+  text-align: left;
+  vertical-align: middle;
+}
+.admin-table tbody tr { transition: background 0.12s ease; }
+.admin-table tbody tr:hover { background: #fafbfc; }
+.admin-table tbody tr.is-selected { background: var(--ad-primary-soft); }
 
-.admin-link:hover {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
+/* ---------- Badges / status pills ---------- */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.badge-pending   { background: var(--ad-warning-bg); color: #92400e; }
+.badge-paid      { background: var(--ad-info-bg); color: #1e40af; }
+.badge-shipping  { background: #f5f3ff; color: #6d28d9; }
+.badge-completed { background: var(--ad-success-bg); color: #065f46; }
+.badge-cancelled { background: #f3f4f6; color: #4b5563; }
+.badge-active    { background: var(--ad-success-bg); color: #065f46; }
+.badge-inactive  { background: #f3f4f6; color: #4b5563; }
+.badge-danger    { background: var(--ad-danger-bg); color: #991b1b; }
+
+/* ---------- Forms & buttons ---------- */
+.admin-input,
+.admin-table input.admin-input,
+input.admin-input,
+select.admin-input,
+textarea.admin-input {
+  border: 1px solid #d1d5db;
+  border-radius: var(--ad-radius-sm);
+  padding: 0.55rem 0.7rem;
+  background: #fff;
+  font-size: 0.875rem;
+  color: var(--ad-ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.admin-input:focus {
+  outline: none;
+  border-color: var(--ad-primary-600);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
 }
 
-.admin-link.active {
-  background: #111827;
-  border-color: #111827;
-  color: #ffffff;
+.admin-btn,
+.admin-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: var(--ad-radius-sm);
+  padding: 0.55rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.1;
+  min-height: 40px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
 }
+.admin-btn {
+  border: 1px solid var(--ad-primary);
+  background: var(--ad-primary);
+  color: #fff;
+}
+.admin-btn:hover { background: #991b1b; border-color: #991b1b; box-shadow: var(--ad-shadow-sm); }
+.admin-btn:active { transform: translateY(1px); }
+.admin-btn-secondary {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: var(--ad-ink);
+}
+.admin-btn-secondary:hover { border-color: #9ca3af; background: #f9fafb; }
+.admin-btn:disabled,
+.admin-btn-secondary:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 
+.admin-link-btn {
+  color: var(--ad-primary);
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+.admin-link-btn:hover { text-decoration: underline; }
+
+/* ---------- Misc ---------- */
 .admin-pre {
   background: #0b1020;
   color: #e5e7eb;
-  padding: 0.75rem;
-  border-radius: 0.25rem;
+  padding: 0.9rem;
+  border-radius: var(--ad-radius-sm);
   overflow: auto;
   font-size: 12px;
   line-height: 1.5;
 }
-
-.admin-input {
-  border: 1px solid #d1d5db;
-  padding: 6px 8px;
-  background: #fff;
-}
-
-.admin-btn {
-  border: 1px solid #111827;
-  background: #111827;
-  color: #fff;
-  padding: 6px 10px;
-}
-
-.admin-btn:disabled {
-  opacity: 0.6;
-}
-
-.admin-btn-secondary {
-  border: 1px solid #6b7280;
-  background: #fff;
-  color: #111827;
-  padding: 6px 10px;
-}
-
-.admin-card {
-  border: 1px solid #e5e7eb;
-  padding: 10px;
-  background: #fff;
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.admin-table th,
-.admin-table td {
-  border-bottom: 1px solid #e5e7eb;
-  padding: 8px;
-  text-align: left;
-  vertical-align: top;
-}
-
 .admin-error {
-  border: 1px solid #ef4444;
-  background: #fef2f2;
+  border: 1px solid #fecaca;
+  background: var(--ad-danger-bg);
   color: #991b1b;
-  padding: 8px;
+  border-radius: var(--ad-radius-sm);
+  padding: 0.7rem 0.85rem;
+  font-size: 0.85rem;
 }
-
-.admin-error.hidden {
-  display: none;
-}
-
-.admin-link-btn {
-  text-decoration: underline;
-  font-size: 12px;
-}
+.admin-error.hidden { display: none; }
 
 .admin-grid-2 {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 1rem;
+}
+@media (min-width: 1024px) {
+  .admin-grid-2 { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
 }
 
-@media (min-width: 1024px) {
-  .admin-grid-2 {
-    grid-template-columns: 1fr 1fr;
+/* Mobile: 側邊欄變橫向滑動 nav，避免擠壓 */
+@media (max-width: 1023px) {
+  .admin-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    border-radius: var(--ad-radius);
+    margin-bottom: 0.75rem;
+    -webkit-overflow-scrolling: touch;
   }
+  .admin-nav .admin-nav-group { display: none; }
+  .admin-link { white-space: nowrap; }
 }

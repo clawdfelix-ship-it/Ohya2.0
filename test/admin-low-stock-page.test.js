@@ -13,7 +13,7 @@ test('admin low-stock page exists and loads low-stock.js', () => {
 
 test('admin layout contains low-stock nav link', () => {
   const s = fs.readFileSync(path.join(__dirname, '..', 'views', 'admin', 'layout.ejs'), 'utf8');
-  assert.match(s, /href="\/admin\/low-stock"/);
+  assert.match(s, /\/admin\/low-stock/);
 });
 
 test('low-stock.js wires endpoints and avoids prompt', () => {

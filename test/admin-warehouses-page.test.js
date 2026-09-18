@@ -13,7 +13,7 @@ test('admin warehouses page exists and loads warehouses.js', () => {
 
 test('admin layout contains warehouses nav link', () => {
   const s = fs.readFileSync(path.join(__dirname, '..', 'views', 'admin', 'layout.ejs'), 'utf8');
-  assert.match(s, /href="\/admin\/warehouses"/);
+  assert.match(s, /\/admin\/warehouses/);
 });
 
 test('warehouses.js avoids prompt and wires endpoints', () => {

@@ -11,7 +11,7 @@ test('admin inventory page exists and loads inventory.js', () => {
 
 test('admin layout contains inventory nav link', () => {
   const s = fs.readFileSync(path.join(__dirname, '..', 'views', 'admin', 'layout.ejs'), 'utf8');
-  assert.match(s, /href="\/admin\/inventory"/);
+  assert.match(s, /\/admin\/inventory/);
 });
 
 test('inventory.js wires transactions + sku search + adjust endpoints', () => {

@@ -1,7 +1,73 @@
-<div id="admin-dashboard" class="space-y-3">
-  <div class="text-sm text-gray-600">登入成功後，呢度會顯示後台數據。</div>
-  <pre id="admin-data" class="admin-pre">載入中…</pre>
+<div id="admin-dashboard" class="space-y-5">
+  <p class="admin-page-sub">商台營運一覽 — 數據每 5 分鐘自動更新。</p>
+
+  <div id="dashboard-error" class="admin-error hidden"></div>
+
+  <!-- KPI -->
+  <div class="admin-kpi-grid" id="kpi-grid" aria-live="polite">
+    <div class="admin-kpi accent">
+      <span class="kpi-label">💰 今日營業額</span>
+      <span class="kpi-value" id="kpi-today-revenue">—</span>
+      <span class="kpi-hint" id="kpi-today-orders">今日 0 單</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="kpi-label">📈 近 7 日營業額</span>
+      <span class="kpi-value" id="kpi-week-revenue">—</span>
+      <span class="kpi-hint" id="kpi-week-orders">7 日 0 單</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="kpi-label">🧾 待處理訂單</span>
+      <span class="kpi-value" id="kpi-actionable">—</span>
+      <span class="kpi-hint">待付款 / 待發貨</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="kpi-label">📦 在售商品</span>
+      <span class="kpi-value" id="kpi-products">—</span>
+      <span class="kpi-hint" id="kpi-lowstock">低庫存 0 款</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="kpi-label">👥 會員</span>
+      <span class="kpi-value" id="kpi-users">—</span>
+      <span class="kpi-hint" id="kpi-categories">分類 0 個</span>
+    </div>
+  </div>
+
+  <!-- 快捷操作 -->
+  <div class="admin-card">
+    <div class="mb-3 text-sm font-bold text-gray-800">快捷操作</div>
+    <div class="flex flex-wrap gap-2">
+      <a href="/admin/orders" class="admin-btn">處理訂單</a>
+      <a href="/admin/products" class="admin-btn-secondary">商品管理</a>
+      <a href="/admin/low-stock" class="admin-btn-secondary" id="qa-lowstock">低庫存預警</a>
+      <a href="/admin/reports" class="admin-btn-secondary">營運報表</a>
+      <a href="/" target="_blank" rel="noopener" class="admin-btn-secondary">查看前台 ↗</a>
+    </div>
+  </div>
+
+  <!-- 最近訂單 -->
+  <div class="admin-card !p-0">
+    <div class="flex items-center justify-between px-4 pt-4">
+      <div class="text-sm font-bold text-gray-800">最近訂單</div>
+      <a href="/admin/orders" class="admin-link-btn">查看全部 →</a>
+    </div>
+    <div class="overflow-x-auto p-2">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>訂單號</th>
+            <th>客戶</th>
+            <th>金額</th>
+            <th>狀態</th>
+            <th>下單時間</th>
+          </tr>
+        </thead>
+        <tbody id="recent-orders-tbody">
+          <tr><td colspan="5" class="py-8 text-center text-sm text-gray-400">載入中…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <script src="/js/admin/common.js"></script>
   <script src="/js/admin/dashboard.js"></script>
 </div>
-

@@ -13,7 +13,7 @@ test('admin bulk-skus page exists and loads bulk-skus.js', () => {
 
 test('admin layout contains bulk-skus nav link', () => {
   const s = fs.readFileSync(path.join(__dirname, '..', 'views', 'admin', 'layout.ejs'), 'utf8');
-  assert.match(s, /href="\/admin\/bulk-skus"/);
+  assert.match(s, /\/admin\/bulk-skus/);
 });
 
 test('bulk-skus.js avoids prompt and wires endpoints', () => {

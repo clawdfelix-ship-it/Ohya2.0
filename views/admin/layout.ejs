@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
+  <title><%= title %> · OHYA2.0 後台</title>
   <meta name="csrf-token" content="<%= csrfToken || '' %>">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link rel="stylesheet" href="/css/admin.css">
 </head>
-<body class="mz-body text-black min-h-screen">
+<body class="mz-body min-h-screen text-gray-900">
   <%
     const perms = (session && session.adminPermissions) ? session.adminPermissions : [];
     const isSuperAdmin = !!(session && session.isAdmin);
@@ -28,62 +28,71 @@
         return false;
       });
     }
+    const adminName = (session && (session.adminName || session.username)) || '管理員';
+    const groups = [
+      { label: '概覽', items: [
+        { key: 'dashboard', href: '/admin', label: '總覽', icon: '📊' },
+      ]},
+      { label: '銷售', perm: 'orders:read', items: [
+        { key: 'orders', href: '/admin/orders', label: '訂單', icon: '🧾', perm: 'orders:read' },
+        { key: 'returns', href: '/admin/returns', label: '售後', icon: '↩️', perm: 'returns:read' },
+        { key: 'refunds', href: '/admin/refunds', label: '退款', icon: '💸', perm: 'refunds:read' },
+      ]},
+      { label: '商品', perm: 'catalog:read', items: [
+        { key: 'products', href: '/admin/products', label: '商品', icon: '📦', perm: 'catalog:read' },
+        { key: 'categories', href: '/admin/categories', label: '分類', icon: '🗂️', perm: 'catalog:write' },
+      ]},
+      { label: '庫存與採購', perm: 'inventory:read', items: [
+        { key: 'inventory', href: '/admin/inventory', label: '庫存', icon: '🏬', perm: 'inventory:read' },
+        { key: 'low-stock', href: '/admin/low-stock', label: '低庫存', icon: '⚠️', perm: 'inventory:read' },
+        { key: 'warehouses', href: '/admin/warehouses', label: '倉庫', icon: '🏭', perm: 'inventory:write' },
+        { key: 'suppliers', href: '/admin/suppliers', label: '供應商', icon: '🚚', perm: 'inventory:write' },
+        { key: 'purchase-orders', href: '/admin/purchase-orders', label: '採購單', icon: '📋', perm: 'inventory:write' },
+        { key: 'bulk-skus', href: '/admin/bulk-skus', label: '批量更新', icon: '⚡', perm: 'inventory:bulk' },
+      ]},
+      { label: '客戶與財務', items: [
+        { key: 'users', href: '/admin/users', label: '用戶', icon: '👥', perm: 'users:manage' },
+        { key: 'reconciliation', href: '/admin/reconciliation', label: '對賬', icon: '🧮', perm: 'reconciliation:read' },
+        { key: 'reports', href: '/admin/reports', label: '報表', icon: '📈', perm: 'reports:read' },
+      ]},
+      { label: '系統', adminOnly: true, items: [
+        { key: 'settings', href: '/admin/settings', label: '系統設定', icon: '⚙️' },
+      ]},
+    ];
   %>
-  <div class="mz-wrapper max-w-7xl mx-auto px-2 mt-3 mb-5">
-    <div class="admin-top flex items-center justify-between border border-gray-300 bg-white px-3 py-2">
-      <div class="font-black">後台管理</div>
-      <form method="POST" action="/admin/logout">
-        <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
-        <button class="text-sm underline">登出</button>
-      </form>
+  <div class="mx-auto max-w-[1400px] px-2 pb-6 pt-3 sm:px-4">
+    <div class="admin-top flex items-center justify-between">
+      <div class="admin-brand">OHYA2.0 <small>商家管理後台</small></div>
+      <div class="flex items-center gap-3">
+        <a href="/" target="_blank" rel="noopener" class="hidden text-sm font-semibold text-gray-500 hover:text-red-700 sm:inline">查看前台 ↗</a>
+        <span class="hidden text-sm text-gray-500 md:inline">👤 <%= adminName %></span>
+        <form method="POST" action="/admin/logout" class="m-0">
+          <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
+          <button class="admin-btn-secondary !min-h-0 !py-1.5 text-xs">登出</button>
+        </form>
+      </div>
     </div>
 
-    <div class="admin-shell border border-gray-300 bg-white mt-2">
+    <div class="admin-shell">
       <div class="admin-grid">
-        <aside class="admin-nav border-r border-gray-200 p-3">
-          <a class="admin-link <%= active==='dashboard' ? 'active' : '' %>" href="/admin">總覽</a>
-          <% if (hasPerm('orders:read')) { %>
-            <a class="admin-link <%= active==='orders' ? 'active' : '' %>" href="/admin/orders">訂單</a>
-          <% } %>
-          <% if (hasPerm('catalog:read')) { %>
-            <a class="admin-link <%= active==='products' ? 'active' : '' %>" href="/admin/products">商品</a>
-          <% } %>
-          <% if (hasPerm('inventory:read')) { %>
-            <a class="admin-link <%= active==='inventory' ? 'active' : '' %>" href="/admin/inventory">庫存</a>
-            <a class="admin-link <%= active==='low-stock' ? 'active' : '' %>" href="/admin/low-stock">低庫存</a>
-          <% } %>
-          <% if (hasPerm('inventory:write')) { %>
-            <a class="admin-link <%= active==='warehouses' ? 'active' : '' %>" href="/admin/warehouses">倉庫</a>
-            <a class="admin-link <%= active==='suppliers' ? 'active' : '' %>" href="/admin/suppliers">供應商</a>
-            <a class="admin-link <%= active==='purchase-orders' ? 'active' : '' %>" href="/admin/purchase-orders">採購單</a>
-          <% } %>
-          <% if (hasPerm('inventory:bulk')) { %>
-            <a class="admin-link <%= active==='bulk-skus' ? 'active' : '' %>" href="/admin/bulk-skus">批量更新</a>
-          <% } %>
-          <% if (hasPerm('catalog:write')) { %>
-            <a class="admin-link <%= active==='categories' ? 'active' : '' %>" href="/admin/categories">分類</a>
-          <% } %>
-          <% if (hasPerm('users:manage')) { %>
-            <a class="admin-link <%= active==='users' ? 'active' : '' %>" href="/admin/users">用戶</a>
-          <% } %>
-          <% if (hasPerm('returns:read')) { %>
-            <a class="admin-link <%= active==='returns' ? 'active' : '' %>" href="/admin/returns">售後</a>
-          <% } %>
-          <% if (hasPerm('refunds:read')) { %>
-            <a class="admin-link <%= active==='refunds' ? 'active' : '' %>" href="/admin/refunds">退款</a>
-          <% } %>
-          <% if (hasPerm('reconciliation:read')) { %>
-            <a class="admin-link <%= active==='reconciliation' ? 'active' : '' %>" href="/admin/reconciliation">對賬</a>
-          <% } %>
-          <% if (hasPerm('reports:read')) { %>
-            <a class="admin-link <%= active==='reports' ? 'active' : '' %>" href="/admin/reports">報表</a>
-          <% } %>
-          <% if (isSuperAdmin) { %>
-            <a class="admin-link <%= active==='settings' ? 'active' : '' %>" href="/admin/settings">系統設定</a>
-          <% } %>
+        <aside class="admin-nav" aria-label="後台導航">
+          <% groups.forEach(group => {
+            const visible = group.items.filter(it => {
+              if (it.adminOnly || group.adminOnly) return isSuperAdmin;
+              return hasPerm(it.perm || group.perm);
+            });
+            if (!visible.length) return;
+          %>
+            <div class="admin-nav-group"><%= group.label %></div>
+            <% visible.forEach(it => { %>
+              <a class="admin-link <%= active === it.key ? 'active' : '' %>" href="<%= it.href %>">
+                <span aria-hidden="true"><%= it.icon %></span><span><%= it.label %></span>
+              </a>
+            <% }); %>
+          <% }); %>
         </aside>
-        <main class="admin-main p-3">
-          <div class="text-lg font-black mb-3"><%= title %></div>
+        <main class="admin-main">
+          <h1 class="admin-page-title"><%= title %></h1>
           <%- include(content) %>
         </main>
       </div>

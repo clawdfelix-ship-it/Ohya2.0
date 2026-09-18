@@ -4,12 +4,24 @@ module.exports = function(app, pool, requireAdmin, upload) {
   // Dashboard statistics
   app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
     try {
-      const [usersResult, productsResult, categoriesResult, ordersResult, pendingOrdersResult] = await Promise.all([
+      const [usersResult, productsResult, categoriesResult, ordersResult, pendingOrdersResult,
+             todayResult, weekResult, lowStockResult, paidPendingResult] = await Promise.all([
         pool.query('SELECT COUNT(*) as count FROM users'),
         pool.query('SELECT COUNT(*) as count FROM products WHERE status = \'active\''),
         pool.query('SELECT COUNT(*) as count FROM categories WHERE status = \'active\''),
         pool.query('SELECT COUNT(*) as count FROM orders'),
-        pool.query('SELECT COUNT(*) as count FROM orders WHERE status = \'pending\'')
+        pool.query('SELECT COUNT(*) as count FROM orders WHERE status = \'pending\''),
+        pool.query(`SELECT COUNT(*)::int AS orders, COALESCE(SUM(total_amount),0) AS revenue
+                    FROM orders WHERE status <> 'cancelled' AND created_at >= NOW() - INTERVAL '24 hours'`),
+        pool.query(`SELECT COUNT(*)::int AS orders, COALESCE(SUM(total_amount),0) AS revenue
+                    FROM orders WHERE status <> 'cancelled' AND created_at >= NOW() - INTERVAL '7 days'`),
+        pool.query(`SELECT COUNT(*)::int AS count FROM (
+                      SELECT p.id FROM products p
+                      JOIN product_skus ps ON ps.product_id = p.id AND ps.is_active = true
+                      WHERE p.status = 'active'
+                      GROUP BY p.id HAVING COALESCE(SUM(ps.stock),0) <= 5
+                    ) low`),
+        pool.query(`SELECT COUNT(*) as count FROM orders WHERE status IN ('pending','paid')`),
       ]);
 
       // Get recent orders
@@ -18,7 +30,7 @@ module.exports = function(app, pool, requireAdmin, upload) {
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         ORDER BY o.created_at DESC
-        LIMIT 5
+        LIMIT 8
       `);
 
       res.json({
@@ -27,7 +39,13 @@ module.exports = function(app, pool, requireAdmin, upload) {
           products: parseInt(productsResult.rows[0].count),
           categories: parseInt(categoriesResult.rows[0].count),
           orders: parseInt(ordersResult.rows[0].count),
-          pending_orders: parseInt(pendingOrdersResult.rows[0].count)
+          pending_orders: parseInt(pendingOrdersResult.rows[0].count),
+          today_orders: todayResult.rows[0].orders,
+          today_revenue: Number(todayResult.rows[0].revenue) || 0,
+          week_orders: weekResult.rows[0].orders,
+          week_revenue: Number(weekResult.rows[0].revenue) || 0,
+          actionable_orders: parseInt(paidPendingResult.rows[0].count),
+          low_stock: lowStockResult.rows[0].count
         },
         recent_orders: recentOrders.rows
       });
