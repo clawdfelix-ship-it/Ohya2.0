@@ -179,6 +179,12 @@ function register(app, pool) {
   app.get('/admin/reports', requireAdminPage('reports:read'), (req, res) => {
     res.render('admin/layout', { title: '報表', active: 'reports', content: 'reports' });
   });
+
+  // 系統設定（匯率一鍵更新）— 超管先見到入口
+  app.get('/admin/settings', requireAdminPage(), (req, res) => {
+    if (!req.session.isAdmin) return res.status(403).send('沒有權限');
+    res.render('admin/layout', { title: '系統設定', active: 'settings', content: 'settings' });
+  });
 }
 
 register.isAdminSession = isAdminSession;

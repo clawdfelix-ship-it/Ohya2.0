@@ -143,6 +143,24 @@ if (!connectionString) {
 
 const pool = getPool();
 
+// 開機時由 app_settings 載入已存 JPY→HKD 匯率（失敗退回 env/預設，唔阻啟動）
+if (connectionString) {
+  (async () => {
+    try {
+      const { getSetting } = require('./utils/settings');
+      const { setRuntimeRate } = require('./utils/currency');
+      const row = await getSetting(pool, 'jpy_hkd_rate');
+      const v = row && row.value !== null ? Number(row.value) : NaN;
+      if (Number.isFinite(v) && v > 0) {
+        setRuntimeRate(v);
+        console.log(`💱 JPY→HKD 匯率已由資料庫載入：${v}`);
+      }
+    } catch (err) {
+      console.warn('載入匯率設定失敗（沿用 env/預設）：', err.message);
+    }
+  })();
+}
+
 // EJS 模板引擎配置
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -389,6 +407,7 @@ try {
   require('./routes/reconciliation')(app, pool);
   require('./routes/reports')(app, pool);
   require('./routes/mzakka-sync')(app, pool);
+  require('./routes/admin-settings')(app, pool, requireAdmin);
 
   app.post(cspReportPath, (req, res) => {
     const items = normalizeCspReports(req.body);
