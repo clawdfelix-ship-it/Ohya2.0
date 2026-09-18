@@ -57,6 +57,13 @@ test('wholesale page says wholesale is the main business and requires BR', () =>
   assert.match(html, /BR|商業登記/, 'business registration requirement');
 });
 
+test('wholesale page states first-deal 50% deposit, balance on arrival in HK, then ship', () => {
+  const html = read('views/info/wholesale.ejs');
+  assert.match(html, /50% 訂金/, '50% deposit at order');
+  assert.match(html, /收取其餘 50% 餘額/, 'balance collected when goods arrive HK warehouse');
+  assert.match(html, /再由香港以順豐寄出|再由香港/, 'shipped from HK only after balance paid');
+});
+
 test('app.js registers a route for every info page', () => {
   const app = read('app.js');
   ['/help', '/shipping', '/payment', '/returns', '/faq', '/wholesale', '/contact', '/terms', '/privacy'].forEach((r) => {
