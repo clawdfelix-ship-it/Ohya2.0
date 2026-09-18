@@ -44,7 +44,7 @@
             <div>
               <p class="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">OHYA2.0 Store</p>
               <h1 class="mt-2 text-3xl font-black text-gray-900">簡潔啲搵到想買嘅商品</h1>
-              <p class="mt-3 max-w-2xl text-sm leading-6 text-gray-500">首頁而家只保留活動、熱門商品同精選分類，分類瀏覽集中返去列表頁，唔再周圍都塞滿分類。</p>
+              <p class="mt-3 max-w-2xl text-sm leading-6 text-gray-500">日本直送人氣男士護理及生活雜貨，新品定期到港，滿額即享免運優惠。</p>
             </div>
             <div class="flex flex-wrap gap-3">
               <a href="/products?page=1" class="rounded-full bg-red-700 px-5 py-3 text-sm font-bold text-white hover:bg-red-800">立即選購</a>
@@ -72,7 +72,7 @@
           <div class="mb-4 flex items-center justify-between">
             <div>
               <h2 class="text-xl font-black text-gray-900">熱門分類</h2>
-              <p class="mt-1 text-sm text-gray-500">由首頁直達最常睇嘅類別，唔使先捲一大串分類樹。</p>
+              <p class="mt-1 text-sm text-gray-500">由首頁直達最常睇嘅類別，快速搵到心水貨品</p>
             </div>
             <a href="/products?page=1" class="text-sm font-semibold text-red-700 hover:underline">瀏覽全部商品</a>
           </div>
@@ -86,11 +86,12 @@
           </div>
         </section>
 
-        <section class="mb-6 grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)]">
+        <section class="mb-6 grid gap-6 <%= hasSales ? 'xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)]' : '' %>">
+          <% if (hasSales) { %>
           <section id="mzakka-ranking" class="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
             <div class="border-b border-gray-200 px-5 py-4">
               <h2 class="text-xl font-black text-gray-900">人氣排行</h2>
-              <p class="mt-1 text-sm text-gray-500">用最新上架同熱門視覺做前台導購，唔再用密集表格式排列。</p>
+              <p class="mt-1 text-sm text-gray-500">根據真實銷量排名，近期最受歡迎嘅商品</p>
             </div>
             <div class="divide-y divide-gray-100">
               <% (rankingProducts || []).slice(0, 6).forEach((p, idx) => { %>
@@ -112,18 +113,19 @@
               <% } %>
             </div>
           </section>
+          <% } %>
 
           <section class="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
             <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
               <div>
                 <h2 class="text-xl font-black text-gray-900">最新上架</h2>
-                <p class="mt-1 text-sm text-gray-500">保留商品主內容，其他推薦模組唔再搶視線。</p>
+                <p class="mt-1 text-sm text-gray-500">新到港嘅人氣新品，緊貼日本最新貨況</p>
               </div>
               <a href="/products?page=1" class="text-sm font-semibold text-red-700 hover:underline">查看全部</a>
             </div>
             <div class="p-5">
               <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-                <% (rankingProducts || []).slice(0, 12).forEach(product => { %>
+                <% (newProducts || []).slice(0, 12).forEach(product => { %>
                   <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white transition hover:-translate-y-0.5 hover:shadow-md">
                     <a href="/product/<%= product.id %>" class="block">
                       <div class="aspect-square bg-gray-100">
