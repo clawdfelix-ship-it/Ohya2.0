@@ -174,46 +174,40 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
 
   // Cancel order (user)
   app.post('/api/orders/:id/cancel', requireAuth, async (req, res) => {
+    const client = await pool.connect();
     try {
       const userId = req.session.userId;
       const { id } = req.params;
+      await client.query('BEGIN');
 
-      // Check order exists and belongs to user
-      const orderCheck = await pool.query('SELECT * FROM orders WHERE id = $1 AND user_id = $2', [id, userId]);
+      const orderCheck = await client.query(
+        'SELECT id, status FROM orders WHERE id = $1 AND user_id = $2 FOR UPDATE',
+        [id, userId]
+      );
       if (orderCheck.rows.length === 0) {
+        await client.query('ROLLBACK');
         return res.status(404).json({ error: '訂單不存在' });
       }
-
       const order = orderCheck.rows[0];
       if (!['pending', 'paid'].includes(order.status)) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: '此訂單無法取消' });
       }
 
-      // Start transaction to restore stock
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-
-        // Get order items to restore stock
-        const items = await client.query('SELECT * FROM order_items WHERE order_id = $1', [id]);
-        for (const item of items.rows) {
-          await client.query('UPDATE products SET stock = stock + $1 WHERE id = $2', [item.quantity, item.product_id]);
-        }
-
-        // Update order status
-        await client.query('UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2', ['cancelled', id]);
-
-        await client.query('COMMIT');
-        res.json({ success: true });
-      } catch (txErr) {
-        await client.query('ROLLBACK');
-        throw txErr;
-      } finally {
-        client.release();
+      const items = await client.query('SELECT * FROM order_items WHERE order_id = $1', [id]);
+      for (const item of items.rows) {
+        await client.query('UPDATE products SET stock = stock + $1 WHERE id = $2', [item.quantity, item.product_id]);
       }
+
+      await client.query('UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2', ['cancelled', id]);
+      await client.query('COMMIT');
+      res.json({ success: true });
     } catch (err) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
       console.error(err);
       res.status(500).json({ error: '服務器錯誤' });
+    } finally {
+      client.release();
     }
   });
 

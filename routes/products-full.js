@@ -8,6 +8,13 @@ module.exports = function(app, pool) {
   const { requireAdmin, requirePermission } = require('./middleware/auth');
   const { computeNewStock } = require('../lib/inventory');
 
+  async function rollbackJson(client, res, status, payload) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {}
+    return res.status(status).json(payload);
+  }
+
   async function assertLeafSubcategory(db, categoryId) {
     const categoryIdNum = Number(categoryId);
     if (!Number.isInteger(categoryIdNum) || categoryIdNum <= 0) return false;
@@ -1077,14 +1084,14 @@ module.exports = function(app, pool) {
             'SELECT id FROM inventory_warehouses WHERE id = $1 AND is_active = true LIMIT 1',
             [warehouseId]
           );
-          if (w.rows.length === 0) return res.status(400).json({ error: '倉庫不存在或已停用' });
+          if (w.rows.length === 0) return rollbackJson(client, res, 400, { error: '倉庫不存在或已停用' });
         }
 
         if (!warehouseId) {
           const w = await client.query(
             'SELECT id FROM inventory_warehouses WHERE is_active = true ORDER BY is_default DESC, id ASC LIMIT 1'
           );
-          if (w.rows.length === 0) return res.status(500).json({ error: '未設定倉庫' });
+          if (w.rows.length === 0) return rollbackJson(client, res, 500, { error: '未設定倉庫' });
           warehouseId = w.rows[0].id;
         }
 
@@ -1104,7 +1111,7 @@ module.exports = function(app, pool) {
            FOR UPDATE OF ps, il`,
           [skuId, warehouseId]
         );
-        if (skuRow.rows.length === 0) return res.status(404).json({ error: 'SKU 不存在' });
+        if (skuRow.rows.length === 0) return rollbackJson(client, res, 404, { error: 'SKU 不存在' });
 
         const { previousStock: warehousePreviousStock, newStock: warehouseNewStock } = computeNewStock({
           previousStock: skuRow.rows[0].warehouse_stock,

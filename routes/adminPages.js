@@ -2,7 +2,13 @@ const bcrypt = require('bcryptjs');
 const { hasAdmin, createFirstAdmin } = require('../utils/adminBootstrap');
 
 function isAdminSession(session) {
-  return Boolean(session && session.userId && (session.isAdmin || session.isBackoffice));
+  const hasBackofficePermissions = Boolean(
+    session &&
+    session.isBackoffice &&
+    Array.isArray(session.adminPermissions) &&
+    session.adminPermissions.length > 0
+  );
+  return Boolean(session && session.userId && (session.isAdmin || hasBackofficePermissions));
 }
 
 function hasPermissionList(permissions, required) {
@@ -96,20 +102,22 @@ function register(app, pool) {
     if (!ok) {
       return res.status(400).render('admin/login', { title: '後台登入', error: '用戶名或密碼錯誤' });
     }
-    req.session.userId = user.id;
-    req.session.username = user.username;
-    req.session.isAdmin = !!user.is_admin;
-    req.session.isBackoffice = true;
-    req.session.contact = user.contact;
+    let adminPermissions = ['*'];
     if (user.is_admin) {
-      req.session.adminPermissions = ['*'];
+      adminPermissions = ['*'];
     } else {
       const perms = await loadUserPermissions(pool, user.id);
       if (!perms || perms.length === 0) {
         return res.status(403).render('admin/login', { title: '後台登入', error: '需要管理員權限' });
       }
-      req.session.adminPermissions = perms;
+      adminPermissions = perms;
     }
+    req.session.userId = user.id;
+    req.session.username = user.username;
+    req.session.isAdmin = !!user.is_admin;
+    req.session.isBackoffice = true;
+    req.session.contact = user.contact;
+    req.session.adminPermissions = adminPermissions;
     res.redirect('/admin');
   });
 

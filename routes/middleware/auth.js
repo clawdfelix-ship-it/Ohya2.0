@@ -35,7 +35,13 @@ module.exports = {
   },
 
   requireAdmin: (req, res, next) => {
-    if (req.session && req.session.userId && (req.session.isAdmin || req.session.isBackoffice)) {
+    const hasBackofficePermissions = Boolean(
+      req.session &&
+      req.session.isBackoffice &&
+      Array.isArray(req.session.adminPermissions) &&
+      req.session.adminPermissions.length > 0
+    );
+    if (req.session && req.session.userId && (req.session.isAdmin || hasBackofficePermissions)) {
       req.user = {
         id: req.session.userId,
         isAdmin: !!req.session.isAdmin,
