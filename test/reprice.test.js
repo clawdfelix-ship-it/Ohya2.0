@@ -1,7 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { recomputePrices } = require('../utils/reprice');
+const { recomputePrices, higherRate } = require('../utils/reprice');
+
+test('higherRate keeps the higher of fetched vs current', () => {
+  assert.equal(higherRate(0.05039, 0.052), 0.052);  // live lower → keep existing
+  assert.equal(higherRate(0.055, 0.052), 0.055);    // live higher → take live
+  assert.equal(higherRate(0.052, 0.052), 0.052);    // equal
+  assert.equal(higherRate(0.05, NaN), 0.05);        // no current → fetched
+  assert.equal(higherRate(NaN, 0.052), 0.052);      // bad fetched → keep
+  assert.equal(higherRate(0, 0.052), 0.052);
+});
 
 // 用 mock pool 驗證重算邏輯，唔依賴真資料庫
 function mockPool(products, updates) {

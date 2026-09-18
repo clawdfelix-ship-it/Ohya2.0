@@ -14,8 +14,8 @@
  *   AUTO_RATE_DAY_HOUR  每月 1 號幾點跑（HKT，預設 9）
  */
 const { getSetting, setSetting } = require('./settings');
-const { fetchLiveJpyHkdRate, recomputePrices } = require('./reprice');
-const { setRuntimeRate } = require('./currency');
+const { fetchLiveJpyHkdRate, recomputePrices, higherRate } = require('./reprice');
+const { setRuntimeRate, jpyToHkdRate } = require('./currency');
 
 const LAST_RUN_KEY = '***';
 let timer = null;
@@ -61,16 +61,21 @@ async function alreadyRanThisMonth(pool) {
 
 async function runMonthlyUpdate(pool, { reason } = {}) {
   const live = await fetchLiveJpyHkdRate();
-  const rate = Number(live.rate);
+  const fetched = Number(live.rate);
+  // 規則：匯率以較高者為準——新拉到嘅匯率唔可以低過現行生效值（避免自動減價）
+  const current = jpyToHkdRate();
+  const rate = higherRate(fetched, current);
+  const appliedSource = fetched >= current ? 'live' : 'existing-kept';
   setRuntimeRate(rate);
   const result = await recomputePrices(pool, rate, { apply: true });
   await setSetting(pool, 'jpy_hkd_rate', rate, null);
   await setSetting(pool, LAST_RUN_KEY, new Date().toISOString(), null);
   console.log(
     `💱 每月匯率自動更新（${reason || 'scheduled'}，${live.date || '?'}）：` +
-    `1 JPY = ${rate} HKD，重算 ${result.changed}/${result.scanned} 件商品`
+    `線上 ${fetched}，現行 ${current}，採用較高者 ${rate}（${appliedSource}），` +
+    `重算 ${result.changed}/${result.scanned} 件商品`
   );
-  return { rate, date: live.date, ...result };
+  return { rate, fetched, current, appliedSource, date: live.date, ...result };
 }
 
 /** 啟動排程；回傳控制代碼（主要畀測試/graceful shutdown） */

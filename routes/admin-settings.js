@@ -13,7 +13,7 @@ const {
   jpyToHkdRateSource,
   setRuntimeRate,
 } = require('../utils/currency');
-const { recomputePrices, fetchLiveJpyHkdRate } = require('../utils/reprice');
+const { recomputePrices, fetchLiveJpyHkdRate, higherRate } = require('../utils/reprice');
 
 const RATE_KEY = 'jpy_hkd_rate';
 
@@ -43,11 +43,8 @@ module.exports = function (app, pool, requireAdmin) {
     }
   });
 
-  // 共用：保存匯率 + 選擇性重算
-  async function saveRate(req, res, rate) {
-    if (!rateIsValid(rate)) {
-      return res.status(400).json({ error: '匯率無效，請輸入 0 至 1 之間嘅數字（例如 0.052）' });
-    }
+  // 共用：實際保存匯率 + 選擇性重算（回傳資料，唔直接回應）
+  async function persistRate(req, rate) {
     const recompute = req.body && req.body.recompute !== false;
     let repriceResult = null;
 
@@ -55,7 +52,7 @@ module.exports = function (app, pool, requireAdmin) {
     const saved = await setSetting(pool, RATE_KEY, Number(rate), req.session.userId);
     setRuntimeRate(Number(rate));
 
-    // 2) 可選：同一 transaction 重算全店價格（失敗 rollback，但新匯率仍保留）
+    // 2) 可選：transaction 重算全店價格（失敗 rollback，但新匯率仍保留）
     if (recompute) {
       const client = await pool.connect();
       try {
@@ -70,28 +67,56 @@ module.exports = function (app, pool, requireAdmin) {
       }
     }
 
-    res.json({
+    return {
       success: true,
       rate: Number(rate),
       source: 'db',
       updatedAt: saved.updated_at,
       recomputed: recompute,
       reprice: repriceResult,
-    });
+    };
   }
 
-  // 一鍵：拉線上最新匯率
+  // 手動儲存入口：先驗證，再保存並回應
+  async function saveRate(req, res, rate) {
+    if (!rateIsValid(rate)) {
+      return res.status(400).json({ error: '匯率無效，請輸入 0 至 1 之間嘅數字（例如 0.052）' });
+    }
+    try {
+      const payload = await persistRate(req, rate);
+      return res.json(payload);
+    } catch (err) {
+      console.error('SAVE exchange-rate failed:', err);
+      return res.status(500).json({ error: '服務器錯誤' });
+    }
+  }
+
+  // 一鍵：拉線上最新匯率（規則：同現行生效值比，取較高者，唔會自動減價）
   app.post('/api/admin/settings/exchange-rate/fetch', requireAdmin, async (req, res) => {
     try {
       const live = await fetchLiveJpyHkdRate();
-      return saveRate(req, res, live.rate, live);
+      const fetched = Number(live.rate);
+      const current = jpyToHkdRate();
+      const rate = higherRate(fetched, current);
+      const keptExisting = fetched < current;
+      const response = await persistRate(req, rate);
+      res.json({
+        ...response,
+        fetchedRate: fetched,
+        currentRateBefore: current,
+        keptExisting,
+        liveDate: live.date || null,
+        message: keptExisting
+          ? `線上匯率 ${fetched} 低過現行 ${current}，已保留較高者 ${current}`
+          : `已更新至較高匯率 ${rate}`,
+      });
     } catch (err) {
       console.error('Fetch live rate failed:', err);
       return res.status(502).json({ error: '取得線上匯率失敗：' + (err.message || '未知錯誤') });
     }
   });
 
-  // 手動設定
+  // 手動設定（管理員明確輸入，如實採用，唔做較高者夾取）
   app.post('/api/admin/settings/exchange-rate/manual', requireAdmin, async (req, res) => {
     const rate = req.body && req.body.rate;
     return saveRate(req, res, rate);

@@ -79,4 +79,16 @@ async function fetchLiveJpyHkdRate(fetchImpl) {
   }
 }
 
-module.exports = { recomputePrices, fetchLiveJpyHkdRate };
+/**
+ * 規則：匯率以較高者為準。自動/一鍵拉到嘅新匯率若低過現行生效值，
+ * 保留現行值（唔自動減價）。手動輸入唔經呢度，如實採用。
+ */
+function higherRate(fetched, current) {
+  const f = Number(fetched);
+  const c = Number(current);
+  if (!Number.isFinite(f) || f <= 0) return c;
+  if (!Number.isFinite(c) || c <= 0) return f;
+  return f >= c ? f : c;
+}
+
+module.exports = { recomputePrices, fetchLiveJpyHkdRate, higherRate };

@@ -20,7 +20,7 @@
       <button id="rate-reload" class="admin-btn-secondary" type="button">刷新狀態</button>
     </div>
     <p id="rate-live-hint" class="mt-2 text-xs text-gray-400">
-      一鍵更新會由 Frankfurter（歐洲央行數據）取得最新 JPY→HKD。
+      一鍵更新會由 Frankfurter（歐洲央行數據）取得最新 JPY→HKD；若線上匯率低過現行值，會自動保留較高者，唔會自動減價。
     </p>
   </div>
 
@@ -104,9 +104,10 @@
         method: 'POST',
         body: JSON.stringify({ recompute: recomputeOn() }),
       });
+      const detail = d.message || ('已更新至 ' + Number(d.rate).toFixed(5));
       showMsg(
-        '已更新至 ' + Number(d.rate).toFixed(5) +
-        (d.recomputed && d.reprice ? `，重算了 ${d.reprice.changed} 件商品（共掃描 ${d.reprice.scanned} 件）。` : '（未重算標價）。'),
+        detail +
+        (d.recomputed && d.reprice ? ` 已重算 ${d.reprice.changed} 件商品（掃描 ${d.reprice.scanned} 件）。` : '（未重算標價）。'),
         true
       );
       await load();
