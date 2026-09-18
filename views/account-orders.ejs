@@ -78,13 +78,13 @@
       </div>
 
       <% if (totalPages > 1) { %>
-        <nav class="mt-6 flex items-center justify-center gap-2 text-sm">
+        <nav class="mt-6 flex items-center justify-center gap-2 text-sm" aria-label="訂單分頁">
           <% if (page > 1) { %>
-            <a class="rounded-full border border-gray-300 px-4 py-2 font-bold text-gray-700 hover:border-red-300" href="?page=<%= page - 1 %>">上一頁</a>
+            <a aria-label="上一頁" class="inline-flex min-h-[44px] items-center rounded-full border border-gray-300 px-4 font-bold text-gray-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700" href="?page=<%= page - 1 %>">上一頁</a>
           <% } %>
           <span class="text-gray-500">第 <%= page %> / <%= totalPages %> 頁</span>
           <% if (page < totalPages) { %>
-            <a class="rounded-full border border-gray-300 px-4 py-2 font-bold text-gray-700 hover:border-red-300" href="?page=<%= page + 1 %>">下一頁</a>
+            <a aria-label="下一頁" class="inline-flex min-h-[44px] items-center rounded-full border border-gray-300 px-4 font-bold text-gray-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700" href="?page=<%= page + 1 %>">下一頁</a>
           <% } %>
         </nav>
       <% } %>
