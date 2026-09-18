@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const { yenToHkd } = require('./currency');
 
 function isPseudoCategory(name) {
   const s = String(name || '').trim();
@@ -81,8 +82,8 @@ function toProductUpsertInput(item, categoryId) {
     description,
     description_zh_hk,
     short_description_zh_hk: null,
-    price: Number.isFinite(item.priceYen) ? Number(item.priceYen) : 0,
-    original_price: Number.isFinite(item.originalPriceYen) ? Number(item.originalPriceYen) : null,
+    price: Number.isFinite(item.priceYen) ? yenToHkd(item.priceYen) : 0,
+    original_price: Number.isFinite(item.originalPriceYen) ? yenToHkd(item.originalPriceYen) : null,
     category_id: categoryId,
     image_url,
     gallery_images,

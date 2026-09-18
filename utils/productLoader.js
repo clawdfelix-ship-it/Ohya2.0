@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { toProxyUrl } = require('./imageUtils');
+const { yenToHkdCents } = require('./currency');
 
 const PRODUCTS_FILE = path.join(__dirname, '../data/sample-products.jsonl');
 
@@ -13,6 +14,7 @@ function normalizeProduct(item, index) {
   const description = typeof item.description_zh_hk === 'string' ? item.description_zh_hk.trim() : '';
   if (!name || !category || !description) return null;
 
+  // 前台 product 價格單位為 HKD cents；日元先用統一匯率轉港幣再 ×100
   const priceYen = typeof item.price === 'number' ? item.price : 29900;
   const originalPriceYen = typeof item.originalPrice === 'number' ? item.originalPrice : 39900;
 
@@ -20,8 +22,8 @@ function normalizeProduct(item, index) {
     id: index + 1,
     name,
     category,
-    price: Math.round(priceYen * 0.01),
-    originalPrice: Math.round(originalPriceYen * 0.01),
+    price: yenToHkdCents(priceYen),
+    originalPrice: yenToHkdCents(originalPriceYen),
     priceYen,
     originalPriceYen,
     description,
@@ -87,8 +89,8 @@ function getFallbackProducts() {
       id: 1,
       name: 'PRO-E 經典系列',
       category: 'PRO-E 系列',
-      price: 299,
-      originalPrice: 399,
+      price: yenToHkdCents(29900),
+      originalPrice: yenToHkdCents(39900),
       priceYen: 29900,
       originalPriceYen: 39900,
       description: '獨特滑動設計，帶來更細緻的觸感體驗；適合追求層次感的用家。',
@@ -103,8 +105,8 @@ function getFallbackProducts() {
       id: 2,
       name: 'PRO-E 專用潤滑液',
       category: '護理配件',
-      price: 159,
-      originalPrice: 199,
+      price: yenToHkdCents(15900),
+      originalPrice: yenToHkdCents(19900),
       priceYen: 15900,
       originalPriceYen: 19900,
       description: '清爽易沖，黏膩感較低；日常搭配使用更順暢。',
