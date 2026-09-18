@@ -444,7 +444,8 @@ function getSampleCategories() {
 }
 
 function formatPrice(price) {
-  return '¥' + (price / 100).toFixed(0);
+  // 全站價格以 cents 儲存，前台統一顯示港幣 HK$（P1 修正，唔再用日圓 ¥）
+  return 'HK$' + (price / 100).toFixed(0);
 }
 
 // Make image proxy utility available to templates

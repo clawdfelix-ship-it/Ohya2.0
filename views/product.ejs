@@ -163,18 +163,28 @@
           <!-- 購買區 -->
           <div class="mt-auto space-y-4">
             <div class="flex items-center gap-4">
-              <label class="text-gray-700 font-medium text-sm">數量：</label>
-              <div class="flex items-center rounded-full border border-gray-300 bg-white">
-                <button onclick="changeQuantity(-1)" class="px-4 py-2 hover:bg-gray-100 transition font-bold">－</button>
-                <input type="number" id="quantity" value="1" min="1" max="<%= product.stock %>" class="w-16 text-center border-x border-gray-300 py-2 focus:outline-none font-medium">
-                <button onclick="changeQuantity(1)" class="px-4 py-2 hover:bg-gray-100 transition font-bold">＋</button>
-              </div>
+              <label class="text-gray-700 font-medium text-sm" for="quantity">數量：</label>
+              <% if (Number(product.stock) <= 0) { %>
+                <span class="text-sm font-bold text-gray-400">暫時缺貨</span>
+              <% } else { %>
+                <div class="flex items-center rounded-full border border-gray-300 bg-white">
+                  <button type="button" onclick="changeQuantity(-1)" class="px-4 py-2 hover:bg-gray-100 transition font-bold">－</button>
+                  <input type="number" id="quantity" value="1" min="1" max="<%= product.stock %>" class="w-16 text-center border-x border-gray-300 py-2 focus:outline-none font-medium">
+                  <button type="button" onclick="changeQuantity(1)" class="px-4 py-2 hover:bg-gray-100 transition font-bold">＋</button>
+                </div>
+              <% } %>
             </div>
             
             <div class="flex gap-3">
-              <button onclick="addToCart()" class="flex flex-1 items-center justify-center gap-2 rounded-full bg-red-600 py-4 text-lg font-bold text-white transition hover:bg-red-700">
-                🛒 加入購物車
-              </button>
+              <% if (Number(product.stock) <= 0) { %>
+                <button type="button" disabled aria-disabled="true" class="flex flex-1 items-center justify-center gap-2 rounded-full bg-gray-300 py-4 text-lg font-bold text-gray-500 cursor-not-allowed">
+                  缺貨中
+                </button>
+              <% } else { %>
+                <button type="button" onclick="addToCart()" class="flex flex-1 items-center justify-center gap-2 rounded-full bg-red-600 py-4 text-lg font-bold text-white transition hover:bg-red-700">
+                  🛒 加入購物車
+                </button>
+              <% } %>
               <button class="rounded-full bg-gray-100 px-6 py-4 font-bold text-gray-700 transition hover:bg-gray-200">
                 ❤️
               </button>
@@ -231,13 +241,12 @@
 
   <%- include('partials/footer') %>
 
-  <script id="current-product" type="application/json"><%- JSON.stringify(product) %></script>
+  <script id="mz-product" type="application/json"><%- JSON.stringify(product) %></script>
+  <script src="/js/cart-client.js"></script>
 
   <script>
-    const currentProduct = JSON.parse(document.getElementById('current-product').textContent || '{}');
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const isLoggedIn = document.body.dataset.loggedIn === '1';
-    
+    const currentProduct = JSON.parse(document.getElementById('mz-product').textContent || '{}');
+
     // 年齡確認
     function checkAgeVerification() {
       const verified = localStorage.getItem('ageVerified');
@@ -271,98 +280,25 @@
       }
     }
     
-    // 數量控制
+    // 數量控制（缺貨頁冇數量 input，呢兩個函數唔會被調用）
     function changeQuantity(delta) {
       const input = document.getElementById('quantity');
+      if (!input) return;
       const current = parseInt(input.value);
       const max = parseInt(input.max);
       const newVal = Math.max(1, Math.min(max, current + delta));
       input.value = newVal;
     }
-    
-    // 購物車
-    async function updateCartCount() {
-      const badge = document.getElementById('cart-count');
-      if (!badge) return;
 
-      if (!isLoggedIn) {
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-        badge.textContent = String(count);
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/cart', { credentials: 'same-origin' });
-        if (!response.ok) {
-          throw new Error('cart count request failed');
-        }
-        const data = await response.json();
-        const count = Array.isArray(data.items)
-          ? data.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
-          : 0;
-        badge.textContent = String(count);
-      } catch (error) {
-        console.error('Failed to refresh cart count:', error);
-      }
-    }
-    
     async function addToCart() {
-      const quantity = parseInt(document.getElementById('quantity').value);
-
-      if (!Number.isFinite(quantity) || quantity < 1) {
-        alert('請選擇正確數量');
-        return;
+      const input = document.getElementById('quantity');
+      const quantity = input ? parseInt(input.value, 10) : 1;
+      try {
+        await MZCart.add(currentProduct, Number.isFinite(quantity) ? quantity : 1);
+        MZCart.toast('已加入購物車！', 'success');
+      } catch (error) {
+        MZCart.toast(error.message || '加入購物車失敗', 'error');
       }
-
-      if (isLoggedIn) {
-        try {
-          const response = await fetch('/api/cart/add', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-              'content-type': 'application/json',
-              'csrf-token': csrfToken,
-            },
-            body: JSON.stringify({
-              product_id: currentProduct.id,
-              quantity,
-            }),
-          });
-
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok) {
-            throw new Error(data.error || '加入購物車失敗');
-          }
-
-          await updateCartCount();
-          alert('已加入購物車！');
-          return;
-        } catch (error) {
-          console.error('Failed to add cart item:', error);
-          alert(error.message || '加入購物車失敗');
-          return;
-        }
-      }
-
-      let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const existingItem = cart.find(item => item.id === currentProduct.id);
-
-      if (existingItem) {
-        existingItem.quantity += quantity;
-      } else {
-        cart.push({
-          id: currentProduct.id,
-          name: currentProduct.name,
-          price: currentProduct.price,
-          image: currentProduct.image,
-          quantity,
-        });
-      }
-
-      localStorage.setItem('cart', JSON.stringify(cart));
-      await updateCartCount();
-      alert('已加入購物車！');
     }
 
     function initGalleryThumbs() {
@@ -387,7 +323,7 @@
     // Initialize
     document.addEventListener('DOMContentLoaded', async function() {
       checkAgeVerification();
-      await updateCartCount();
+      // cart count 由共享 cart-client 自動 refresh
       initGalleryThumbs();
     });
   </script>

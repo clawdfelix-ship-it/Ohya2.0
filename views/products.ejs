@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <meta name="csrf-token" content="<%= csrfToken || '' %>">
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; }
     .jpn-bracket { position: relative; padding: 0 1em; }
@@ -23,7 +24,7 @@
     }
   </style>
 </head>
-<body class="mz-body min-h-screen bg-gray-50 text-black">
+<body class="mz-body min-h-screen bg-gray-50 text-black" data-logged-in="<%= user ? '1' : '0' %>">
   <%- include('partials/age-modal') %>
 
   <%- include('partials/header') %>
@@ -75,7 +76,9 @@
                     <span class="rounded-full bg-red-600 px-2 py-1 text-xs font-bold text-white"><%= t('product.badge.deal') %></span>
                     <span class="rounded-full bg-orange-500 px-2 py-1 text-xs font-bold text-white">-<%= Math.round((1 - product.price / product.originalPrice) * 100) %>%OFF</span>
                   <% } %>
-                  <% if (product.stock <= 20) { %>
+                  <% if (Number(product.stock) <= 0) { %>
+                    <span class="rounded-full bg-gray-500 px-2 py-1 text-xs font-bold text-white">缺貨</span>
+                  <% } else if (product.stock <= 20) { %>
                     <span class="rounded-full bg-yellow-500 px-2 py-1 text-xs font-bold text-black"><%= t('product.badge.lowStock') %></span>
                   <% } %>
                 </div>
@@ -99,7 +102,11 @@
                 </div>
                 <div class="flex gap-2">
                   <a href="/product/<%= product.id %>" class="flex-1 rounded-full bg-red-600 py-2 text-center text-xs font-bold text-white transition hover:bg-red-700"><%= t('product.cta.details') %></a>
-                  <button onclick="addToCart(this)" data-product-id="<%= product.id %>" class="rounded-full bg-orange-500 px-3 py-2 text-xs font-bold text-white transition hover:bg-orange-600">🛒</button>
+                  <% if (Number(product.stock) <= 0) { %>
+                    <button type="button" disabled aria-disabled="true" title="缺貨" class="cursor-not-allowed rounded-full bg-gray-300 px-3 py-2 text-xs font-bold text-gray-500">缺貨</button>
+                  <% } else { %>
+                    <button type="button" data-add-to-cart data-product-id="<%= product.id %>" class="rounded-full bg-orange-500 px-3 py-2 text-xs font-bold text-white transition hover:bg-orange-600">🛒</button>
+                  <% } %>
                 </div>
               </div>
             </a>
@@ -168,6 +175,9 @@
 
   <%- include('partials/footer') %>
 
+  <script id="mz-products" type="application/json"><%- JSON.stringify(products || []) %></script>
+  <script src="/js/cart-client.js"></script>
+
   <script>
     function verifyAge(isAdult) {
       if (isAdult) {
@@ -179,13 +189,6 @@
     }
     if (!localStorage.getItem('ageVerified')) {
       document.getElementById('ageModal').classList.remove('hidden');
-    }
-    function addToCart(btn) {
-      const productId = btn.dataset.productId;
-      const countEl = document.getElementById('cart-count');
-      const current = parseInt(countEl.textContent);
-      countEl.textContent = current + 1;
-      alert('已加入購物車！');
     }
 
     function toggleCategories() {
