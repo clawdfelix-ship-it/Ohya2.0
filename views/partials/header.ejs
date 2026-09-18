@@ -2,6 +2,13 @@
   <header class="mz-header sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
     <div class="max-w-7xl mx-auto px-3 py-3">
       <div class="flex items-center gap-3 lg:gap-4">
+        <button type="button" class="-ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-700 hover:bg-gray-100 active:scale-95 lg:hidden" aria-label="開啟分類選單" aria-expanded="false" aria-controls="mz-mobile-menu-panel" data-mobile-menu-open>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
         <a href="/" class="flex items-center gap-2 flex-shrink-0">
           <span class="text-2xl font-black tracking-tight text-red-700">OHYA2.0</span>
         </a>
@@ -35,4 +42,65 @@
         </div>
       </div>
     </div>
+
+    <%# 手機左上角漢堡選單：全局分類抽屜 %>
+    <% const headerMenuTree = Array.isArray(categoriesTree) ? categoriesTree : []; %>
+    <% const headerMenuActiveSlug = typeof selectedCategorySlug === 'string' ? selectedCategorySlug : null; %>
+    <% const headerNodeContainsActive = function nodeContainsActive(node, slug) {
+      if (!node || !slug) return false;
+      if (node.slug === slug) return true;
+      return Array.isArray(node.children) && node.children.some((child) => nodeContainsActive(child, slug));
+    }; %>
+    <div class="fixed inset-0 z-[80] hidden lg:hidden" id="mz-mobile-menu-panel" data-mobile-menu-panel>
+      <button type="button" class="absolute inset-0 bg-black/45" aria-label="關閉分類選單" data-mobile-menu-close></button>
+      <div class="absolute inset-y-0 left-0 flex w-full max-w-sm" role="dialog" aria-modal="true" aria-label="商品分類選單">
+        <div class="flex h-full w-full flex-col bg-white shadow-2xl">
+          <div class="flex items-center justify-between border-b border-gray-200 px-4 py-4">
+            <div>
+              <div class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Menu</div>
+              <div class="mt-1 text-lg font-black text-gray-900">商品分類</div>
+            </div>
+            <button type="button" class="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600 active:scale-95" aria-label="關閉" data-mobile-menu-close>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+            </button>
+          </div>
+
+          <div class="border-b border-gray-100 px-3 py-3">
+            <a href="/products?page=1" class="flex items-center justify-between rounded-2xl border border-gray-200 px-3 py-3 text-sm font-semibold text-gray-700">
+              <span>全部商品</span>
+            </a>
+          </div>
+
+          <div class="flex-1 space-y-2 overflow-y-auto bg-gray-50 px-3 py-3" data-mobile-menu-links>
+            <% headerMenuTree.forEach((node) => { %>
+              <%- include('category-mobile-node', { node, depth: 0, activeSlug: headerMenuActiveSlug, nodeContainsActive: headerNodeContainsActive }) %>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function initMobileHeaderMenu() {
+        const panel = document.getElementById('mz-mobile-menu-panel');
+        const openBtn = document.querySelector('[data-mobile-menu-open]');
+        if (!panel || !openBtn) return;
+        const closeBtns = panel.querySelectorAll('[data-mobile-menu-close]');
+
+        function setOpen(nextOpen) {
+          panel.classList.toggle('hidden', !nextOpen);
+          document.body.classList.toggle('overflow-hidden', nextOpen);
+          openBtn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        }
+
+        openBtn.addEventListener('click', () => setOpen(true));
+        closeBtns.forEach((btn) => btn.addEventListener('click', () => setOpen(false)));
+        panel.addEventListener('click', (event) => {
+          if (event.target.closest('a')) setOpen(false);
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') setOpen(false);
+        });
+      })();
+    </script>
   </header>

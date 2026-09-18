@@ -40,3 +40,12 @@ test('storefrontHomeModules falls back to local center banners', () => {
   assert.equal(out.center.length, 3);
   assert.match(out.center[0].image_url, /\/assets\/mzakka\/banners\//);
 });
+
+test('header has a mobile top-left hamburger button that opens a category menu', () => {
+  const html = readView('partials/header.ejs');
+  assert.match(html, /data-mobile-menu-open/, 'header should render a mobile menu open button');
+  assert.match(html, /id="mz-mobile-menu-panel"/, 'header should render the mobile menu panel');
+  assert.match(html, /data-mobile-menu-close/, 'panel should provide a close affordance');
+  assert.match(html, /lg:hidden/, 'menu entry should be mobile-only');
+  assert.match(html, /categoriesTree/, 'panel should render the global category tree');
+});
