@@ -65,7 +65,7 @@
 
             <% const gallery = (product && Array.isArray(product.images) && product.images.length) ? product.images : (product.image ? [product.image] : []); %>
             <% if (gallery.length) { %>
-              <img id="mz-product-main-image" src="<%= gallery[0] %>" alt="<%= product.name %>" class="h-full w-full rounded-2xl object-contain">
+              <img id="mz-product-main-image" src="<%= gallery[0] %>" alt="<%= product.name %>" fetchpriority="high" decoding="async" class="h-full w-full rounded-2xl object-contain">
             <% } else { %>
               <span class="text-9xl">📦</span>
             <% } %>
@@ -75,7 +75,7 @@
             <div id="mz-product-thumbs" class="grid grid-cols-5 gap-2">
               <% gallery.slice(0, 10).forEach((img, idx) => { %>
                 <button type="button" data-mz-image="<%= img %>" aria-label="切換圖片 <%= idx + 1 %>" class="<%= idx === 0 ? 'ring-2 ring-red-600' : 'ring-1 ring-gray-200' %> aspect-square overflow-hidden rounded-2xl bg-white">
-                  <img src="<%= img %>" alt="" class="w-full h-full object-cover">
+                  <img src="<%= img %>" alt="" loading="lazy" decoding="async" class="w-full h-full object-cover">
                 </button>
               <% }) %>
             </div>
@@ -210,7 +210,7 @@
               <a href="/product/<%= relProduct.id %>" class="block">
                 <div class="relative aspect-square overflow-hidden bg-gray-50">
                   <% if (relProduct.image) { %>
-                    <img src="<%= relProduct.image %>" alt="<%= relProduct.name %>" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                    <img src="<%= relProduct.image %>" alt="<%= relProduct.name %>" loading="lazy" decoding="async" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
                   <% } else { %>
                     <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-5xl">📦</div>
                   <% } %>

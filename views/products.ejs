@@ -84,7 +84,7 @@
                   <% } %>
                 </div>
                 <% if (product.image) { %>
-                  <img src="<%= product.image %>" alt="<%= product.name %>" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                  <img src="<%= product.image %>" alt="<%= product.name %>" loading="lazy" decoding="async" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
                 <% } else { %>
                   <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-6xl">📦</div>
                 <% } %>
@@ -102,11 +102,11 @@
                   <span class="font-bold">積分：<%= Math.floor(product.price / 100) %>pt</span><span class="text-gray-400">（1 倍）</span>
                 </div>
                 <div class="flex gap-2">
-                  <a href="/product/<%= product.id %>" class="flex-1 rounded-full bg-red-600 py-2 text-center text-xs font-bold text-white transition hover:bg-red-700"><%= t('product.cta.details') %></a>
+                  <a href="/product/<%= product.id %>" class="flex min-h-[44px] flex-1 items-center justify-center rounded-full bg-red-600 px-3 text-center text-xs font-bold text-white transition hover:bg-red-700"><%= t('product.cta.details') %></a>
                   <% if (Number(product.stock) <= 0) { %>
-                    <button type="button" disabled aria-disabled="true" title="缺貨" class="cursor-not-allowed rounded-full bg-gray-300 px-3 py-2 text-xs font-bold text-gray-500">缺貨</button>
+                    <button type="button" disabled aria-disabled="true" title="缺貨" class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-gray-300 px-3 text-xs font-bold text-gray-500">缺貨</button>
                   <% } else { %>
-                    <button type="button" data-add-to-cart data-product-id="<%= product.id %>" class="rounded-full bg-orange-500 px-3 py-2 text-xs font-bold text-white transition hover:bg-orange-600">🛒</button>
+                    <button type="button" data-add-to-cart data-product-id="<%= product.id %>" aria-label="加入購物車" class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-orange-500 px-3 text-xs font-bold text-white transition hover:bg-orange-600">🛒</button>
                   <% } %>
                 </div>
               </div>

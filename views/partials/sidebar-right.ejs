@@ -15,7 +15,7 @@
     <div class="p-2">
       <% rightModules.forEach(module => { %>
         <a href="<%= module.href || '/products?page=1' %>" class="block border border-gray-200 bg-white">
-          <img src="<%= module.image_url %>" alt="<%= module.title || '推薦' %>" class="w-full">
+          <img src="<%= module.image_url %>" alt="<%= module.title || '推薦' %>" loading="lazy" decoding="async" class="w-full">
         </a>
       <% }) %>
     </div>

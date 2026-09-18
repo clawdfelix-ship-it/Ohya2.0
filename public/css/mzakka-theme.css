@@ -32,3 +32,16 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== P0 手機觸控（2026-09-18，學 mzakka tap target 過細嘅教訓）===== */
+/* 只喺真觸控裝置：header 導航連結最少 44px 高、相鄰留間距，避免誤觸；
+   商品卡 CTA 已喺模板用 min-h-[44px] 處理，呢度只執剩餘嘅密集導航連結。 */
+@media (pointer: coarse) {
+  .mz-nav a,
+  .mz-header a,
+  .mz-header button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
