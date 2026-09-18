@@ -25,6 +25,7 @@ const { getProductsOrderBy, normalizeProductsSort } = require('./lib/productsSor
 const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch-mzakka-description');
 const { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
 const { normalizeCspReports } = require('./utils/security/cspReport');
+const { storeInfo } = require('./utils/storeInfo');
 
 let cachedSharp;
 function getSharp() {
@@ -189,6 +190,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use((req, res, next) => {
   res.locals.t = createTranslator({ locale: 'zh-HK', dict: dictZhHK });
+  res.locals.store = storeInfo;
   next();
 });
 
@@ -468,16 +470,16 @@ function formatPrice(price) {
   return 'HK$' + (price / 100).toFixed(0);
 }
 
-// 銀行轉帳 / FPS 收款資料（敏感資料由環境變數注入，唔 hardcode 入源碼）
+// 銀行轉帳 / FPS 收款資料（預設值喺 utils/storeInfo，可用環境變數覆蓋）
 function getPaymentInfo() {
   return {
     bank: {
-      bankName: process.env.PAYMENT_BANK_NAME || '',
-      accountName: process.env.PAYMENT_BANK_ACCOUNT_NAME || '',
-      accountNumber: process.env.PAYMENT_BANK_ACCOUNT_NUMBER || '',
+      bankName: process.env.PAYMENT_BANK_NAME || storeInfo.payment.bankName,
+      accountName: process.env.PAYMENT_BANK_ACCOUNT_NAME || storeInfo.payment.accountName,
+      accountNumber: process.env.PAYMENT_BANK_ACCOUNT_NUMBER || storeInfo.payment.accountNumber,
     },
     fps: {
-      fpsId: process.env.PAYMENT_FPS_ID || '',
+      fpsId: process.env.PAYMENT_FPS_ID || storeInfo.payment.fpsId,
       fpsPhone: process.env.PAYMENT_FPS_PHONE || '',
     },
   };
@@ -1076,6 +1078,27 @@ app.use(async (req, res, next) => {
     res.render('register', {
       title: '新會員註冊 - OHYA2.0',
       error: null
+    });
+  });
+
+  // 顧客服務 / 資訊頁（送貨、付款、退換、FAQ、批發、聯絡、條款、私隱等）
+  const infoPages = [
+    { route: '/help', view: 'info/help', title: '顧客須知', key: '/help' },
+    { route: '/shipping', view: 'info/shipping', title: '送貨安排', key: '/shipping' },
+    { route: '/payment', view: 'info/payment', title: '付款方式', key: '/payment' },
+    { route: '/returns', view: 'info/returns', title: '退換須知', key: '/returns' },
+    { route: '/faq', view: 'info/faq', title: '常見問題', key: '/faq' },
+    { route: '/wholesale', view: 'info/wholesale', title: '批發分銷', key: '/wholesale' },
+    { route: '/contact', view: 'info/contact', title: '聯絡我們', key: '/contact' },
+    { route: '/terms', view: 'info/terms', title: '服務條款', key: '/terms' },
+    { route: '/privacy', view: 'info/privacy', title: '私隱政策', key: '/privacy' },
+  ];
+  infoPages.forEach((page) => {
+    app.get(page.route, (req, res) => {
+      res.render(page.view, {
+        title: page.title,
+        activeInfoKey: page.key,
+      });
     });
   });
   

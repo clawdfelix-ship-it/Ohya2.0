@@ -1,0 +1,43 @@
+<%- include('../partials/info-top') %>
+
+<h2>港澳成人用品批發 / 分銷</h2>
+<p><strong><%= store.company.nameZh %></strong>（<%= store.company.nameEn %>）旗下 OHYA2.0，由日本引入多款正貨成人用品及生活雜貨，<strong>以批發分銷為主要業務</strong>。我們歡迎香港、澳門及各地嘅零售店舖、網店、以及合資格商戶查詢批發分銷安排；審批通過後，即可以更優惠嘅批發價採購產品。</p>
+
+<div class="grid gap-4 sm:grid-cols-3">
+  <div class="rounded-xl border border-gray-200 bg-gray-50 p-5">
+    <h3 class="mt-0">產品種類</h3>
+    <p class="text-sm">男士用品、女士用品、情趣玩具、安全套、潤滑液、情趣內衣及個人護理用品等，貨源由日本入口。</p>
+  </div>
+  <div class="rounded-xl border border-gray-200 bg-gray-50 p-5">
+    <h3 class="mt-0">申請資格</h3>
+    <p class="text-sm">須持有有效商業登記（如香港 BR），業務與成人用品、零售、藥房、網店或相關批發分銷有關。</p>
+  </div>
+  <div class="rounded-xl border border-gray-200 bg-gray-50 p-5">
+    <h3 class="mt-0">100% 正品正貨</h3>
+    <p class="text-sm">由日本直接採購，嚴選貨源，確保商戶取得正貨，並可配合穩定補貨。</p>
+  </div>
+</div>
+
+<h2>批發合作流程</h2>
+<ol>
+  <li>WhatsApp 或電郵聯絡我們，說明店舖／公司名稱及業務性質。</li>
+  <li>提供有效商業登記證（BR）或同等商業證明作審批。</li>
+  <li>審批通過後，我們提供批發價及產品目錄。</li>
+  <li>確認訂單及付款後，安排日本入口及到港送貨。</li>
+</ol>
+
+<h2>申請所需資料</h2>
+<p>請將以下資料 WhatsApp 至 <a href="<%= store.contact.whatsappLink %>" target="_blank" rel="noopener"><%= store.contact.whatsappDisplay %></a>，或電郵 <a href="mailto:<%= store.contact.email %>"><%= store.contact.email %></a>。收到資料後，我們一般會於<strong>2 個工作天內</strong>與你聯絡：</p>
+<ul>
+  <li>公司／店舖名稱</li>
+  <li>公司聯絡地址、電話、公司網頁（如有）</li>
+  <li>業務類別（零售舖、網店、藥房、分銷等）</li>
+  <li>有效商業登記證（BR）副本</li>
+  <li>申請人／採購聯絡資料</li>
+</ul>
+
+<div class="rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-800">
+  查詢批發價及目錄，請直接 WhatsApp 聯絡：<a href="<%= store.contact.whatsappLink %>" target="_blank" rel="noopener"><%= store.contact.whatsappDisplay %></a>
+</div>
+
+<%- include('../partials/info-bottom') %>
