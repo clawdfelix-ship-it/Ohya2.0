@@ -12,7 +12,7 @@
 <div class="mb-4 lg:hidden" data-mobile-category-drawer>
   <button type="button" class="flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm" data-category-drawer-open>
     <span>
-      <span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">商品分類</span>
+      <span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">商品分類</span>
       <span class="mt-1 block text-sm font-bold text-gray-900"><%= mobileSelectedName || '展開全部分類' %></span>
     </span>
     <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">展開</span>
@@ -24,7 +24,7 @@
       <div class="flex h-full w-full flex-col bg-white shadow-2xl">
         <div class="flex items-center justify-between border-b border-gray-200 px-4 py-4">
           <div>
-            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Category</div>
+            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Category</div>
             <div class="mt-1 text-lg font-black text-gray-900">商品分類</div>
           </div>
           <button type="button" class="rounded-full border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600" data-category-drawer-close>關閉</button>
@@ -33,7 +33,7 @@
         <div class="border-b border-gray-100 px-4 py-3">
           <a href="/products?page=1" class="<%= !mobileActiveSlug || mobileActiveSlug === 'all' ? 'border-red-200 bg-red-50 text-red-700' : 'border-gray-200 text-gray-700' %> flex items-center justify-between rounded-2xl border px-3 py-3 text-sm font-semibold">
             <span>全部商品</span>
-            <span class="text-[11px] text-gray-400"><%= ((categories || [])[0] && categories[0].count) || 0 %></span>
+            <span class="text-[11px] text-gray-500"><%= ((categories || [])[0] && categories[0].count) || 0 %></span>
           </a>
         </div>
 

@@ -8,7 +8,7 @@
           <% (categories || []).forEach(cat => { %>
             <li>
               <a href="/products?category=<%= encodeURIComponent(cat.slug) %>&page=1" class="block px-3 py-2 text-xs hover:bg-gray-100 transition">
-                <%= cat.name %> <span class="text-gray-400">(<%= cat.count %>)</span>
+                <%= cat.name %> <span class="text-gray-500">(<%= cat.count %>)</span>
               </a>
             </li>
           <% }) %>

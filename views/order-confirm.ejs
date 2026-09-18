@@ -112,11 +112,11 @@
       <div class="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm text-sm">
         <h2 class="text-lg font-black text-gray-900 mb-4">送貨資料</h2>
         <dl class="space-y-2 text-gray-700">
-          <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-400">收件人</dt><dd class="font-bold"><%= order.contact_name %></dd></div>
-          <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-400">電話</dt><dd class="font-bold"><%= order.contact_phone %></dd></div>
-          <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-400">地址</dt><dd class="font-bold"><%= order.contact_address %></dd></div>
+          <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-500">收件人</dt><dd class="font-bold"><%= order.contact_name %></dd></div>
+          <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-500">電話</dt><dd class="font-bold"><%= order.contact_phone %></dd></div>
+          <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-500">地址</dt><dd class="font-bold"><%= order.contact_address %></dd></div>
           <% if (order.note) { %>
-            <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-400">備註</dt><dd><%= order.note %></dd></div>
+            <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-500">備註</dt><dd><%= order.note %></dd></div>
           <% } %>
         </dl>
       </div>

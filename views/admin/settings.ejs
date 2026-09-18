@@ -8,7 +8,7 @@
 
     <div class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-gray-50 p-3 text-sm">
       <div>現行匯率：<span id="rate-current" class="font-black text-red-600">—</span>
-        <span class="text-gray-400">（1 円 = ? HKD）</span>
+        <span class="text-gray-500">（1 円 = ? HKD）</span>
       </div>
       <div>來源：<span id="rate-source" class="font-bold">—</span></div>
       <div>上次更新：<span id="rate-updated" class="font-bold">—</span></div>
@@ -19,7 +19,7 @@
       <button id="rate-fetch" class="admin-btn" type="button">一鍵更新匯率</button>
       <button id="rate-reload" class="admin-btn-secondary" type="button">刷新狀態</button>
     </div>
-    <p id="rate-live-hint" class="mt-2 text-xs text-gray-400">
+    <p id="rate-live-hint" class="mt-2 text-xs text-gray-500">
       一鍵更新會由 Frankfurter（歐洲央行數據）取得最新 JPY→HKD；若線上匯率低過現行值，會自動保留較高者，唔會自動減價。
     </p>
   </div>
@@ -41,7 +41,7 @@
       <input id="rate-recompute" type="checkbox" checked />
       <span>更新匯率後，自動按原始日元重算全店 mzakka 商品價格</span>
     </label>
-    <p class="mt-1 text-xs text-gray-400">
+    <p class="mt-1 text-xs text-gray-500">
       原始日元存於商品 raw_payload，重算毋須重新爬取。取消打勾則只改匯率、郁唔到現有標價。
     </p>
     <div id="rate-preview" class="mt-3 hidden text-sm"></div>

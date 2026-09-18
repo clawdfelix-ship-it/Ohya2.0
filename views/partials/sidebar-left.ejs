@@ -18,7 +18,7 @@
       <div class="max-h-[calc(100vh-10rem)] overflow-y-auto px-3 py-3">
         <a href="/products?page=1" class="<%= !activeSlug || activeSlug === 'all' ? 'bg-red-50 text-red-700 border-red-200' : 'border-transparent text-gray-700 hover:bg-gray-50' %> mb-2 flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-semibold transition">
           <span>全部商品</span>
-          <span class="text-xs text-gray-400"><%= ((categories || [])[0] && categories[0].count) || 0 %></span>
+          <span class="text-xs text-gray-500"><%= ((categories || [])[0] && categories[0].count) || 0 %></span>
         </a>
 
         <div class="space-y-2" data-sidebar-accordion>

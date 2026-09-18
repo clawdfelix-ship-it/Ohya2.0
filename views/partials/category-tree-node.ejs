@@ -11,7 +11,7 @@
       <a href="/products?category=<%= encodeURIComponent(node.slug) %>&page=1" class="<%= isCurrent ? 'text-red-700' : 'text-gray-800 hover:text-red-700' %> min-w-0 flex-1">
         <span class="block truncate"><%= node.name %></span>
       </a>
-      <div class="flex items-center gap-2 text-xs text-gray-400">
+      <div class="flex items-center gap-2 text-xs text-gray-500">
         <span><%= node.count %></span>
         <span class="transition group-open:rotate-180">⌄</span>
       </div>
@@ -25,6 +25,6 @@
 <% } else { %>
   <a href="/products?category=<%= encodeURIComponent(node.slug) %>&page=1" class="<%= isCurrent ? 'bg-red-50 text-red-700 border-red-200' : 'border-transparent text-gray-700 hover:bg-gray-50' %> mb-1 flex items-center justify-between rounded-xl border px-3 py-3 text-sm font-semibold transition" style="padding-left: <%= paddingLeftRem %>rem;">
     <span class="min-w-0 truncate"><%= node.name %></span>
-    <span class="ml-3 text-[11px] text-gray-400"><%= node.count %></span>
+    <span class="ml-3 text-[11px] text-gray-500"><%= node.count %></span>
   </a>
 <% } %>

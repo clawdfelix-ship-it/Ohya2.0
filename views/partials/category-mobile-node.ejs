@@ -12,7 +12,7 @@
       <a href="<%= targetHref %>" class="<%= isCurrent ? 'text-red-700' : 'text-gray-800 hover:text-red-700' %> min-w-0 flex-1">
         <span class="block truncate"><%= node.name %></span>
       </a>
-      <span class="flex items-center gap-2 text-[11px] text-gray-400">
+      <span class="flex items-center gap-2 text-[11px] text-gray-500">
         <span><%= node.count %></span>
         <span class="transition group-open:rotate-180">⌄</span>
       </span>
@@ -26,6 +26,6 @@
 <% } else { %>
   <a href="<%= targetHref %>" class="<%= isCurrent ? 'border-red-200 bg-red-50 text-red-700' : 'border-transparent bg-white text-gray-700 hover:bg-gray-50' %> flex items-center justify-between rounded-2xl border px-3 py-3 text-sm font-semibold transition" style="padding-left: <%= paddingLeftRem %>rem;">
     <span class="min-w-0 truncate"><%= node.name %></span>
-    <span class="ml-3 text-[11px] text-gray-400"><%= node.count %></span>
+    <span class="ml-3 text-[11px] text-gray-500"><%= node.count %></span>
   </a>
 <% } %>
