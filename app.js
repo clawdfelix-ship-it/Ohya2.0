@@ -1150,6 +1150,18 @@ if (require.main === module) {
   app.listen(port, () => {
     console.log(`🚀 Mzakka E-Commerce API running on port ${port}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+    // 每月 1 號自動更新 JPY→HKD 匯率並重算價格（有 DB 先啟動）
+    if (connectionString) {
+      try {
+        const { startExchangeRateScheduler } = require('./utils/exchangeRateScheduler');
+        const ctl = startExchangeRateScheduler(pool);
+        const nr = ctl.nextRun ? ctl.nextRun() : null;
+        if (nr) console.log(`💱 匯率自動更新已排程，下次：${nr.toISOString()}`);
+      } catch (err) {
+        console.warn('💱 匯率排程啟動失敗：', err.message);
+      }
+    }
   });
 }
 
