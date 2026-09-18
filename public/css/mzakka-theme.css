@@ -11,3 +11,24 @@
 @media (min-width: 1024px) {
   .mz-3col { grid-template-columns: 14rem minmax(0, 1fr) 14rem; }
 }
+
+/* ===== P8 鍵盤可達（2026-09-18）===== */
+/* 全站 :focus-visible 清晰可見；鼠標點擊（:focus 但非 focus-visible）唔出 outline */
+:focus-visible {
+  outline: 2px solid #b91c1c;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* 尊重用戶「減少動態」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

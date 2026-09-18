@@ -305,22 +305,24 @@
         const detailHref = item.productId ? `/product/${item.productId}` : '/products';
         
         return `
-          <div class="bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 border border-gray-200">
-          <div class="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 border border-gray-200 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
             ${item.image ? `<img src="${escapeHtml(item.image)}" class="w-full h-full object-cover" alt="${escapeHtml(item.name)}">` : '📦'}
           </div>
-          <div class="flex-grow">
-            <a href="${detailHref}" class="font-semibold text-gray-900 hover:text-red-600">${escapeHtml(item.name)}</a>
-            <p class="text-red-600 font-bold">${formatPriceValue(item.price)}</p>
+          <div class="flex-grow min-w-0">
+            <a href="${detailHref}" class="font-semibold text-gray-900 hover:text-red-600 line-clamp-2">${escapeHtml(item.name)}</a>
+            <p class="text-red-600 font-bold mt-1">單價 ${formatPriceValue(item.price)}</p>
           </div>
-          <div class="flex items-center gap-2">
-            <button onclick="updateQuantity(${item.id}, -1)" class="w-8 h-8 bg-gray-100 rounded-lg hover:bg-gray-200 transition">-</button>
-            <span class="w-8 text-center font-medium">${item.quantity}</span>
-            <button onclick="updateQuantity(${item.id}, 1)" class="w-8 h-8 bg-gray-100 rounded-lg hover:bg-gray-200 transition">+</button>
-          </div>
-          <div class="text-right">
-            <p class="font-bold text-gray-900">${formatPriceValue(itemTotal)}</p>
-            <button onclick="removeItem(${item.id})" class="text-red-500 text-sm hover:text-red-600">移除</button>
+          <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t border-gray-100 pt-3 sm:pt-0 sm:border-0">
+            <div class="flex items-center gap-2">
+              <button onclick="updateQuantity(${item.id}, -1)" aria-label="減少數量" class="w-9 h-9 bg-gray-100 rounded-lg hover:bg-gray-200 transition">−</button>
+              <span class="w-8 text-center font-medium" aria-label="數量">${item.quantity}</span>
+              <button onclick="updateQuantity(${item.id}, 1)" aria-label="增加數量" class="w-9 h-9 bg-gray-100 rounded-lg hover:bg-gray-200 transition">+</button>
+            </div>
+            <div class="text-right">
+              <p class="font-bold text-gray-900 whitespace-nowrap">${formatPriceValue(itemTotal)}</p>
+              <button onclick="removeItem(${item.id})" class="text-red-500 text-sm hover:text-red-600">移除</button>
+            </div>
           </div>
         </div>
         `;
