@@ -154,7 +154,10 @@ module.exports = function(app, pool, requireAdmin, requireAuth, bcrypt) {
         return res.json({ success: true, user: serializeUser(result.user) });
       }
 
-      res.redirect('/');
+      // 安全跳轉：只接受站內相對路徑（單一 / 開頭，拒 // 同絕對 URL，防 open redirect）
+      const want = typeof req.body.redirect === 'string' ? req.body.redirect : '';
+      const safe = /^\/[a-zA-Z0-9_\-\/.?=&%]*$/.test(want) && !want.startsWith('//') ? want : '/';
+      res.redirect(safe);
     } catch (err) {
       console.error(err);
       if (api) {

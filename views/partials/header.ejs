@@ -28,7 +28,7 @@
             <span class="rounded-full bg-red-700 px-2 py-0.5 text-[10px] font-bold text-white" id="cart-count">0</span>
           </a>
           <% if (user) { %>
-            <a href="#" class="hidden sm:inline font-medium text-gray-700 hover:text-red-700">會員中心</a>
+            <a href="/account/orders" class="hidden sm:inline font-medium text-gray-700 hover:text-red-700">我的訂單</a>
           <% } else { %>
             <a href="/login" class="hidden sm:inline font-medium text-gray-700 hover:text-red-700"><%= t('nav.login') %></a>
           <% } %>

@@ -1066,7 +1066,8 @@ app.use(async (req, res, next) => {
   app.get('/login', (req, res) => {
     res.render('login', {
       title: '登入 - OHYA2.0',
-      error: null
+      error: null,
+      redirect: typeof req.query.redirect === 'string' ? req.query.redirect : '',
     });
   });
   
@@ -1141,6 +1142,59 @@ app.use(async (req, res, next) => {
       res.status(500).render('order-confirm', {
         title: '訂單確認 - OHYA2.0', user: null, order: null, items: [],
         formatPrice, paymentInfo: getPaymentInfo(), error: '服務器錯誤',
+      });
+    }
+  });
+
+  // 我的訂單列表（會員專屬，伺服器渲染）
+  app.get('/account/orders', async (req, res) => {
+    const sessUser = req.session && req.session.userId;
+    const renderUser = sessUser ? { id: sessUser, isAdmin: req.session.isAdmin } : null;
+    if (!sessUser) {
+      return res.redirect('/login?redirect=' + encodeURIComponent('/account/orders'));
+    }
+    if (!connectionString) {
+      return res.status(500).render('account-orders', {
+        title: '我的訂單 - OHYA2.0', user: renderUser, formatPrice,
+        orders: [], page: 1, totalPages: 1, total: 0, error: '數據庫未配置',
+      });
+    }
+    try {
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const perPage = 10;
+      const offset = (page - 1) * perPage;
+
+      const countResult = await pool.query(
+        'SELECT COUNT(*)::int AS total FROM orders WHERE user_id = $1',
+        [sessUser]
+      );
+      const total = countResult.rows[0].total;
+      const result = await pool.query(`
+        SELECT o.*, COUNT(oi.id)::int AS item_count,
+               COALESCE(SUM(oi.quantity), 0)::int AS item_qty
+        FROM orders o
+        LEFT JOIN order_items oi ON oi.order_id = o.id
+        WHERE o.user_id = $1
+        GROUP BY o.id
+        ORDER BY o.created_at DESC
+        LIMIT $2 OFFSET $3
+      `, [sessUser, perPage, offset]);
+
+      res.render('account-orders', {
+        title: '我的訂單 - OHYA2.0',
+        user: renderUser,
+        formatPrice,
+        orders: result.rows,
+        page,
+        totalPages: Math.max(1, Math.ceil(total / perPage)),
+        total,
+        error: null,
+      });
+    } catch (err) {
+      console.error('Account orders page error:', err);
+      res.status(500).render('account-orders', {
+        title: '我的訂單 - OHYA2.0', user: renderUser, formatPrice,
+        orders: [], page: 1, totalPages: 1, total: 0, error: '服務器錯誤',
       });
     }
   });
