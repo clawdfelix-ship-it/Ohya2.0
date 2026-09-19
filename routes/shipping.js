@@ -6,6 +6,7 @@
 module.exports = function(app, pool) {
 
   const requireAdmin = require('./middleware/auth').requireAdmin;
+  const requirePermission = require('./middleware/auth').requirePermission;
   const { computeShippingFee } = require('../utils/shippingAvailability');
 
   // ===========================================
@@ -133,7 +134,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.post('/api/admin/shipping/methods', requireAdmin, async (req, res) => {
+  app.post('/api/admin/shipping/methods', requirePermission('*'), async (req, res) => {
     try {
       const { name, type, zone_id, provider, shipping_fee, free_shipping_threshold, sort_order, is_active } = req.body;
 
@@ -150,7 +151,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.put('/api/admin/shipping/methods/:id', requireAdmin, async (req, res) => {
+  app.put('/api/admin/shipping/methods/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       const { name, type, zone_id, provider, shipping_fee, free_shipping_threshold, sort_order, is_active } = req.body;
@@ -174,7 +175,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.delete('/api/admin/shipping/methods/:id', requireAdmin, async (req, res) => {
+  app.delete('/api/admin/shipping/methods/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       await pool.query('DELETE FROM shipping_methods WHERE id = $1', [id]);
@@ -226,7 +227,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.post('/api/admin/pickup-points', requireAdmin, async (req, res) => {
+  app.post('/api/admin/pickup-points', requirePermission('*'), async (req, res) => {
     try {
       const { name, address, district, provider, latitude, longitude } = req.body;
 
@@ -243,7 +244,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.put('/api/admin/pickup-points/:id', requireAdmin, async (req, res) => {
+  app.put('/api/admin/pickup-points/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       const { name, address, district, provider, latitude, longitude, is_active } = req.body;
@@ -266,7 +267,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.delete('/api/admin/pickup-points/:id', requireAdmin, async (req, res) => {
+  app.delete('/api/admin/pickup-points/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       // Soft deactivate
@@ -282,7 +283,7 @@ module.exports = function(app, pool) {
   // Bulk import pickup points (for HK lockers/convenience stores)
   // ===========================================
 
-  app.post('/api/admin/pickup-points/bulk', requireAdmin, async (req, res) => {
+  app.post('/api/admin/pickup-points/bulk', requirePermission('*'), async (req, res) => {
     try {
       const { pickup_points } = req.body;
       const client = await pool.connect();
@@ -398,7 +399,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.post('/api/admin/payment-methods', requireAdmin, async (req, res) => {
+  app.post('/api/admin/payment-methods', requirePermission('*'), async (req, res) => {
     try {
       const { name, code, provider, fee_percent, fee_fixed, instructions, qr_code_image, sort_order, is_active } = req.body;
 
@@ -418,7 +419,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.put('/api/admin/payment-methods/:id', requireAdmin, async (req, res) => {
+  app.put('/api/admin/payment-methods/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       const { name, code, provider, fee_percent, fee_fixed, instructions, qr_code_image, sort_order, is_active } = req.body;
@@ -441,7 +442,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.delete('/api/admin/payment-methods/:id', requireAdmin, async (req, res) => {
+  app.delete('/api/admin/payment-methods/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       await pool.query('DELETE FROM payment_methods WHERE id = $1', [id]);

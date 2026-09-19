@@ -17,6 +17,12 @@ function hasPermissionList(permissions, required) {
   });
 }
 
+function hasBackofficeAccess(session) {
+  if (!session || !session.userId) return false;
+  if (session.isAdmin) return true;
+  return Boolean(session.isBackoffice && Array.isArray(session.adminPermissions) && session.adminPermissions.length > 0);
+}
+
 module.exports = {
   requireAuth: (req, res, next) => {
     if (req.session && req.session.userId) {
@@ -35,7 +41,7 @@ module.exports = {
   },
 
   requireAdmin: (req, res, next) => {
-    if (req.session && req.session.userId && (req.session.isAdmin || req.session.isBackoffice)) {
+    if (hasBackofficeAccess(req.session)) {
       req.user = {
         id: req.session.userId,
         isAdmin: !!req.session.isAdmin,
@@ -62,5 +68,7 @@ module.exports = {
       }
       next();
     };
-  }
+  },
+
+  hasBackofficeAccess,
 };

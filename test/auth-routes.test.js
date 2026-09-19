@@ -7,7 +7,7 @@ const authRoutes = require('../routes/auth');
 
 function createRouteCapturingApp() {
   const routes = [];
-  const record = (method) => (routePath) => routes.push({ method, path: routePath });
+  const record = (method) => (routePath, ...handlers) => routes.push({ method, path: routePath, handlers });
   return {
     routes,
     get: record('GET'),
@@ -20,6 +20,12 @@ function createRouteCapturingApp() {
 
 function count(routes, method, routePath) {
   return routes.filter((route) => route.method === method && route.path === routePath).length;
+}
+
+function findRoute(routes, method, routePath) {
+  const route = routes.find((entry) => entry.method === method && entry.path === routePath);
+  assert.ok(route, `Missing route ${method} ${routePath}`);
+  return route;
 }
 
 test('auth routes register storefront and api POST handlers', () => {
@@ -154,4 +160,63 @@ test('storefront auth forms include csrf hidden fields', () => {
 
   assert.match(loginView, /name="_csrf" value="<%= csrfToken \|\| '' %>"/);
   assert.match(registerView, /name="_csrf" value="<%= csrfToken \|\| '' %>"/);
+});
+
+test('storefront login regenerates session and clears stale backoffice flags', async () => {
+  const app = createRouteCapturingApp();
+  const fakePool = {
+    query: async () => ({
+      rows: [{
+        id: 3,
+        username: 'alice',
+        email: 'alice@example.com',
+        password_hash: 'stored-hash',
+        is_admin: false,
+        contact: 'alice@example.com',
+      }]
+    })
+  };
+  const fakeBcrypt = { compare: async () => true };
+
+  authRoutes(app, fakePool, () => {}, () => {}, fakeBcrypt);
+  const route = findRoute(app.routes, 'POST', '/login');
+  let regenerateCalled = false;
+  const req = {
+    body: { email: 'alice@example.com', password: 'secret123' },
+    session: {
+      isBackoffice: true,
+      adminPermissions: ['orders:write'],
+      regenerate(cb) {
+        regenerateCalled = true;
+        delete this.isBackoffice;
+        delete this.adminPermissions;
+        cb(null);
+      }
+    }
+  };
+  let redirected = null;
+  const res = {
+    json() {
+      throw new Error('Unexpected JSON response');
+    },
+    redirect(url) {
+      redirected = url;
+    },
+    status(code) {
+      throw new Error(`Unexpected status ${code}`);
+    },
+    render() {
+      throw new Error('Unexpected render');
+    }
+  };
+
+  await route.handlers[0](req, res);
+
+  assert.equal(regenerateCalled, true);
+  assert.equal(redirected, '/');
+  assert.equal(req.session.userId, 3);
+  assert.equal(req.session.username, 'alice');
+  assert.equal(req.session.isAdmin, false);
+  assert.equal(req.session.isBackoffice, false);
+  assert.equal('adminPermissions' in req.session, false);
 });

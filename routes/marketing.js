@@ -8,6 +8,7 @@ module.exports = function(app, pool) {
 
   const requireAuth = require('./middleware/auth').requireAuth;
   const requireAdmin = require('./middleware/auth').requireAdmin;
+  const requirePermission = require('./middleware/auth').requirePermission;
 
   // ===========================================
   // Coupons / Promotion Codes
@@ -119,7 +120,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin: create coupon
-  app.post('/api/admin/coupons', requireAdmin, async (req, res) => {
+  app.post('/api/admin/coupons', requirePermission('*'), async (req, res) => {
     try {
       const {
         code, type, value, min_order_amount, max_discount_amount,
@@ -155,7 +156,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.put('/api/admin/coupons/:id', requireAdmin, async (req, res) => {
+  app.put('/api/admin/coupons/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       const {
@@ -189,7 +190,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.delete('/api/admin/coupons/:id', requireAdmin, async (req, res) => {
+  app.delete('/api/admin/coupons/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       await pool.query('DELETE FROM coupons WHERE id = $1', [id]);
@@ -248,7 +249,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.post('/api/admin/flash-sales', requireAdmin, async (req, res) => {
+  app.post('/api/admin/flash-sales', requirePermission('*'), async (req, res) => {
     try {
       const { name, description, starts_at, ends_at, products } = req.body;
       const client = await pool.connect();
@@ -326,7 +327,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.post('/api/admin/affiliates', requireAdmin, async (req, res) => {
+  app.post('/api/admin/affiliates', requirePermission('*'), async (req, res) => {
     try {
       const { user_id, code, commission_rate, status } = req.body;
 
@@ -505,7 +506,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.post('/api/admin/blog/posts', requireAdmin, async (req, res) => {
+  app.post('/api/admin/blog/posts', requirePermission('*'), async (req, res) => {
     try {
       const { title, slug, content, excerpt, featured_image, status, publish_at, meta_title, meta_description } = req.body;
 
@@ -525,7 +526,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.put('/api/admin/blog/posts/:id', requireAdmin, async (req, res) => {
+  app.put('/api/admin/blog/posts/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       const { title, slug, content, excerpt, featured_image, status, publish_at, meta_title, meta_description } = req.body;
@@ -550,7 +551,7 @@ module.exports = function(app, pool) {
     }
   });
 
-  app.delete('/api/admin/blog/posts/:id', requireAdmin, async (req, res) => {
+  app.delete('/api/admin/blog/posts/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       await pool.query('DELETE FROM blog_posts WHERE id = $1', [id]);

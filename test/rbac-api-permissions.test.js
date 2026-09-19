@@ -53,3 +53,19 @@ test('admin bulk skus endpoints use requirePermission(inventory:bulk)', () => {
   assert.match(s, /requirePermission/);
   assert.match(s, /inventory:bulk/);
 });
+
+test('marketing write endpoints are restricted to super-admin permission', () => {
+  const s = read('routes/marketing.js');
+  assert.match(s, /\/api\/admin\/coupons'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/flash-sales'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/affiliates'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/blog\/posts'\s*,\s*requirePermission\('\*'\)/);
+});
+
+test('shipping and payment write endpoints are restricted to super-admin permission', () => {
+  const s = read('routes/shipping.js');
+  assert.match(s, /\/api\/admin\/shipping\/methods'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/pickup-points'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/pickup-points\/bulk'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/payment-methods'\s*,\s*requirePermission\('\*'\)/);
+});

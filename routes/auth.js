@@ -2,10 +2,22 @@ function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+async function regenerateSession(req) {
+  if (!req || !req.session || typeof req.session.regenerate !== 'function') return;
+  await new Promise((resolve, reject) => {
+    req.session.regenerate((err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
+}
+
 function setSessionUser(req, user) {
   req.session.userId = user.id;
   req.session.username = user.username;
   req.session.isAdmin = user.is_admin;
+  req.session.isBackoffice = false;
+  delete req.session.adminPermissions;
   req.session.contact = user.contact || null;
   req.session.email = user.email || null;
 }
@@ -148,6 +160,7 @@ module.exports = function(app, pool, requireAdmin, requireAuth, bcrypt) {
         });
       }
 
+      await regenerateSession(req);
       setSessionUser(req, result.user);
 
       if (api) {
@@ -209,3 +222,4 @@ module.exports = function(app, pool, requireAdmin, requireAuth, bcrypt) {
 module.exports.registerUser = registerUser;
 module.exports.loginUser = loginUser;
 module.exports.serializeUser = serializeUser;
+module.exports.regenerateSession = regenerateSession;
