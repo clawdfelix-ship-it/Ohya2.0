@@ -868,6 +868,19 @@ app.use(async (req, res, next) => {
       const total = countResult.rows[0] ? Number(countResult.rows[0].total) : 0;
       const totalPages = Math.max(1, Math.ceil(total / perPage));
 
+      // mzakka 標準 order: when browsing a category with the default sort,
+      // order by that exact node's mzakka rank (the node's page lists its whole
+      // subtree in mzakka 標準 order). User-chosen sorts (price/newest/popular)
+      // still win; products without a rank sink to the end.
+      const rankParamIndex = categoryId ? paramIndex++ : null;
+      if (categoryId) params.push(categoryId);
+      const orderBy = (categoryId && sort === 'recommend')
+        ? `mr.rank NULLS LAST, p.created_at DESC`
+        : getProductsOrderBy(sort);
+      const rankJoin = categoryId
+        ? `LEFT JOIN mzakka_category_rank mr ON mr.product_id = p.id AND mr.category_id = $${rankParamIndex}`
+        : '';
+
       const listResult = await pool.query(
         `SELECT p.id,
                 COALESCE(p.name_zh_hk, p.name) as name,
@@ -880,6 +893,7 @@ app.use(async (req, res, next) => {
          FROM products p
          LEFT JOIN categories c ON p.category_id = c.id
          LEFT JOIN categories pc ON c.parent_id = pc.id
+         ${rankJoin}
          LEFT JOIN (
            SELECT product_id, SUM(stock)::int as total_stock
            FROM product_skus
@@ -887,7 +901,7 @@ app.use(async (req, res, next) => {
            GROUP BY product_id
          ) s ON s.product_id = p.id
          WHERE ${where}
-         ORDER BY ${getProductsOrderBy(sort)}
+         ORDER BY ${orderBy}
          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
         [...params, perPage, offset]
       );
