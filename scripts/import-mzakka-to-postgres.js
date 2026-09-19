@@ -2,13 +2,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
 const {
-  buildCategoryNodes,
-  makeCategorySlug,
   toProductUpsertInput,
   toProductMediaRows,
   toProductSectionRows,
   toSkuUpsertInput,
 } = require('../utils/mzakkaImport');
+const { resolveItemNode, loadDbNodeMap } = require('../utils/mzakkaCategoryResolver');
 
 async function dryRunParse({ file, limit = 1 }) {
   const linesReadLimit = Math.max(1, Number(limit) || 1);
@@ -63,49 +62,18 @@ function createOwnedPool() {
 }
 
 async function runImport({ items, pool, batchSize = 200 }) {
-  const categoryCache = new Map();
   let linesRead = 0;
   let productsUpserted = 0;
   let skusUpserted = 0;
   let categoriesUpserted = 0;
   let mediaUpserted = 0;
   let sectionsUpserted = 0;
+  let categoriesFromMap = 0;
+  let categoriesRootFallback = 0;
+  let categoriesUnresolved = 0;
 
-  async function upsertCategory(client, node, parentId = null) {
-    const cacheKey = String(node.source_key || `${parentId || 'root'}:${node.name}`);
-    const cached = categoryCache.get(cacheKey);
-    if (cached) return cached;
-    const slug = makeCategorySlug(node.source_key || node.name);
-    const r = await client.query(
-      `INSERT INTO categories
-        (name, name_zh_hk, slug, parent_id, status, sort_order, source, source_key, source_parent_key)
-       VALUES ($1, $2, $3, $4, 'active', $5, $6, $7, $8)
-       ON CONFLICT (slug) DO UPDATE SET
-         name = EXCLUDED.name,
-         name_zh_hk = EXCLUDED.name_zh_hk,
-         parent_id = EXCLUDED.parent_id,
-         sort_order = EXCLUDED.sort_order,
-         source = EXCLUDED.source,
-         source_key = EXCLUDED.source_key,
-         source_parent_key = EXCLUDED.source_parent_key,
-         status = 'active'
-       RETURNING id`,
-      [
-        node.name,
-        node.name,
-        slug,
-        parentId,
-        Number(node.depth || 0),
-        'mzakka',
-        node.source_key || null,
-        node.source_parent_key || null,
-      ]
-    );
-    categoriesUpserted++;
-    const id = r.rows[0].id;
-    categoryCache.set(cacheKey, id);
-    return id;
-  }
+  // real-node-id -> our categories.id (257 clean rows, numeric source_key)
+  const dbNodeMap = await loadDbNodeMap(pool);
 
   async function replaceProductMedia(client, item, productId) {
     const mediaRows = toProductMediaRows(item, productId);
@@ -159,13 +127,16 @@ async function runImport({ items, pool, batchSize = 200 }) {
     try {
       await client.query('BEGIN');
       for (const item of batch) {
-        const nodes = buildCategoryNodes(item.category);
-        let parentId = null;
+        const { nodeId, via } = resolveItemNode(item);
         let categoryId = null;
-        for (const node of nodes) {
-          categoryId = await upsertCategory(client, node, parentId);
-          parentId = categoryId;
+        if (nodeId != null) {
+          categoryId = dbNodeMap.get(nodeId) || null;
+          if (categoryId) {
+            categoriesUpserted++;
+            if (via === 'map') categoriesFromMap++; else categoriesRootFallback++;
+          }
         }
+        if (categoryId == null) categoriesUnresolved++;
         const p = toProductUpsertInput(item, categoryId);
         const pr = await client.query(
           `INSERT INTO products
@@ -254,7 +225,10 @@ async function runImport({ items, pool, batchSize = 200 }) {
   return {
     mode: 'import',
     linesRead,
-    categoriesUpserted,
+    categoriesResolved: categoriesUpserted,
+    categoriesFromMap,
+    categoriesRootFallback,
+    categoriesUnresolved,
     productsUpserted,
     skusUpserted,
     mediaUpserted,

@@ -38,3 +38,9 @@ QA測試報告_*.md
 data/*sample*.json
 .vercel
 .env*
+
+# mzakka taxonomy research HTML cache + intermediate artifacts
+tmp/mzakka-tax-cache/
+tmp/*.json
+tmp/*.jsonl
+tmp/*.log
