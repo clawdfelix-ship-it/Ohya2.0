@@ -259,6 +259,7 @@ CREATE TABLE IF NOT EXISTS product_skus (
   product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   sku VARCHAR(100) UNIQUE,
   barcode VARCHAR(100),
+  manufacturer_code VARCHAR(100),
   attributes JSON NOT NULL,
   price DECIMAL(10,2),
   cost_price DECIMAL(10,2),

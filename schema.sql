@@ -246,6 +246,7 @@ CREATE TABLE IF NOT EXISTS product_skus (
   product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   sku VARCHAR(100) UNIQUE,
   barcode VARCHAR(100),
+  manufacturer_code VARCHAR(100), -- 廠方型號（メーカー型番 / MPN）
   -- Variation attributes: size/color etc.
   attributes JSON NOT NULL, -- {"size": "M", "color": "Red"}
   -- Pricing
