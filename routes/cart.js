@@ -6,7 +6,7 @@ module.exports = function(app, pool, requireAuth) {
       const userId = req.session.userId;
 
       const result = await pool.query(`
-        SELECT ci.*, p.name, (p.price * 100)::int AS price, p.image_url, p.stock, p.slug
+        SELECT ci.*, p.name, (p.price * 100)::int AS price, p.image_url, p.slug
         FROM cart_items ci
         JOIN products p ON ci.product_id = p.id
         WHERE ci.user_id = $1
