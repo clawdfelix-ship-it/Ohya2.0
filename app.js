@@ -172,6 +172,8 @@ app.use(cors(buildCorsOptions({
   nodeEnv: process.env.NODE_ENV,
   allowedOriginsEnv: process.env.CORS_ALLOWED_ORIGINS || '',
 })));
+app.post('/login', loginLimiter());
+app.post('/admin/login', loginLimiter());
 app.use('/api/auth/login', loginLimiter());
 app.use('/webhooks', webhookLimiter());
 app.use(cspReportPath, cspReportLimiter());

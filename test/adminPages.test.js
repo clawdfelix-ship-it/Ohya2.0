@@ -1,5 +1,17 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const Module = require('node:module');
+
+const originalLoad = Module._load;
+Module._load = function patchedLoad(request, parent, isMain) {
+  if (request === 'bcryptjs') {
+    return {
+      hash: async () => '$2b$mock-hash',
+      compare: async () => true,
+    };
+  }
+  return originalLoad.call(this, request, parent, isMain);
+};
 
 test('adminBootstrap: hasAdmin queries users.is_admin', async () => {
   const { hasAdmin } = require('../utils/adminBootstrap');
@@ -57,4 +69,24 @@ test('adminPages: requireAdminPage redirects to /admin/login when not admin', as
   const res = { redirect: (u) => (redirected = u) };
   await mw(req, res, () => {});
   assert.equal(redirected, '/admin/login');
+});
+
+test('adminPages: regenerateSession clears pre-auth session data', async () => {
+  const adminPages = require('../routes/adminPages');
+  let regenerated = false;
+  const req = {
+    session: {
+      isAdmin: false,
+      regenerate(callback) {
+        regenerated = true;
+        delete this.isAdmin;
+        callback(null);
+      },
+    },
+  };
+
+  await adminPages.regenerateSession(req);
+
+  assert.equal(regenerated, true);
+  assert.equal(req.session.isAdmin, undefined);
 });

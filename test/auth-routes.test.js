@@ -148,6 +148,25 @@ test('loginUser accepts email as identifier', async () => {
   assert.equal(result.user.email, 'alice@example.com');
 });
 
+test('regenerateSession replaces the pre-login session id', async () => {
+  let regenerated = false;
+  const req = {
+    session: {
+      userId: 99,
+      regenerate(callback) {
+        regenerated = true;
+        delete this.userId;
+        callback(null);
+      },
+    },
+  };
+
+  await authRoutes.regenerateSession(req);
+
+  assert.equal(regenerated, true);
+  assert.equal(req.session.userId, undefined);
+});
+
 test('storefront auth forms include csrf hidden fields', () => {
   const loginView = fs.readFileSync(path.join(__dirname, '..', 'views', 'login.ejs'), 'utf8');
   const registerView = fs.readFileSync(path.join(__dirname, '..', 'views', 'register.ejs'), 'utf8');

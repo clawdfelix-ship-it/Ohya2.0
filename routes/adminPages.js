@@ -1,4 +1,3 @@
-const bcrypt = require('bcryptjs');
 const { hasAdmin, createFirstAdmin } = require('../utils/adminBootstrap');
 
 function isAdminSession(session) {
@@ -18,6 +17,18 @@ function hasPermissionList(permissions, required) {
       if (perms.includes(prefix + ':*')) return true;
     }
     return false;
+  });
+}
+
+function regenerateSession(req) {
+  if (!req || !req.session || typeof req.session.regenerate !== 'function') {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((err) => {
+      if (err) return reject(err);
+      resolve();
+    });
   });
 }
 
@@ -69,6 +80,7 @@ function register(app, pool) {
       return res.status(400).send('用戶名及密碼至少 6 位');
     }
     const user = await createFirstAdmin(pool, { username, password, contact });
+    await regenerateSession(req);
     req.session.userId = user.id;
     req.session.username = user.username;
     req.session.isAdmin = true;
@@ -84,6 +96,7 @@ function register(app, pool) {
   app.post('/admin/login', async (req, res) => {
     if (!pool) return res.status(500).send('Database not configured');
     const { username, password } = req.body || {};
+    const bcrypt = require('bcryptjs');
     const result = await pool.query(
       'SELECT id, username, password_hash, is_admin, contact FROM users WHERE username = $1',
       [username]
@@ -96,6 +109,7 @@ function register(app, pool) {
     if (!ok) {
       return res.status(400).render('admin/login', { title: '後台登入', error: '用戶名或密碼錯誤' });
     }
+    await regenerateSession(req);
     req.session.userId = user.id;
     req.session.username = user.username;
     req.session.isAdmin = !!user.is_admin;
@@ -190,5 +204,6 @@ function register(app, pool) {
 register.isAdminSession = isAdminSession;
 register.requireAdminPage = requireAdminPage;
 register.setupEnabled = setupEnabled;
+register.regenerateSession = regenerateSession;
 
 module.exports = register;

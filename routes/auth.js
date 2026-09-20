@@ -10,6 +10,18 @@ function setSessionUser(req, user) {
   req.session.email = user.email || null;
 }
 
+function regenerateSession(req) {
+  if (!req || !req.session || typeof req.session.regenerate !== 'function') {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
+}
+
 function serializeUser(user) {
   return {
     id: user.id,
@@ -148,6 +160,7 @@ module.exports = function(app, pool, requireAdmin, requireAuth, bcrypt) {
         });
       }
 
+      await regenerateSession(req);
       setSessionUser(req, result.user);
 
       if (api) {
@@ -209,3 +222,4 @@ module.exports = function(app, pool, requireAdmin, requireAuth, bcrypt) {
 module.exports.registerUser = registerUser;
 module.exports.loginUser = loginUser;
 module.exports.serializeUser = serializeUser;
+module.exports.regenerateSession = regenerateSession;
