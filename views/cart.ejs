@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link rel="stylesheet" href="/css/interactions.css">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <%- include('partials/theme-head') %>
   <meta name="csrf-token" content="<%= csrfToken || '' %>">
   <style>
     body {
@@ -24,7 +24,7 @@
     }
   </style>
 </head>
-<body class="mz-body text-black min-h-screen" data-logged-in="<%= user ? '1' : '0' %>">
+<body class="mz-body min-h-screen text-gray-200" data-logged-in="<%= user ? '1' : '0' %>">
 
   <%- include('partials/age-modal') %>
 
@@ -36,50 +36,50 @@
 
       <div id="wrap_center" class="min-w-0">
   <div class="max-w-4xl mx-auto px-0 sm:px-6 lg:px-8 py-6">
-    <h1 class="text-3xl font-bold text-gray-900 mb-8 jpn-bracket inline-block">🛒 我的購物車</h1>
+    <h1 class="text-3xl font-bold text-white mb-8 jpn-bracket inline-block">🛒 我的購物車</h1>
     <div id="cart-message" class="hidden mb-4 rounded-xl border px-4 py-3 text-sm"></div>
     
     <div id="cart-items" class="space-y-4">
       <!-- 動態加載 -->
     </div>
     
-    <div id="empty-cart" class="text-center py-16 bg-white rounded-xl border border-gray-200">
+    <div id="empty-cart" class="text-center py-16 bg-ink-850 rounded-xl border border-ink-600">
       <span class="text-6xl mb-4 block">🛒</span>
       <p class="text-gray-500 mb-6">購物車仲係空嘅</p>
-      <a href="/products" class="bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition inline-block">
+      <a href="/products" class="bg-wine text-white px-6 py-3 rounded-lg font-medium hover:bg-wine transition inline-block">
         去購物 →
       </a>
     </div>
     
-    <div id="cart-summary" class="mt-8 bg-white rounded-xl p-6 border border-gray-200 hidden">
+    <div id="cart-summary" class="mt-8 bg-ink-850 rounded-xl p-6 border border-ink-600 hidden">
       <div class="space-y-2 text-sm">
         <div class="flex justify-between">
-          <span class="text-gray-600">商品小計</span>
-          <span class="font-bold text-gray-900" id="subtotal-price">HK$0</span>
+          <span class="text-gray-400">商品小計</span>
+          <span class="font-bold text-white" id="subtotal-price">HK$0</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-gray-600">運費</span>
+          <span class="text-gray-400">運費</span>
           <span class="font-bold text-orange-600">到付（收貨時支付）</span>
         </div>
-        <div class="flex justify-between items-center border-t border-gray-100 pt-3">
-          <span class="text-xl font-bold text-gray-900">而家需付款</span>
-          <span class="text-2xl font-bold text-red-600" id="total-price">HK$0</span>
+        <div class="flex justify-between items-center border-t border-ink-700 pt-3">
+          <span class="text-xl font-bold text-white">而家需付款</span>
+          <span class="text-2xl font-bold text-gold" id="total-price">HK$0</span>
         </div>
       </div>
 
-      <div class="mt-5 rounded-xl bg-gray-50 p-4">
-        <p class="text-sm font-bold text-gray-900 mb-3">付款方式</p>
-        <label class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 cursor-pointer has-[:checked]:border-red-400 has-[:checked]:ring-1 has-[:checked]:ring-red-400">
-          <input type="radio" name="payment_method" value="bank_transfer" class="mt-1 accent-red-600" checked>
+      <div class="mt-5 rounded-xl bg-ink-800 p-4">
+        <p class="text-sm font-bold text-white mb-3">付款方式</p>
+        <label class="flex items-start gap-3 rounded-lg border border-ink-600 bg-ink-850 p-3 cursor-pointer has-[:checked]:border-gold/60 has-[:checked]:ring-1 has-[:checked]:ring-wine">
+          <input type="radio" name="payment_method" value="bank_transfer" class="mt-1 accent-wine" checked>
           <span class="text-sm">
-            <span class="font-bold text-gray-900 block">銀行轉帳</span>
+            <span class="font-bold text-white block">銀行轉帳</span>
             <span class="text-gray-500">落單後顯示收款戶口，24 小時內過數並傳回入數收據</span>
           </span>
         </label>
-        <label class="mt-2 flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 cursor-pointer has-[:checked]:border-red-400 has-[:checked]:ring-1 has-[:checked]:ring-red-400">
-          <input type="radio" name="payment_method" value="fps" class="mt-1 accent-red-600">
+        <label class="mt-2 flex items-start gap-3 rounded-lg border border-ink-600 bg-ink-850 p-3 cursor-pointer has-[:checked]:border-gold/60 has-[:checked]:ring-1 has-[:checked]:ring-wine">
+          <input type="radio" name="payment_method" value="fps" class="mt-1 accent-wine">
           <span class="text-sm">
-            <span class="font-bold text-gray-900 block">FPS 轉數快</span>
+            <span class="font-bold text-white block">FPS 轉數快</span>
             <span class="text-gray-500">落單後顯示 FPS ID，即時過數，備註填訂單編號</span>
           </span>
         </label>
@@ -89,12 +89,12 @@
         請先登入，登入後會自動將暫存購物車轉入會員購物車並可正式下單。
       </p>
       <div id="checkout-fields" class="hidden space-y-3 mb-4">
-        <input id="checkout-name" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-red-500 focus:outline-none" placeholder="收件人姓名">
-        <input id="checkout-phone" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-red-500 focus:outline-none" placeholder="聯絡電話">
-        <textarea id="checkout-address" rows="3" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-red-500 focus:outline-none" placeholder="送貨地址"></textarea>
-        <textarea id="checkout-note" rows="2" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-red-500 focus:outline-none" placeholder="訂單備註（可選）"></textarea>
+        <input id="checkout-name" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-wine focus:outline-none" placeholder="收件人姓名">
+        <input id="checkout-phone" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-wine focus:outline-none" placeholder="聯絡電話">
+        <textarea id="checkout-address" rows="3" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-wine focus:outline-none" placeholder="送貨地址"></textarea>
+        <textarea id="checkout-note" rows="2" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-wine focus:outline-none" placeholder="訂單備註（可選）"></textarea>
       </div>
-      <button id="checkout-button" onclick="checkout()" class="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-red-700 transition">
+      <button id="checkout-button" onclick="checkout()" class="w-full bg-wine text-white py-4 rounded-xl font-bold text-lg hover:bg-wine transition">
         📦 結帳
       </button>
     </div>
@@ -180,7 +180,7 @@
 
       const toneClasses = tone === 'success'
         ? ['border-green-200', 'bg-green-50', 'text-green-700']
-        : ['border-red-200', 'bg-red-50', 'text-red-700'];
+        : ['border-gold/40', 'bg-wine/15', 'text-wine-light'];
 
       box.className = `mb-4 rounded-xl border px-4 py-3 text-sm ${toneClasses.join(' ')}`;
       box.textContent = message;
@@ -306,23 +306,23 @@
         const detailHref = item.productId ? `/product/${item.productId}` : '/products';
         
         return `
-          <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 border border-gray-200 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <div class="bg-ink-850 rounded-xl shadow-sm p-3 sm:p-4 border border-ink-600 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 bg-ink-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
             ${item.image ? `<img src="${escapeHtml(item.image)}" loading="lazy" decoding="async" class="w-full h-full object-cover" alt="${escapeHtml(item.name)}">` : '📦'}
           </div>
           <div class="flex-grow min-w-0">
-            <a href="${detailHref}" class="font-semibold text-gray-900 hover:text-red-600 line-clamp-2">${escapeHtml(item.name)}</a>
-            <p class="text-red-600 font-bold mt-1">單價 ${formatPriceValue(item.price)}</p>
+            <a href="${detailHref}" class="font-semibold text-white hover:text-gold line-clamp-2">${escapeHtml(item.name)}</a>
+            <p class="text-gold font-bold mt-1">單價 ${formatPriceValue(item.price)}</p>
           </div>
-          <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t border-gray-100 pt-3 sm:pt-0 sm:border-0">
+          <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t border-ink-700 pt-3 sm:pt-0 sm:border-0">
             <div class="flex items-center gap-2">
-              <button onclick="updateQuantity(${item.id}, -1)" aria-label="減少數量" class="w-9 h-9 bg-gray-100 rounded-lg hover:bg-gray-200 transition">−</button>
+              <button onclick="updateQuantity(${item.id}, -1)" aria-label="減少數量" class="w-9 h-9 bg-ink-700 rounded-lg hover:bg-gray-200 transition">−</button>
               <span class="w-8 text-center font-medium" aria-label="數量">${item.quantity}</span>
-              <button onclick="updateQuantity(${item.id}, 1)" aria-label="增加數量" class="w-9 h-9 bg-gray-100 rounded-lg hover:bg-gray-200 transition">+</button>
+              <button onclick="updateQuantity(${item.id}, 1)" aria-label="增加數量" class="w-9 h-9 bg-ink-700 rounded-lg hover:bg-gray-200 transition">+</button>
             </div>
             <div class="text-right">
-              <p class="font-bold text-gray-900 whitespace-nowrap">${formatPriceValue(itemTotal)}</p>
-              <button onclick="removeItem(${item.id})" class="text-red-500 text-sm hover:text-red-600">移除</button>
+              <p class="font-bold text-white whitespace-nowrap">${formatPriceValue(itemTotal)}</p>
+              <button onclick="removeItem(${item.id})" class="text-wine-light text-sm hover:text-gold">移除</button>
             </div>
           </div>
         </div>

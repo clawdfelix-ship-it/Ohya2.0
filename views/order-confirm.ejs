@@ -7,14 +7,14 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link rel="stylesheet" href="/css/interactions.css">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <%- include('partials/theme-head') %>
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; }
     .jpn-bracket::before { content: '【'; }
     .jpn-bracket::after { content: '】'; }
   </style>
 </head>
-<body class="mz-body min-h-screen bg-gray-50 text-black" data-logged-in="<%= user ? '1' : '0' %>">
+<body class="mz-body min-h-screen text-gray-200" data-logged-in="<%= user ? '1' : '0' %>">
 
   <%- include('partials/age-modal') %>
   <%- include('partials/header') %>
@@ -23,11 +23,11 @@
 
     <% const orderError = locals.error || null; %>
     <% if (orderError || !order) { %>
-      <div class="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
+      <div class="rounded-2xl border border-ink-600 bg-ink-850 p-10 text-center shadow-sm">
         <span class="text-6xl block mb-4">📦</span>
-        <h1 class="text-2xl font-black text-gray-900 mb-2">搵唔到訂單</h1>
+        <h1 class="text-2xl font-black text-white mb-2">搵唔到訂單</h1>
         <p class="text-gray-500 mb-6"><%= orderError || '訂單不存在或不屬於你' %></p>
-        <a href="/products" class="inline-block rounded-full bg-red-600 px-8 py-3 text-white font-bold hover:bg-red-700 transition">繼續購物</a>
+        <a href="/products" class="inline-block rounded-full bg-wine px-8 py-3 text-white font-bold hover:bg-wine transition">繼續購物</a>
       </div>
     <% } else { %>
       <%
@@ -49,11 +49,11 @@
       </div>
 
       <!-- 付款指示 -->
-      <div class="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 class="text-lg font-black text-gray-900 mb-4 jpn-bracket inline-block">付款方法：<%= payLabel %></h2>
+      <div class="mb-6 rounded-2xl border border-ink-600 bg-ink-850 p-6 shadow-sm">
+        <h2 class="text-lg font-black text-white mb-4 jpn-bracket inline-block">付款方法：<%= payLabel %></h2>
 
         <% if (order.payment_method_code === 'fps') { %>
-          <div class="space-y-2 text-sm text-gray-700">
+          <div class="space-y-2 text-sm text-gray-300">
             <% if (paymentInfo.fps.fpsId) { %><p>轉數快 FPS ID：<span class="font-black text-base"><%= paymentInfo.fps.fpsId %></span></p><% } %>
             <% if (paymentInfo.fps.fpsPhone) { %><p>轉數快電話：<span class="font-black text-base"><%= paymentInfo.fps.fpsPhone %></span></p><% } %>
             <% if (!paymentInfo.fps.fpsId && !paymentInfo.fps.fpsPhone) { %>
@@ -62,7 +62,7 @@
             <p class="text-gray-500">轉賬時請喺備註填訂單編號 <span class="font-bold"><%= order.order_number || ('#' + order.id) %></span>。</p>
           </div>
         <% } else { %>
-          <div class="space-y-2 text-sm text-gray-700">
+          <div class="space-y-2 text-sm text-gray-300">
             <% if (paymentInfo.bank.bankName) { %><p>收款銀行：<span class="font-bold"><%= paymentInfo.bank.bankName %></span></p><% } %>
             <% if (paymentInfo.bank.accountName) { %><p>戶口名稱：<span class="font-bold"><%= paymentInfo.bank.accountName %></span></p><% } %>
             <% if (paymentInfo.bank.accountNumber) { %><p>戶口號碼：<span class="font-black text-base"><%= paymentInfo.bank.accountNumber %></span></p><% } %>
@@ -75,44 +75,44 @@
       </div>
 
       <!-- 商品 -->
-      <div class="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 class="text-lg font-black text-gray-900 mb-4">訂單商品</h2>
-        <div class="divide-y divide-gray-100">
+      <div class="mb-6 rounded-2xl border border-ink-600 bg-ink-850 p-6 shadow-sm">
+        <h2 class="text-lg font-black text-white mb-4">訂單商品</h2>
+        <div class="divide-y divide-ink-700">
           <% (items || []).forEach(item => { %>
             <div class="flex items-center gap-4 py-3">
-              <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-100">
+              <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-ink-700">
                 <% if (item.image_url) { %>
                   <img src="<%= item.image_url %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">
                 <% } else { %>📦<% } %>
               </div>
               <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-bold text-gray-900"><%= item.product_name || ('商品 #' + item.product_id) %></p>
+                <p class="truncate text-sm font-bold text-white"><%= item.product_name || ('商品 #' + item.product_id) %></p>
                 <p class="text-xs text-gray-500"><%= money(item.unit_price) %> × <%= item.quantity %></p>
               </div>
-              <p class="text-sm font-black text-gray-900"><%= money(Number(item.unit_price) * Number(item.quantity)) %></p>
+              <p class="text-sm font-black text-white"><%= money(Number(item.unit_price) * Number(item.quantity)) %></p>
             </div>
           <% }) %>
         </div>
 
-        <div class="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm">
-          <div class="flex justify-between text-gray-600">
-            <span>商品小計</span><span class="font-bold text-gray-900"><%= money(order.subtotal_amount) %></span>
+        <div class="mt-4 space-y-2 border-t border-ink-700 pt-4 text-sm">
+          <div class="flex justify-between text-gray-400">
+            <span>商品小計</span><span class="font-bold text-white"><%= money(order.subtotal_amount) %></span>
           </div>
-          <div class="flex justify-between text-gray-600">
+          <div class="flex justify-between text-gray-400">
             <span>運費</span>
             <span class="font-bold text-orange-600">到付（貨到時另行支付）</span>
           </div>
-          <div class="flex justify-between border-t border-gray-100 pt-2 text-base">
-            <span class="font-black text-gray-900">而家需付款</span>
-            <span class="font-black text-red-600"><%= money(order.total_amount) %></span>
+          <div class="flex justify-between border-t border-ink-700 pt-2 text-base">
+            <span class="font-black text-white">而家需付款</span>
+            <span class="font-black text-gold"><%= money(order.total_amount) %></span>
           </div>
         </div>
       </div>
 
       <!-- 送貨資料 -->
-      <div class="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm text-sm">
-        <h2 class="text-lg font-black text-gray-900 mb-4">送貨資料</h2>
-        <dl class="space-y-2 text-gray-700">
+      <div class="mb-6 rounded-2xl border border-ink-600 bg-ink-850 p-6 shadow-sm text-sm">
+        <h2 class="text-lg font-black text-white mb-4">送貨資料</h2>
+        <dl class="space-y-2 text-gray-300">
           <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-500">收件人</dt><dd class="font-bold"><%= order.contact_name %></dd></div>
           <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-500">電話</dt><dd class="font-bold"><%= order.contact_phone %></dd></div>
           <div class="flex gap-3"><dt class="w-20 flex-shrink-0 text-gray-500">地址</dt><dd class="font-bold"><%= order.contact_address %></dd></div>
@@ -123,7 +123,7 @@
       </div>
 
       <div class="flex flex-col gap-3 sm:flex-row">
-        <a href="/products" class="flex-1 rounded-full bg-red-600 py-3 text-center font-bold text-white hover:bg-red-700 transition">繼續購物</a>
+        <a href="/products" class="flex-1 rounded-full bg-wine py-3 text-center font-bold text-white hover:bg-wine transition">繼續購物</a>
       </div>
     <% } %>
 

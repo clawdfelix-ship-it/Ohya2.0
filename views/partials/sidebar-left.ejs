@@ -9,14 +9,14 @@
 %>
 <aside id="wrap_left" class="hidden lg:block lg:w-64 lg:flex-shrink-0">
   <div class="sticky top-24">
-    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div class="border-b border-gray-200 px-4 py-4">
-        <div class="text-sm font-black text-gray-900">商品分類</div>
-        <p class="mt-1 text-xs text-gray-500">預設展開第一層，想再深入可以逐級展開。</p>
+    <div class="overflow-hidden rounded-2xl border border-ink-600 bg-ink-850 shadow-card">
+      <div class="border-b border-ink-600 px-4 py-4">
+        <div class="mz-display text-sm font-black text-white">商品分類</div>
+        <p class="mt-1 text-xs text-gray-400">預設展開第一層，想再深入可以逐級展開。</p>
       </div>
 
       <div class="max-h-[calc(100vh-10rem)] overflow-y-auto px-3 py-3">
-        <a href="/products?page=1" class="<%= !activeSlug || activeSlug === 'all' ? 'bg-red-50 text-red-700 border-red-200' : 'border-transparent text-gray-700 hover:bg-gray-50' %> mb-2 flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-semibold transition">
+        <a href="/products?page=1" class="<%= !activeSlug || activeSlug === 'all' ? 'bg-wine/15 text-gold-light border-gold/40' : 'border-transparent text-gray-300 hover:bg-ink-700' %> mb-2 flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-semibold transition">
           <span>全部商品</span>
           <span class="text-xs text-gray-500"><%= ((categories || [])[0] && categories[0].count) || 0 %></span>
         </a>
