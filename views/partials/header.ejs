@@ -3,10 +3,10 @@
     <div class="max-w-7xl mx-auto px-3 py-3">
       <div class="flex items-center gap-3 lg:gap-4">
         <button type="button" class="-ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-700 hover:bg-gray-100 active:scale-95 lg:hidden" aria-label="開啟分類選單" aria-expanded="false" aria-controls="mz-mobile-menu-panel" data-mobile-menu-open>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
+          <svg class="mz-burger" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+            <line class="mz-burger__line mz-burger__line--1" x1="3" y1="6" x2="21" y2="6"></line>
+            <line class="mz-burger__line mz-burger__line--2" x1="3" y1="12" x2="21" y2="12"></line>
+            <line class="mz-burger__line mz-burger__line--3" x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
         <a href="/" class="flex items-center gap-2 flex-shrink-0">
@@ -52,9 +52,9 @@
     if (node.slug === slug) return true;
     return Array.isArray(node.children) && node.children.some((child) => nodeContainsActive(child, slug));
   }; %>
-  <div class="fixed inset-0 z-[80] hidden lg:hidden" id="mz-mobile-menu-panel" data-mobile-menu-panel>
-    <button type="button" class="absolute inset-0 bg-black/45" aria-label="關閉分類選單" data-mobile-menu-close></button>
-    <div class="absolute inset-y-0 left-0 flex w-full max-w-sm" role="dialog" aria-modal="true" aria-label="商品分類選單">
+  <div class="fixed inset-0 z-[80] mz-drawer lg:hidden" id="mz-mobile-menu-panel" data-mobile-menu-panel>
+    <button type="button" class="mz-drawer-scrim absolute inset-0 bg-black/45" aria-label="關閉分類選單" data-mobile-menu-close></button>
+    <div class="mz-drawer-surface absolute inset-y-0 left-0 flex w-full max-w-sm" role="dialog" aria-modal="true" aria-label="商品分類選單">
       <div class="flex h-full w-full flex-col bg-white shadow-2xl">
         <div class="flex items-center justify-between border-b border-gray-200 px-4 py-4">
           <div>
@@ -81,26 +81,4 @@
     </div>
   </div>
 
-  <script>
-    (function initMobileHeaderMenu() {
-      const panel = document.getElementById('mz-mobile-menu-panel');
-      const openBtn = document.querySelector('[data-mobile-menu-open]');
-      if (!panel || !openBtn) return;
-      const closeBtns = panel.querySelectorAll('[data-mobile-menu-close]');
-
-      function setOpen(nextOpen) {
-        panel.classList.toggle('hidden', !nextOpen);
-        document.body.classList.toggle('overflow-hidden', nextOpen);
-        openBtn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
-      }
-
-      openBtn.addEventListener('click', () => setOpen(true));
-      closeBtns.forEach((btn) => btn.addEventListener('click', () => setOpen(false)));
-      panel.addEventListener('click', (event) => {
-        if (event.target.closest('a')) setOpen(false);
-      });
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') setOpen(false);
-      });
-    })();
-  </script>
+  <script src="/js/interactions.js" defer></script>

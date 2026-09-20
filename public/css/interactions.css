@@ -1,0 +1,176 @@
+/* ==========================================================================
+   Ohya2.0 Fluid Interactions  (Apple-style, restrained: 120–280ms)
+   01 SPRING press · 03 RIPPLE · 04 BURST · 05 DRAW check · 07 COUNT badge
+   10 MORPH hamburger. Everything respects prefers-reduced-motion.
+   ========================================================================== */
+
+:root {
+  --fluid-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* overshoot on release */
+  --fluid-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 01 SPRING — quick compress on press, springy overshoot coming back ------- */
+.fluid-press {
+  position: relative;
+  overflow: hidden; /* contain ripple */
+  transform: translateZ(0);
+  transition: transform 0.22s var(--fluid-spring);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.fluid-press:active {
+  transform: scale(0.95);
+  transition-duration: 0.07s;
+  transition-timing-function: ease-in; /* fast squeeze… */
+}
+/* links that navigate keep ripple but shouldn't look like buttons squishing oddly is fine */
+
+/* 03 RIPPLE — expands from the exact pointer point ------------------------- */
+.fluid-ripple {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  transform: scale(0);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 70%);
+  animation: fluid-ripple 0.62s var(--fluid-ease) forwards;
+  z-index: 0;
+}
+@keyframes fluid-ripple {
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+/* ripple on light/outlined buttons uses a dark wash */
+.fluid-press--dark .fluid-ripple,
+.fluid-ripple--dark {
+  background: radial-gradient(circle, rgba(153, 27, 27, 0.18) 0%, rgba(153, 27, 27, 0) 70%);
+}
+
+/* 04 BURST — particles for the key moment (added to cart) ------------------ */
+.fluid-burst-particle {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%, -50%) scale(1);
+  animation: fluid-burst 0.62s var(--fluid-ease) forwards;
+}
+@keyframes fluid-burst {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70%  { opacity: 1; }
+  100% { opacity: 0;
+           transform: translate(calc(-50% + var(--bx)), calc(-50% + var(--by))) scale(0.3); }
+}
+/* the button itself gives one celebratory spring */
+.fluid-burst-pop {
+  animation: fluid-burst-pop 0.5s var(--fluid-spring);
+}
+@keyframes fluid-burst-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* 05 DRAW — success checkmark strokes itself in ---------------------------- */
+.fluid-check {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+.fluid-check__circle,
+.fluid-check__tick {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+}
+.fluid-check--in .fluid-check__circle { animation: fluid-draw 0.32s var(--fluid-ease) forwards; }
+.fluid-check--in .fluid-check__tick   { animation: fluid-draw 0.26s var(--fluid-ease) 0.16s forwards; }
+@keyframes fluid-draw { to { stroke-dashoffset: 0; } }
+
+/* success toast layout hook */
+#mz-toast { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+#mz-toast .fluid-check { width: 18px; height: 18px; }
+
+/* 07 COUNT — cart badge springs + the number eases to a stop ---------------- */
+#cart-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  will-change: transform;
+}
+.fluid-badge-pop {
+  animation: fluid-badge-pop 0.45s var(--fluid-spring);
+}
+@keyframes fluid-badge-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.45); }
+  100% { transform: scale(1); }
+}
+
+/* 10 MORPH — hamburger three lines fold into an X, one continuous element -- */
+.mz-burger { transition: transform 0.28s var(--fluid-spring); }
+.mz-burger__line {
+  transition: transform 0.3s var(--fluid-ease), opacity 0.18s ease, top 0.3s var(--fluid-ease);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.mz-burger.is-open .mz-burger__line--1 {
+  transform: translateY(6px) rotate(45deg);
+}
+.mz-burger.is-open .mz-burger__line--2 {
+  opacity: 0;
+  transform: scaleX(0.4);
+}
+.mz-burger.is-open .mz-burger__line--3 {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* mobile menu panel: spring the drawer + fade the scrim (state via .mz-drawer) */
+#mz-mobile-menu-panel.mz-drawer {
+  visibility: hidden;
+  pointer-events: none;
+}
+#mz-mobile-menu-panel.mz-drawer .mz-drawer-surface {
+  transform: translateX(-100%);
+  transition: transform 0.34s var(--fluid-ease);
+  will-change: transform;
+}
+#mz-mobile-menu-panel.mz-drawer .mz-drawer-scrim {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#mz-mobile-menu-panel.mz-drawer.is-open {
+  visibility: visible;
+  pointer-events: auto;
+}
+#mz-mobile-menu-panel.mz-drawer.is-open .mz-drawer-surface { transform: translateX(0); }
+#mz-mobile-menu-panel.mz-drawer.is-open .mz-drawer-scrim { opacity: 1; }
+
+/* accessibility: honour reduced motion — kill all of the above ------------- */
+@media (prefers-reduced-motion: reduce) {
+  .fluid-press,
+  .mz-burger,
+  .mz-burger__line,
+  #mz-mobile-menu-panel .mz-drawer-surface,
+  #mz-mobile-menu-panel .mz-drawer-scrim { transition: none !important; }
+  .fluid-press:active { transform: none; }
+  .fluid-ripple,
+  .fluid-burst-particle { display: none !important; animation: none !important; }
+  .fluid-burst-pop,
+  .fluid-badge-pop,
+  .fluid-check--in .fluid-check__circle,
+  .fluid-check--in .fluid-check__tick { animation: none !important; }
+  .fluid-check__circle,
+  .fluid-check__tick { stroke-dashoffset: 0 !important; }
+  #mz-mobile-menu-panel.mz-drawer .mz-drawer-surface { transform: none; }
+  #mz-mobile-menu-panel.mz-drawer { visibility: hidden; }
+  #mz-mobile-menu-panel.mz-drawer.is-open { visibility: visible; }
+}

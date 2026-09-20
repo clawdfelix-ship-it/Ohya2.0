@@ -196,7 +196,7 @@
                   缺貨中
                 </button>
               <% } else { %>
-                <button type="button" onclick="addToCart()" class="flex flex-1 min-h-[56px] items-center justify-center gap-2 rounded-full bg-red-600 px-6 text-lg font-bold text-white transition hover:bg-red-700 active:scale-[0.98]">
+                <button type="button" id="detail-add-cart" onclick="addToCart()" class="flex flex-1 min-h-[56px] items-center justify-center gap-2 rounded-full bg-red-600 px-6 text-lg font-bold text-white transition hover:bg-red-700 active:scale-[0.98]">
                   🛒 加入購物車
                 </button>
               <% } %>
@@ -311,6 +311,10 @@
       try {
         await MZCart.add(currentProduct, Number.isFinite(quantity) ? quantity : 1);
         MZCart.toast('已加入購物車！', 'success');
+        if (window.MZFluid) {
+          const btn = document.getElementById('detail-add-cart');
+          if (btn) window.MZFluid.burstFrom(btn);
+        }
       } catch (error) {
         MZCart.toast(error.message || '加入購物車失敗', 'error');
       }

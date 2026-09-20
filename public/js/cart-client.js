@@ -83,12 +83,20 @@
       });
   }
 
+  function setBadgeCount(count) {
+    var badge = document.getElementById('cart-count');
+    if (!badge) return;
+    var prev = parseInt(badge.textContent || '0', 10) || 0;
+    badge.textContent = String(count);
+    if (count > prev && window.MZFluid) window.MZFluid.popBadge(); // 07 COUNT
+  }
+
   function refreshCount() {
     var badge = document.getElementById('cart-count');
     if (!badge) return Promise.resolve();
 
     if (!isLoggedIn()) {
-      badge.textContent = String(guestCount());
+      setBadgeCount(guestCount());
       return Promise.resolve();
     }
 
@@ -97,7 +105,7 @@
         var count = Array.isArray(data.items)
           ? data.items.reduce(function (sum, item) { return sum + Number(item.quantity || 0); }, 0)
           : 0;
-        badge.textContent = String(count);
+        setBadgeCount(count);
       })
       .catch(function (err) {
         console.error('Failed to refresh cart count:', err);
@@ -171,7 +179,20 @@
         'pointer-events:none;';
       document.body.appendChild(el);
     }
-    el.textContent = message;
+    el.textContent = '';
+    // 05 DRAW: success shows a checkmark that strokes itself in
+    if (tone === 'success' && window.MZFluid && !window.MZFluid.reduceMotion) {
+      var span = document.createElement('span');
+      span.innerHTML = window.MZFluid.checkSvg();
+      var svg = span.firstChild;
+      el.appendChild(svg);
+      var label = document.createElement('span');
+      label.textContent = message;
+      el.appendChild(label);
+      requestAnimationFrame(function () { svg.classList.add('fluid-check--in'); });
+    } else {
+      el.textContent = message;
+    }
     el.style.background = tone === 'error' ? '#b91c1c' : (tone === 'success' ? '#15803d' : '#1f2937');
     requestAnimationFrame(function () {
       el.style.opacity = '1';
@@ -241,6 +262,7 @@
       add(product, qty)
         .then(function () {
           toast('已加入購物車！', 'success');
+          if (window.MZFluid) window.MZFluid.burstFrom(btn); // 04 BURST
           btn.innerHTML = '✓ 已加入';
           setTimeout(function () { btn.innerHTML = originalHtml; }, 1200);
         })
