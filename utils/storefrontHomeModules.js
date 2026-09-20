@@ -21,10 +21,24 @@ function partitionHomeModules(modules = []) {
     }))
     .filter((module) => module.image_url);
 
+  // Never send customers off-store: scraped mzakka banners point at
+  // mzakka.com (the supplier/competitor). Keep only internal links; fall back
+  // to our own promo modules when there aren't enough.
+  const isInternal = (href) => {
+    try {
+      const u = new URL(href, 'http://local');
+      return u.host === 'local' && (u.pathname === '/' || u.pathname.startsWith('/'));
+    } catch {
+      return false;
+    }
+  };
   const ordered = clean.slice().sort((a, b) => a.sort_order - b.sort_order);
-  const center = ordered.slice(0, 3);
-  const left = ordered.slice(3, 5);
-  const right = ordered.slice(5, 6);
+  const internal = ordered.filter((m) => isInternal(m.href || ''));
+  const center = (internal.length >= 3 ? internal : getFallbackCenterModules()).slice(0, 3);
+  // left/right side modules: also internal-only
+  const sidePool = internal.length >= 3 ? internal.slice(3) : [];
+  const left = sidePool.slice(0, 2);
+  const right = sidePool.slice(2, 3);
 
   return {
     all: ordered,
