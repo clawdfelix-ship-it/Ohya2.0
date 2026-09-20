@@ -316,9 +316,9 @@
           </div>
           <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t border-ink-700 pt-3 sm:pt-0 sm:border-0">
             <div class="flex items-center gap-2">
-              <button onclick="updateQuantity(${item.id}, -1)" aria-label="減少數量" class="w-9 h-9 bg-ink-700 rounded-lg hover:bg-gray-200 transition">−</button>
+              <button onclick="updateQuantity(${item.id}, -1)" aria-label="減少數量" class="w-9 h-9 bg-ink-700 rounded-lg hover:bg-ink-500 transition">−</button>
               <span class="w-8 text-center font-medium" aria-label="數量">${item.quantity}</span>
-              <button onclick="updateQuantity(${item.id}, 1)" aria-label="增加數量" class="w-9 h-9 bg-ink-700 rounded-lg hover:bg-gray-200 transition">+</button>
+              <button onclick="updateQuantity(${item.id}, 1)" aria-label="增加數量" class="w-9 h-9 bg-ink-700 rounded-lg hover:bg-ink-500 transition">+</button>
             </div>
             <div class="text-right">
               <p class="font-bold text-white whitespace-nowrap">${formatPriceValue(itemTotal)}</p>
