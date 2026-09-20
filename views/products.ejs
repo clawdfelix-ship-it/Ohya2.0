@@ -108,7 +108,7 @@
           </div>
         <% }) %>
       </div>
-      <nav class="flex justify-center mt-8" aria-label="分頁導覽">
+      <nav class="mt-8 max-w-full overflow-x-auto" aria-label="分頁導覽">
         <% 
           const currentPage = typeof page === 'number' ? page : 1;
           const pages = typeof totalPages === 'number' ? totalPages : 1;
@@ -120,7 +120,7 @@
           const startPage = Math.max(1, currentPage - 2);
           const endPage = Math.min(pages, currentPage + 2);
         %>
-        <div class="flex gap-1.5">
+        <div class="mx-auto flex w-fit gap-1.5">
           <% if (currentPage <= 1) { %>
             <button disabled aria-disabled="true" aria-label="第一頁" class="flex h-11 w-11 items-center justify-center rounded-lg border border-gray-200 font-bold text-gray-300 cursor-not-allowed">«</button>
           <% } else { %>
