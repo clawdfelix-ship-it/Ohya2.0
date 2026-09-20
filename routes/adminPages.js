@@ -1,8 +1,24 @@
 const bcrypt = require('bcryptjs');
 const { hasAdmin, createFirstAdmin } = require('../utils/adminBootstrap');
 
+async function regenerateSession(req) {
+  if (!req || !req.session || typeof req.session.regenerate !== 'function') return;
+  await new Promise((resolve, reject) => {
+    req.session.regenerate((err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
+}
+
+function hasBackofficeAccess(session) {
+  if (!session || !session.userId) return false;
+  if (session.isAdmin) return true;
+  return Boolean(session.isBackoffice && Array.isArray(session.adminPermissions) && session.adminPermissions.length > 0);
+}
+
 function isAdminSession(session) {
-  return Boolean(session && session.userId && (session.isAdmin || session.isBackoffice));
+  return hasBackofficeAccess(session);
 }
 
 function hasPermissionList(permissions, required) {
@@ -69,6 +85,7 @@ function register(app, pool) {
       return res.status(400).send('用戶名及密碼至少 6 位');
     }
     const user = await createFirstAdmin(pool, { username, password, contact });
+    await regenerateSession(req);
     req.session.userId = user.id;
     req.session.username = user.username;
     req.session.isAdmin = true;
@@ -96,20 +113,23 @@ function register(app, pool) {
     if (!ok) {
       return res.status(400).render('admin/login', { title: '後台登入', error: '用戶名或密碼錯誤' });
     }
-    req.session.userId = user.id;
-    req.session.username = user.username;
-    req.session.isAdmin = !!user.is_admin;
-    req.session.isBackoffice = true;
-    req.session.contact = user.contact;
+    let adminPermissions = ['*'];
     if (user.is_admin) {
-      req.session.adminPermissions = ['*'];
+      adminPermissions = ['*'];
     } else {
       const perms = await loadUserPermissions(pool, user.id);
       if (!perms || perms.length === 0) {
         return res.status(403).render('admin/login', { title: '後台登入', error: '需要管理員權限' });
       }
-      req.session.adminPermissions = perms;
+      adminPermissions = perms;
     }
+    await regenerateSession(req);
+    req.session.userId = user.id;
+    req.session.username = user.username;
+    req.session.isAdmin = !!user.is_admin;
+    req.session.isBackoffice = true;
+    req.session.contact = user.contact;
+    req.session.adminPermissions = adminPermissions;
     res.redirect('/admin');
   });
 
@@ -190,5 +210,7 @@ function register(app, pool) {
 register.isAdminSession = isAdminSession;
 register.requireAdminPage = requireAdminPage;
 register.setupEnabled = setupEnabled;
+register.hasBackofficeAccess = hasBackofficeAccess;
+register.regenerateSession = regenerateSession;
 
 module.exports = register;
