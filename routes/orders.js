@@ -91,10 +91,10 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
 
       await client.query('BEGIN');
 
-      // Get cart items（FOR UPDATE 鎖實商品行，防止落單扣庫存競態超賣）
+      // Get cart items（預購模式：不追蹤庫存，只驗商品仍上架）
       const cartResult = await client.query(`
         SELECT ci.id AS cart_item_id, ci.product_id, ci.quantity,
-               p.price, p.stock, p.name, p.status
+               p.price, p.name, p.status
         FROM cart_items ci
         JOIN products p ON ci.product_id = p.id
         WHERE ci.user_id = $1
@@ -106,15 +106,11 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         return res.status(400).json({ error: '購物車是空的' });
       }
 
-      // 商品仍有效 + 庫存足夠
+      // 預購模式：商品仍有效即可，數量不受庫存限制
       for (const item of cartResult.rows) {
         if (item.status !== 'active') {
           await client.query('ROLLBACK');
           return res.status(400).json({ error: `商品「${item.name}」已落架` });
-        }
-        if (Number(item.stock) < Number(item.quantity)) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({ error: `商品「${item.name}」庫存不足` });
         }
       }
 
@@ -145,16 +141,12 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
       const orderNumber = `OHYA-${ym}-${String(orderId).padStart(6, '0')}`;
       await client.query('UPDATE orders SET order_number = $1 WHERE id = $2', [orderNumber, orderId]);
 
-      // Create order items + decrease stock
+      // Create order items（預購模式不扣庫存）
       for (const item of cartResult.rows) {
         await client.query(`
           INSERT INTO order_items (order_id, product_id, quantity, unit_price)
           VALUES ($1, $2, $3, $4)
         `, [orderId, item.product_id, item.quantity, item.price]);
-
-        await client.query(`
-          UPDATE products SET stock = stock - $1 WHERE id = $2
-        `, [item.quantity, item.product_id]);
       }
 
       // Clear cart
@@ -194,12 +186,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
       try {
         await client.query('BEGIN');
 
-        // Get order items to restore stock
-        const items = await client.query('SELECT * FROM order_items WHERE order_id = $1', [id]);
-        for (const item of items.rows) {
-          await client.query('UPDATE products SET stock = stock + $1 WHERE id = $2', [item.quantity, item.product_id]);
-        }
-
+        // 預購模式：取消訂單不退還庫存
         // Update order status
         await client.query('UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2', ['cancelled', id]);
 

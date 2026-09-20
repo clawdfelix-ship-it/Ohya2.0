@@ -2,7 +2,7 @@
  * Ohya2.0 前台共享購物車 client（P1/P2/P3 修正）
  * - 統一貨幣格式 HK$（價格一律為 cents）
  * - 訪客：localStorage；會員：/api/cart* API（CSRF）
- * - 缺貨（stock <= 0）喺客戶端即時拒絕
+ * - 全站預購模式：不追蹤庫存，數量不設上限
  * - 全站加車用 toast，唔再 alert
  *
  * 頁面用法：
@@ -114,8 +114,9 @@
 
   /**
   * 加商品入車。
-  * product 需有 { id, name, price(cents), image, stock }
+  * product 需有 { id, name, price(cents), image }
   * 成功回 true；失敗拋 Error（message 可直接展示）
+  * 預購模式：不檢查 stock，數量不設上限
   */
   function add(product, quantity) {
     quantity = parseInt(quantity, 10);
@@ -124,10 +125,6 @@
     }
     if (!Number.isFinite(quantity) || quantity < 1) {
       return Promise.reject(new Error('請選擇正確數量'));
-    }
-    var stock = Number(product.stock);
-    if (Number.isFinite(stock) && stock <= 0) {
-      return Promise.reject(new Error('抱歉，此商品已經缺貨'));
     }
 
     if (isLoggedIn()) {
@@ -143,9 +140,6 @@
     var cart = readGuestCart();
     var existing = cart.find(function (item) { return item.id === product.id; });
     var nextQuantity = (existing ? Number(existing.quantity) : 0) + quantity;
-    if (Number.isFinite(stock) && nextQuantity > stock) {
-      return Promise.reject(new Error('庫存不足，現貨剩 ' + stock + ' 件'));
-    }
 
     if (existing) {
       existing.quantity = nextQuantity;
@@ -250,10 +244,6 @@
       var product = productMap()[id];
       if (!product) {
         toast('商品資料不正確', 'error');
-        return;
-      }
-      if (Number.isFinite(Number(product.stock)) && Number(product.stock) <= 0) {
-        toast('抱歉，此商品已經缺貨', 'error');
         return;
       }
 
