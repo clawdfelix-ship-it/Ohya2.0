@@ -354,8 +354,12 @@
 
   async function loadProductForEdit(id) {
     setError('');
-    const data = await adminApiRequest('/api/admin/products/' + encodeURIComponent(id));
-    fillForm(data.product, data.skus || []);
+    try {
+      const data = await adminApiRequest('/api/admin/products/' + encodeURIComponent(id));
+      fillForm(data.product, data.skus || []);
+    } catch (e) {
+      setError(e && e.message ? e.message : String(e));
+    }
   }
 
   function fillForm(p, skus) {

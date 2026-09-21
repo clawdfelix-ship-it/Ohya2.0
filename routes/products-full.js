@@ -522,24 +522,37 @@ module.exports = function(app, pool) {
         SELECT * FROM product_skus WHERE product_id = $1 ORDER BY id
       `, [id]);
 
-      const tagsResult = await pool.query(`
-        SELECT pt.* FROM product_tags pt
-        JOIN product_tag_assignments pta ON pt.id = pta.tag_id
-        WHERE pta.product_id = $1
-      `, [id]);
-
-      const relatedResult = await pool.query(`
-        SELECT p.id, p.name, p.slug FROM products p
-        JOIN related_products rp ON p.id = rp.related_product_id
-        WHERE rp.product_id = $1
-        ORDER BY rp.sort_order
-      `, [id]);
+      // product_tags / related_products 表可能未喺該環境建立（migration 缺失），
+      // 呢兩個查詢 fail-safe，唔好令成個編輯載入 500。
+      let tagsRows = [];
+      let relatedRows = [];
+      try {
+        const tagsResult = await pool.query(`
+          SELECT pt.* FROM product_tags pt
+          JOIN product_tag_assignments pta ON pt.id = pta.tag_id
+          WHERE pta.product_id = $1
+        `, [id]);
+        tagsRows = tagsResult.rows;
+      } catch (e) {
+        if (!/relation .* does not exist/.test(e.message)) throw e;
+      }
+      try {
+        const relatedResult = await pool.query(`
+          SELECT p.id, p.name, p.slug FROM products p
+          JOIN related_products rp ON p.id = rp.related_product_id
+          WHERE rp.product_id = $1
+          ORDER BY rp.sort_order
+        `, [id]);
+        relatedRows = relatedResult.rows;
+      } catch (e) {
+        if (!/relation .* does not exist/.test(e.message)) throw e;
+      }
 
       res.json({
         product,
         skus: skusResult.rows,
-        tags: tagsResult.rows,
-        related: relatedResult.rows
+        tags: tagsRows,
+        related: relatedRows
       });
     } catch (err) {
       console.error(err);

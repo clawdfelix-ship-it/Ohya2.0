@@ -445,9 +445,9 @@
       ]),
       el('tbody', {}, items.map((it) =>
         el('tr', {}, [
-          el('td', { text: it.name || '' }),
+          el('td', { text: it.name || it.product_name || '' }),
           el('td', { text: String(it.quantity || 0) }),
-          el('td', { text: money(it.price) }),
+          el('td', { class: 'tabular-nums', text: money(it.unit_price) }),
         ])
       )),
     ]);
