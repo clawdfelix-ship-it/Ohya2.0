@@ -124,7 +124,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
       const orderResult = await client.query(`
         INSERT INTO orders
           (user_id, contact_name, contact_phone, contact_address, note,
-           subtotal_amount, shipping_fee, freight_collect, total_amount,
+           subtotal_amount, shipping_fee, is_cod, total_amount,
            payment_method_code, payment_status, status)
         VALUES ($1, $2, $3, $4, $5, $6, 0, true, $6, $7, 'pending', 'pending')
         RETURNING id
