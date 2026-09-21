@@ -195,7 +195,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
       }
 
       const order = orderCheck.rows[0];
-      if (!['pending', 'paid'].includes(order.status)) {
+      if (order.payment_status === 'paid' || !['pending', 'paid'].includes(order.status)) {
         return res.status(400).json({ error: '此訂單無法取消' });
       }
 
@@ -384,7 +384,12 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         return res.status(400).json({ error: '冇待審嘅憑證' });
       }
       await client.query(`
-        UPDATE orders SET payment_status='paid', paid_at=NOW(), updated_at=NOW() WHERE id=$1
+        UPDATE orders
+        SET payment_status='paid',
+            status=CASE WHEN status='pending' THEN 'paid' ELSE status END,
+            paid_at=NOW(),
+            updated_at=NOW()
+        WHERE id=$1
       `, [id]);
       await client.query('COMMIT');
       res.json({ ok: true, payment_status: 'paid' });

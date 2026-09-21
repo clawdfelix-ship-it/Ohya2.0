@@ -15,7 +15,7 @@ function timingSafeEqualHex(aHex, bHex) {
   return crypto.timingSafeEqual(a, b);
 }
 
-function verifyShipanySignature({ secret, rawBody, headerValue }) {
+function verifyHmacSignature({ secret, rawBody, headerValue }) {
   if (!secret) return false;
   if (!rawBody || !Buffer.isBuffer(rawBody)) return false;
   const provided = normalizeHexSignature(headerValue);
@@ -24,5 +24,8 @@ function verifyShipanySignature({ secret, rawBody, headerValue }) {
   return timingSafeEqualHex(provided, expected);
 }
 
-module.exports = { verifyShipanySignature };
+function verifyShipanySignature(args) {
+  return verifyHmacSignature(args);
+}
 
+module.exports = { verifyHmacSignature, verifyShipanySignature };
