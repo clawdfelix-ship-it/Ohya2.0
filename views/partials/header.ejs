@@ -35,7 +35,7 @@
             <span class="rounded-full bg-wine px-2 py-0.5 text-[10px] font-bold text-white" id="cart-count">0</span>
           </a>
           <% if (user) { %>
-            <a href="/account/orders" class="hidden sm:inline font-medium text-gray-300 hover:text-gold-light">我的訂單</a>
+            <a href="/account" class="hidden sm:inline font-medium text-gray-300 hover:text-gold-light">會員中心</a>
           <% } else { %>
             <a href="/login" class="hidden sm:inline font-medium text-gray-300 hover:text-gold-light"><%= t('nav.login') %></a>
           <% } %>
@@ -67,6 +67,11 @@
         </div>
 
         <div class="border-b border-ink-700 px-3 py-3">
+          <% if (typeof user !== 'undefined' && user) { %>
+            <a href="/account" class="mb-2 flex items-center justify-between rounded-2xl border border-gold/40 bg-gold/10 px-3 py-3 text-sm font-bold text-gold-light">
+              <span>👤 會員中心</span>
+            </a>
+          <% } %>
           <a href="/products?page=1" class="flex items-center justify-between rounded-2xl border border-ink-600 px-3 py-3 text-sm font-semibold text-gray-200">
             <span>全部商品</span>
           </a>

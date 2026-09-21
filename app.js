@@ -1183,6 +1183,79 @@ app.use(async (req, res, next) => {
     }
   });
 
+  // 會員中心總覽（會員專屬，伺服器渲染）
+  app.get('/account', requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const userResult = await pool.query(
+        'SELECT id, username, email, created_at FROM users WHERE id=$1',
+        [userId]
+      );
+      const accountUser = userResult.rows[0];
+      if (!accountUser) {
+        req.session.destroy();
+        return res.redirect('/login');
+      }
+
+      // 各狀態訂單數量
+      const statsResult = await pool.query(`
+        SELECT status, payment_status, COUNT(*)::int AS c
+        FROM orders WHERE user_id=$1
+        GROUP BY status, payment_status
+      `, [userId]);
+      // 真實狀態：fulfillment status = pending/paid/shipping/completed/cancelled
+      // （routes/logistics.js 出貨時寫 'shipping'）；payment_status = pending/proof_pending/paid
+      const stats = { pending_pay: 0, pending_ship: 0, shipped: 0, completed: 0, cancelled: 0 };
+      for (const row of statsResult.rows) {
+        if (row.status === 'cancelled') { stats.cancelled += row.c; continue; }
+        if (row.payment_status !== 'paid') stats.pending_pay += row.c;
+        else if (row.status === 'shipping') stats.shipped += row.c;
+        else if (row.status === 'completed') stats.completed += row.c;
+        else stats.pending_ship += row.c;
+      }
+
+      // 最近 5 張訂單
+      const recentResult = await pool.query(`
+        SELECT id, order_number, created_at, total_amount, status, payment_status
+        FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 5
+      `, [userId]);
+
+      res.render('account', {
+        user: accountUser,
+        accountUser,
+        stats,
+        recentOrders: recentResult.rows,
+        title: '會員中心',
+        categories: res.locals.categories,
+        categoryOptions: res.locals.categories,
+        t: res.locals.t,
+        selectedCategorySlug: null,
+        q: '',
+      });
+    } catch (err) {
+      console.error('Account page error:', err);
+      res.status(500).render('error', {
+        title: '伺服器錯誤', message: '頁面載入失敗',
+        categories: res.locals.categories, categoryOptions: res.locals.categories,
+        t: res.locals.t, user: null, error: err,
+      });
+    }
+  });
+
+  // 更新會員基本資料（稱謂）
+  app.post('/api/account/profile', requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const username = (req.body && req.body.username ? String(req.body.username) : '').trim().slice(0, 50);
+      if (!username) return res.status(400).json({ error: '請填寫稱謂' });
+      await pool.query('UPDATE users SET username=$1, updated_at=NOW() WHERE id=$2', [username, userId]);
+      res.json({ ok: true, username });
+    } catch (err) {
+      console.error('profile update error:', err);
+      res.status(500).json({ error: '更新失敗' });
+    }
+  });
+
   // 我的訂單列表（會員專屬，伺服器渲染）
   app.get('/account/orders', async (req, res) => {
     const sessUser = req.session && req.session.userId;
@@ -1201,21 +1274,38 @@ app.use(async (req, res, next) => {
       const perPage = 10;
       const offset = (page - 1) * perPage;
 
+      // 狀態篩選：pending=待付款 unshipped=待出貨 shipping=待收貨 completed/cancelled
+      const filter = String(req.query.status || '');
+      const where = ['o.user_id = $1'];
+      const params = [sessUser];
+      if (filter === 'pending') {
+        where.push("COALESCE(o.payment_status,'pending') <> 'paid'");
+        where.push("o.status <> 'cancelled'");
+      } else if (filter === 'unshipped') {
+        where.push("COALESCE(o.payment_status,'pending') = 'paid'");
+        where.push("o.status IN ('pending','paid')");
+      } else if (['shipping','completed','cancelled'].includes(filter)) {
+        where.push('o.status = $' + (params.length + 1));
+        params.push(filter);
+      }
+      const whereSql = 'WHERE ' + where.join(' AND ');
+
       const countResult = await pool.query(
-        'SELECT COUNT(*)::int AS total FROM orders WHERE user_id = $1',
-        [sessUser]
+        'SELECT COUNT(*)::int AS total FROM orders o ' + whereSql,
+        params
       );
       const total = countResult.rows[0].total;
+      params.push(perPage, offset);
       const result = await pool.query(`
         SELECT o.*, COUNT(oi.id)::int AS item_count,
                COALESCE(SUM(oi.quantity), 0)::int AS item_qty
         FROM orders o
         LEFT JOIN order_items oi ON oi.order_id = o.id
-        WHERE o.user_id = $1
+        ${whereSql.replace('o.user_id', 'o.user_id')}
         GROUP BY o.id
         ORDER BY o.created_at DESC
-        LIMIT $2 OFFSET $3
-      `, [sessUser, perPage, offset]);
+        LIMIT $${params.length - 1} OFFSET $${params.length}
+      `, params);
 
       res.render('account-orders', {
         title: '我的訂單 - OHYA2.0',
@@ -1223,6 +1313,7 @@ app.use(async (req, res, next) => {
         formatPrice,
         orders: result.rows,
         page,
+        statusFilter: filter,
         totalPages: Math.max(1, Math.ceil(total / perPage)),
         total,
         error: null,

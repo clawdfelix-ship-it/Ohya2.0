@@ -22,7 +22,15 @@
         <h1 class="text-2xl font-black text-white">我的訂單</h1>
         <p class="mt-1 text-sm text-gray-500">共 <%= total %> 張訂單</p>
       </div>
-      <a href="/products" class="text-sm font-bold text-gold hover:text-wine-light">繼續購物 →</a>
+      <a href="/account" class="text-sm font-bold text-gold hover:text-wine-light">← 會員中心</a>
+    </div>
+
+    <% const sf = typeof statusFilter === 'string' ? statusFilter : ''; %>
+    <div class="mb-5 flex flex-wrap gap-2 text-xs font-bold">
+      <% const tabs = [['','全部'],['pending','待付款'],['unshipped','待出貨'],['shipping','待收貨'],['completed','已完成'],['cancelled','已取消']]; %>
+      <% tabs.forEach(([key,label]) => { %>
+        <a href="?<%= key ? 'status='+key : '' %>" class="rounded-full px-4 py-2 transition <%= sf===key ? 'bg-wine text-white' : 'border border-ink-600 bg-ink-850 text-gray-300 hover:border-gold/50' %>"><%= label %></a>
+      <% }) %>
     </div>
 
     <% if (locals.error) { %>
@@ -38,7 +46,7 @@
       <%
         const payLabels = { bank_transfer: '銀行轉帳', fps: 'FPS 轉數快' };
         const payStatusLabels = { pending: '待付款', proof_pending: '憑證待確認', paid: '已付款', failed: '失敗', refunded: '已退款' };
-        const shipStatusLabels = { pending: '待出貨', paid: '待出貨', shipped: '已出貨', delivered: '已送達', cancelled: '已取消' };
+        const shipStatusLabels = { pending: '待出貨', paid: '待出貨', shipping: '已出貨', shipped: '已出貨', delivered: '已送達', completed: '已完成', cancelled: '已取消' };
         const money = (v) => 'HK$' + Number(v || 0).toFixed(0);
       %>
       <div class="space-y-3">
@@ -50,8 +58,8 @@
               : o.payment_status === 'pending' ? 'bg-amber-100 text-amber-700'
               : 'bg-ink-700 text-gray-400';
             const shipBadge = o.status === 'cancelled' ? 'bg-gray-200 text-gray-400'
-              : o.status === 'delivered' ? 'bg-green-100 text-green-700'
-              : o.status === 'shipped' ? 'bg-blue-100 text-blue-700'
+              : o.status === 'completed' || o.status === 'delivered' ? 'bg-green-100 text-green-700'
+              : o.status === 'shipping' || o.status === 'shipped' ? 'bg-blue-100 text-blue-700'
               : 'bg-amber-100 text-amber-700';
             const dateStr = (() => { try { return new Date(o.created_at).toLocaleDateString('zh-HK'); } catch(_) { return ''; } })();
           %>
@@ -82,11 +90,11 @@
       <% if (totalPages > 1) { %>
         <nav class="mt-6 flex items-center justify-center gap-2 text-sm" aria-label="訂單分頁">
           <% if (page > 1) { %>
-            <a aria-label="上一頁" class="inline-flex min-h-[44px] items-center rounded-full border border-gray-300 px-4 font-bold text-gray-300 transition hover:border-gold/50 hover:bg-wine/15 hover:text-wine-light" href="?page=<%= page - 1 %>">上一頁</a>
+            <a aria-label="上一頁" class="inline-flex min-h-[44px] items-center rounded-full border border-gray-300 px-4 font-bold text-gray-300 transition hover:border-gold/50 hover:bg-wine/15 hover:text-wine-light" href="?page=<%= page - 1 %><%= sf ? '&status='+sf : '' %>">上一頁</a>
           <% } %>
           <span class="text-gray-500">第 <%= page %> / <%= totalPages %> 頁</span>
           <% if (page < totalPages) { %>
-            <a aria-label="下一頁" class="inline-flex min-h-[44px] items-center rounded-full border border-gray-300 px-4 font-bold text-gray-300 transition hover:border-gold/50 hover:bg-wine/15 hover:text-wine-light" href="?page=<%= page + 1 %>">下一頁</a>
+            <a aria-label="下一頁" class="inline-flex min-h-[44px] items-center rounded-full border border-gray-300 px-4 font-bold text-gray-300 transition hover:border-gold/50 hover:bg-wine/15 hover:text-wine-light" href="?page=<%= page + 1 %><%= sf ? '&status='+sf : '' %>">下一頁</a>
           <% } %>
         </nav>
       <% } %>
