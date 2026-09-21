@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="<%= csrfToken || '' %>">
   <title><%= title %></title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
@@ -211,7 +212,10 @@
         try {
           const fd = new FormData();
           fd.append('proof', fileInput.files[0]);
-          const r = await fetch('/api/orders/' + orderId + '/proof', {method:'POST', body:fd, credentials:'same-origin'});
+          const hdrs = {};
+          const tok = document.querySelector('meta[name=csrf-token]')?.content;
+          if (tok) hdrs['csrf-token'] = tok;
+          const r = await fetch('/api/orders/' + orderId + '/proof', {method:'POST', body:fd, headers:hdrs, credentials:'same-origin'});
           const d = await r.json().catch(()=>({}));
           if (!r.ok) throw new Error(d.error || '上傳失敗');
           fileInput.value = '';
