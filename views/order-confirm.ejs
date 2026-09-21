@@ -85,7 +85,7 @@
         <form id="proof-form" enctype="multipart/form-data" class="space-y-4">
           <label class="block">
             <span class="text-xs font-semibold text-gray-400">選擇入數相（JPG / PNG，最多 8MB）</span>
-            <input type="file" name="proof" id="proof-file" accept="image/jpeg,image/png,image/gif,image/webp" required
+            <input type="file" name="proof" id="proof-file" accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif" required
               class="mt-2 block w-full text-sm text-gray-300 file:mr-3 file:rounded-full file:border-0 file:bg-ink-700 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-gold hover:file:bg-ink-600">
           </label>
           <button type="submit" id="proof-submit" class="rounded-full bg-wine px-6 py-3 text-sm font-bold text-white shadow-glow transition hover:bg-wine-light disabled:opacity-50">提交入數證明</button>
@@ -195,6 +195,36 @@
         return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
       }
 
+      // 上傳前自動縮細壓縮，避開 Vercel 4.5MB 上限；HEIC 等一律經 canvas 轉 JPEG
+      async function compressImage(file){
+        const MAX_BYTES = 3.8 * 1024 * 1024;
+        // 細圖直接用（但仍統一類型為 JPEG，避免罕見格式被拒）
+        if (file.size <= MAX_BYTES && /image\/(jpeg|png|gif|webp)/.test(file.type)) return file;
+
+        const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        let { width, height } = bmp;
+        const MAX_DIM = 2048;
+        if (Math.max(width, height) > MAX_DIM) {
+          const k = MAX_DIM / Math.max(width, height);
+          width = Math.round(width * k);
+          height = Math.round(height * k);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(bmp, 0, 0, width, height);
+
+        let quality = 0.9;
+        let blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+        while (blob.size > MAX_BYTES && quality > 0.4) {
+          quality -= 0.15;
+          blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+        }
+        return new File([blob], (file.name || 'proof').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+      }
+
       async function refresh(){
         try {
           const r = await fetch('/api/orders/' + orderId + '/proof', {credentials:'same-origin'});
@@ -208,10 +238,18 @@
         e.preventDefault();
         if (!fileInput.files.length) return;
         submitBtn.disabled = true;
-        submitBtn.textContent = '上傳中…';
+        submitBtn.textContent = '處理圖片中…';
         try {
+          let outFile;
+          try {
+            outFile = await compressImage(fileInput.files[0]);
+          } catch (ce) {
+            // 某些瀏覽器讀唔到 HEIC：提示轉格式
+            throw new Error('讀唔到張圖，請改用 JPG／PNG，或先截圖再上傳');
+          }
+          submitBtn.textContent = '上傳中…';
           const fd = new FormData();
-          fd.append('proof', fileInput.files[0]);
+          fd.append('proof', outFile);
           const hdrs = {};
           const tok = document.querySelector('meta[name=csrf-token]')?.content;
           if (tok) hdrs['csrf-token'] = tok;
