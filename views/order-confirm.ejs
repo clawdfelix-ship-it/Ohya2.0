@@ -74,6 +74,23 @@
         <% } %>
       </div>
 
+      <!-- 入數證明上傳 -->
+      <div class="mb-6 rounded-2xl border border-ink-600 bg-ink-850 p-6 shadow-card" id="proof-section">
+        <h2 class="mz-display text-lg font-black text-white mb-2">上傳入數證明</h2>
+        <p class="text-sm text-gray-400 mb-4">過數後，喺度上傳入數截圖／轉賬記錄，我哋核實後會更新訂單狀態。</p>
+
+        <div id="proof-status-box" class="mb-4 hidden"></div>
+
+        <form id="proof-form" enctype="multipart/form-data" class="space-y-4">
+          <label class="block">
+            <span class="text-xs font-semibold text-gray-400">選擇入數相（JPG / PNG，最多 8MB）</span>
+            <input type="file" name="proof" id="proof-file" accept="image/jpeg,image/png,image/gif,image/webp" required
+              class="mt-2 block w-full text-sm text-gray-300 file:mr-3 file:rounded-full file:border-0 file:bg-ink-700 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-gold hover:file:bg-ink-600">
+          </label>
+          <button type="submit" id="proof-submit" class="rounded-full bg-wine px-6 py-3 text-sm font-bold text-white shadow-glow transition hover:bg-wine-light disabled:opacity-50">提交入數證明</button>
+        </form>
+      </div>
+
       <!-- 商品 -->
       <div class="mb-6 rounded-2xl border border-ink-600 bg-ink-850 p-6 shadow-sm">
         <h2 class="text-lg font-black text-white mb-4">訂單商品</h2>
@@ -128,6 +145,90 @@
     <% } %>
 
   </div>
+
+  <script>
+    (function(){
+      const orderId = <%= order ? order.id : 'null' %>;
+      const section = document.getElementById('proof-section');
+      if (!orderId || !section) return;
+      const form = document.getElementById('proof-form');
+      const fileInput = document.getElementById('proof-file');
+      const submitBtn = document.getElementById('proof-submit');
+      const box = document.getElementById('proof-status-box');
+
+      const STATES = {
+        pending: {cls:'border-gold/40 bg-wine/15 text-gold-light', label:'待上傳／等待核實'},
+        proof_pending: {cls:'border-gold/40 bg-wine/15 text-gold-light', label:'已上傳憑證，等待職員確認'},
+        paid: {cls:'border-green-500/40 bg-green-500/10 text-green-300', label:'已確認收款'},
+      };
+
+      function renderState(paymentStatus, proof){
+        // 已收款：隱藏上傳表
+        if (paymentStatus === 'paid') {
+          form.classList.add('hidden');
+          box.classList.remove('hidden');
+          box.className = 'mb-4 rounded-xl border px-4 py-3 text-sm font-semibold ' + STATES.paid.cls;
+          box.textContent = '✓ 已確認收款，多謝！訂單將安排出貨。';
+          return;
+        }
+        // 被駁回：提示重傳 + 原因
+        if (proof && proof.status === 'rejected') {
+          form.classList.remove('hidden');
+          box.classList.remove('hidden');
+          box.className = 'mb-4 rounded-xl border border-gold/50 bg-wine/15 px-4 py-3 text-sm text-wine-light';
+          box.innerHTML = '<div class="font-bold">憑證被駁回，請重新上傳</div>' +
+            (proof.reject_reason ? '<div class="mt-1 text-gray-300">原因：' + escapeHtml(proof.reject_reason) + '</div>' : '');
+          return;
+        }
+        // 等待確認
+        if (paymentStatus === 'proof_pending') {
+          form.classList.add('hidden');
+          box.classList.remove('hidden');
+          box.className = 'mb-4 rounded-xl border px-4 py-3 text-sm font-semibold ' + STATES.proof_pending.cls;
+          box.textContent = '⏳ 已收到你嘅入數證明，職員確認後會更新狀態。';
+          return;
+        }
+      }
+
+      function escapeHtml(s){
+        return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+
+      async function refresh(){
+        try {
+          const r = await fetch('/api/orders/' + orderId + '/proof', {credentials:'same-origin'});
+          if (!r.ok) return;
+          const d = await r.json();
+          renderState(d.payment_status, d.proof);
+        } catch(e){}
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!fileInput.files.length) return;
+        submitBtn.disabled = true;
+        submitBtn.textContent = '上傳中…';
+        try {
+          const fd = new FormData();
+          fd.append('proof', fileInput.files[0]);
+          const r = await fetch('/api/orders/' + orderId + '/proof', {method:'POST', body:fd, credentials:'same-origin'});
+          const d = await r.json().catch(()=>({}));
+          if (!r.ok) throw new Error(d.error || '上傳失敗');
+          fileInput.value = '';
+          await refresh();
+        } catch(err){
+          box.classList.remove('hidden');
+          box.className = 'mb-4 rounded-xl border border-gold/50 bg-wine/15 px-4 py-3 text-sm text-wine-light';
+          box.textContent = err.message;
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '提交入數證明';
+        }
+      });
+
+      refresh();
+    })();
+  </script>
 
   <%- include('partials/footer') %>
 </body>

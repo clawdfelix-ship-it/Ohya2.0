@@ -37,7 +37,7 @@
     <% } else { %>
       <%
         const payLabels = { bank_transfer: '銀行轉帳', fps: 'FPS 轉數快' };
-        const payStatusLabels = { pending: '待付款', paid: '已付款', failed: '失敗', refunded: '已退款' };
+        const payStatusLabels = { pending: '待付款', proof_pending: '憑證待確認', paid: '已付款', failed: '失敗', refunded: '已退款' };
         const shipStatusLabels = { pending: '待出貨', paid: '待出貨', shipped: '已出貨', delivered: '已送達', cancelled: '已取消' };
         const money = (v) => 'HK$' + Number(v || 0).toFixed(0);
       %>
@@ -46,6 +46,7 @@
           <%
             const orderNo = o.order_number || ('#' + o.id);
             const payBadge = o.payment_status === 'paid' ? 'bg-green-100 text-green-700'
+              : o.payment_status === 'proof_pending' ? 'bg-purple-100 text-purple-700'
               : o.payment_status === 'pending' ? 'bg-amber-100 text-amber-700'
               : 'bg-ink-700 text-gray-400';
             const shipBadge = o.status === 'cancelled' ? 'bg-gray-200 text-gray-400'
@@ -70,7 +71,7 @@
               <div class="text-gray-400">
                 <%= o.item_qty || o.item_count || 0 %> 件商品
                 <% if (o.payment_method_code) { %>· <%= payLabels[o.payment_method_code] || o.payment_method_code %><% } %>
-                <% if (o.freight_collect) { %>· <span class="text-orange-600 font-bold">運費到付</span><% } %>
+                <% if (o.is_cod) { %>· <span class="text-orange-600 font-bold">運費到付</span><% } %>
               </div>
               <div class="font-black text-gold"><%= money(o.total_amount) %></div>
             </div>

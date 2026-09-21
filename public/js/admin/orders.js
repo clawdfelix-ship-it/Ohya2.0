@@ -452,6 +452,66 @@
       )),
     ]);
 
+    // ---- 入數證明審批區 ----
+    const proofImg = el('img', {
+      class: 'mt-2 max-h-80 rounded-lg border border-ink-600 bg-ink-800',
+      alt: '入數證明',
+    });
+    proofImg.style.display = 'none';
+    const proofMsg = el('div', { class: 'text-sm text-gray-500 mt-1', text: '' });
+    const reasonInput = el('input', { class: 'admin-input mt-2', placeholder: '駁回原因（可留空）' });
+    reasonInput.style.display = 'none';
+
+    const approveBtn = el('button', { class: 'admin-btn', text: '確認收款', type: 'button' });
+    const rejectToggle = el('button', { class: 'admin-btn-secondary', text: '駁回', type: 'button' });
+    const rejectConfirm = el('button', { class: 'admin-btn', text: '確認駁回', type: 'button' });
+    rejectConfirm.style.display = 'none';
+
+    const proofBox = el('div', { class: 'space-y-2 rounded-lg border border-ink-600 p-3' }, [
+      el('div', { class: 'font-bold', text: '入數證明' }),
+      proofMsg, proofImg,
+      el('div', { class: 'flex flex-wrap gap-2 mt-2' }, [approveBtn, rejectToggle]),
+      reasonInput, rejectConfirm,
+    ]);
+
+    async function loadProof(){
+      try {
+        const st = String(order.payment_status || '');
+        if (st === 'paid') {
+          proofMsg.textContent = '✓ 已確認收款';
+          approveBtn.style.display='none'; rejectToggle.style.display='none';
+          proofImg.style.display='block'; proofImg.src='/api/admin/orders/'+order.id+'/proof/image?ts='+Date.now();
+          return;
+        }
+        if (st !== 'proof_pending') {
+          proofMsg.textContent = '買家尚未上傳憑證';
+          approveBtn.style.display='none'; rejectToggle.style.display='none';
+          return;
+        }
+        proofMsg.textContent = '等待審核';
+        proofImg.style.display='block';
+        proofImg.src='/api/admin/orders/'+order.id+'/proof/image?ts='+Date.now();
+      } catch(e){ proofMsg.textContent='載入失敗'; }
+    }
+
+    approveBtn.onclick = async () => {
+      approveBtn.disabled=true;
+      try {
+        await adminApiRequest('/api/admin/orders/'+order.id+'/proof/approve', {method:'POST', json:{}});
+        await loadOrders(); await openOrder(order.id);
+      } catch(e){ setError(e.message||String(e)); approveBtn.disabled=false; }
+    };
+    rejectToggle.onclick = () => {
+      reasonInput.style.display='block'; rejectConfirm.style.display='inline-block'; rejectToggle.style.display='none';
+    };
+    rejectConfirm.onclick = async () => {
+      rejectConfirm.disabled=true;
+      try {
+        await adminApiRequest('/api/admin/orders/'+order.id+'/proof/reject', {method:'POST', json:{reason:reasonInput.value||''}});
+        await loadOrders(); await openOrder(order.id);
+      } catch(e){ setError(e.message||String(e)); rejectConfirm.disabled=false; }
+    };
+
     els.detail.textContent = '';
     els.detail.appendChild(el('div', { class: 'space-y-2' }, [
       el('div', { class: 'font-bold', text: `訂單 #${order.id}` }),
@@ -485,9 +545,12 @@
             el('a', { href: waLinks.after, target: '_blank', class: 'admin-btn-secondary', text: 'WhatsApp 售後通知' }),
           ])
         : el('div', { class: 'text-sm text-gray-500', text: 'WhatsApp：客戶未綁定或未同意通知' }),
+      proofBox,
       el('div', { class: 'font-bold mt-3', text: '商品清單' }),
       itemsTable,
     ]));
+
+    loadProof();
   }
 
   els.refresh.addEventListener('click', () => loadOrders().catch((e) => setError(e.message)));

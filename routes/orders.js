@@ -1,5 +1,23 @@
 module.exports = function(app, pool, requireAuth, requireAdmin) {
+  const path = require('path');
+  const multer = require('multer');
   const { requirePermission } = require('./middleware/auth');
+
+  // 入數證明：memory storage，只收圖片，上限 8MB
+  const proofUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 8 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      const ok = /^image\/(jpeg|png|gif|webp|heic|heif)$/.test(file.mimetype);
+      cb(ok ? null : new Error('只接受圖片檔（JPG/PNG/GIF/WEBP）'), ok);
+    },
+  });
+
+  // 只准本人操作自己張訂單
+  async function loadOwnedOrder(userId, id) {
+    const r = await pool.query('SELECT * FROM orders WHERE id=$1 AND user_id=$2', [id, userId]);
+    return r.rows[0] || null;
+  }
 
   // Get my orders (current user)
   app.get('/api/orders', requireAuth, async (req, res) => {
@@ -314,6 +332,165 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
+  // ---- 入數證明（後台審批）----
+
+  // 後台列出待審憑證
+  app.get('/api/admin/payment-proofs/pending', requirePermission('orders:read'), async (req, res) => {
+    try {
+      const r = await pool.query(`
+        SELECT pp.id, pp.order_id, pp.file_name, pp.mime_type, pp.file_size, pp.created_at,
+               o.order_number, o.total_amount, o.payment_method_code, o.contact_name
+        FROM payment_proofs pp JOIN orders o ON o.id = pp.order_id
+        WHERE pp.status='pending' ORDER BY pp.created_at ASC
+      `);
+      res.json({ proofs: r.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
+  // 後台取憑證圖
+  app.get('/api/admin/orders/:id/proof/image', requirePermission('orders:read'), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const r = await pool.query('SELECT mime_type, file_data FROM payment_proofs WHERE order_id=$1 ORDER BY created_at DESC LIMIT 1', [id]);
+      if (!r.rows[0]) return res.status(404).end();
+      res.setHeader('Content-Type', r.rows[0].mime_type || 'image/jpeg');
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      res.send(r.rows[0].file_data);
+    } catch (err) {
+      console.error(err);
+      res.status(500).end();
+    }
+  });
+
+  // 確認收款：憑證 approved、訂單 payment_status=paid
+  app.post('/api/admin/orders/:id/proof/approve', requirePermission('orders:write'), async (req, res) => {
+    const client = await pool.connect();
+    try {
+      const reviewerId = req.session.userId;
+      const id = parseInt(req.params.id, 10);
+      await client.query('BEGIN');
+      const pu = await client.query(`
+        UPDATE payment_proofs SET status='approved', reviewed_by=$1, reviewed_at=NOW()
+        WHERE order_id=$2 AND status='pending' RETURNING id
+      `, [reviewerId, id]);
+      if (pu.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: '冇待審嘅憑證' });
+      }
+      await client.query(`
+        UPDATE orders SET payment_status='paid', paid_at=NOW(), updated_at=NOW() WHERE id=$1
+      `, [id]);
+      await client.query('COMMIT');
+      res.json({ ok: true, payment_status: 'paid' });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(()=>{});
+      console.error(err);
+      res.status(500).json({ error: '服務器錯誤' });
+    } finally {
+      client.release();
+    }
+  });
+
+  // 駁回：憑證 rejected、訂單 payment_status 返 pending，等買家重傳
+  app.post('/api/admin/orders/:id/proof/reject', requirePermission('orders:write'), async (req, res) => {
+    const client = await pool.connect();
+    try {
+      const reviewerId = req.session.userId;
+      const id = parseInt(req.params.id, 10);
+      const reason = (req.body && req.body.reason ? String(req.body.reason) : '').slice(0, 300);
+      await client.query('BEGIN');
+      const pu = await client.query(`
+        UPDATE payment_proofs SET status='rejected', reviewed_by=$1, reviewed_at=NOW(), reject_reason=$3
+        WHERE order_id=$2 AND status='pending' RETURNING id
+      `, [reviewerId, id, reason]);
+      if (pu.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: '冇待審嘅憑證' });
+      }
+      await client.query("UPDATE orders SET payment_status='pending', updated_at=NOW() WHERE id=$1", [id]);
+      await client.query('COMMIT');
+      res.json({ ok: true, payment_status: 'pending' });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(()=>{});
+      console.error(err);
+      res.status(500).json({ error: '服務器錯誤' });
+    } finally {
+      client.release();
+    }
+  });
+
+  // ---- 入數證明（會員）----
+
+  // 上傳入數證明：待付款或被駁回先准上傳
+  app.post('/api/orders/:id/proof', requireAuth, proofUpload.single('proof'), async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: '訂單編號無效' });
+
+      const order = await loadOwnedOrder(userId, id);
+      if (!order) return res.status(404).json({ error: '訂單不存在' });
+      if (order.status === 'cancelled') return res.status(400).json({ error: '訂單已取消，唔可以上傳' });
+      if (order.payment_status === 'paid') return res.status(400).json({ error: '訂單已確認收款' });
+      if (!req.file) return res.status(400).json({ error: '請揀一張入數相' });
+
+      // 舊 pending/rejected 憑證作廢（重傳場景），再插新一張
+      await pool.query("UPDATE payment_proofs SET status='superseded', reviewed_at=NOW() WHERE order_id=$1 AND status IN ('pending','rejected')", [id]);
+      const ins = await pool.query(`
+        INSERT INTO payment_proofs (order_id, uploaded_by, file_name, mime_type, file_size, file_data, status)
+        VALUES ($1,$2,$3,$4,$5,$6,'pending') RETURNING id
+      `, [id, userId, req.file.originalname, req.file.mimetype, req.file.size, req.file.buffer]);
+
+      await pool.query("UPDATE orders SET payment_status='proof_pending', updated_at=NOW() WHERE id=$1", [id]);
+
+      res.json({ ok: true, proof_id: ins.rows[0].id, payment_status: 'proof_pending' });
+    } catch (err) {
+      console.error('proof upload error:', err);
+      res.status(500).json({ error: err.message || '上傳失敗' });
+    }
+  });
+
+  // 查詢我嘅最新憑證狀態（供頁面顯示）
+  app.get('/api/orders/:id/proof', requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: '訂單編號無效' });
+      const order = await loadOwnedOrder(userId, id);
+      if (!order) return res.status(404).json({ error: '訂單不存在' });
+
+      const r = await pool.query(`
+        SELECT id, file_name, mime_type, file_size, status, reject_reason, created_at, reviewed_at
+        FROM payment_proofs WHERE order_id=$1 ORDER BY created_at DESC LIMIT 1
+      `, [id]);
+      res.json({ payment_status: order.payment_status, proof: r.rows[0] || null });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
+  // 取回我嘅憑證圖（只准本人）
+  app.get('/api/orders/:id/proof/image', requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const id = parseInt(req.params.id, 10);
+      const order = await loadOwnedOrder(userId, id);
+      if (!order) return res.status(404).end();
+      const r = await pool.query('SELECT mime_type, file_data FROM payment_proofs WHERE order_id=$1 ORDER BY created_at DESC LIMIT 1', [id]);
+      if (!r.rows[0]) return res.status(404).end();
+      res.setHeader('Content-Type', r.rows[0].mime_type || 'image/jpeg');
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      res.send(r.rows[0].file_data);
+    } catch (err) {
+      console.error(err);
+      res.status(500).end();
     }
   });
 
