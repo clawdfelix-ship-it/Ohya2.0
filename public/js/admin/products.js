@@ -75,6 +75,52 @@
   let isLeafById = new Map();
   let currentSkus = [];
   let adjustingSkuId = null;
+  let parentCombo = null, childCombo = null, filterCombo = null;
+
+  // ---- Searchable combobox：解決數千個分類塞落 <select> 難用 ----
+  function createCombobox(selectEl, options, includeAll) {
+    const wrap = el('div', { class: 'admin-combo relative' });
+    const input = el('input', { type: 'text', autocomplete: 'off', class: 'admin-input w-full cursor-pointer pr-8', placeholder: '輸入關鍵字搜尋…' });
+    const caret = el('span', { class: 'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400', text: '▾' });
+    const list = el('div', { class: 'admin-combo-list hidden absolute z-40 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg' });
+    wrap.append(input, caret, list);
+    selectEl.replaceWith(wrap);
+    const api = { wrap, input, list, value: () => input.dataset.value || '', setDisabled(d){ input.disabled=d; input.classList.toggle('bg-gray-100',d); if(d){list.classList.add('hidden');} } };
+    api.setOptions = (opts, allOpt) => {
+      const full = (allOpt ? [{ value:'', text:allOpt }] : []).concat(opts||[]);
+      input.dataset.options = JSON.stringify(full);
+      const cur = input.dataset.value || '';
+      const found = full.find(o => String(o.value) === String(cur));
+      if (found) input.value = found.text;
+      renderList(full, input.value.trim().toLowerCase());
+    };
+    function renderList(full, q) {
+      list.textContent = '';
+      const matched = full.filter(o => !q || o.text.toLowerCase().includes(q)).slice(0, 200);
+      if (!matched.length) list.appendChild(el('div', { class: 'px-3 py-2 text-sm text-gray-400', text: '無符合分類' }));
+      matched.forEach(o => {
+        const item = el('div', { class: 'cursor-pointer px-3 py-2 text-sm text-gray-700 hover:bg-red-50' + (String(o.value)===String(input.dataset.value||'')?' bg-red-50 font-bold':''), text: o.text });
+        item.addEventListener('mousedown', (ev) => {
+          ev.preventDefault();
+          input.dataset.value = String(o.value);
+          input.value = o.text;
+          list.classList.add('hidden');
+          selectEl._cbOnSelect && selectEl._cbOnSelect(o.value);
+        });
+        list.appendChild(item);
+      });
+    }
+    function open() { renderList(JSON.parse(input.dataset.options||'[]'), input.value.trim().toLowerCase()); list.classList.remove('hidden'); }
+    input.addEventListener('focus', open);
+    input.addEventListener('click', open);
+    input.addEventListener('input', () => { input.dataset.value=''; open(); });
+    input.addEventListener('keydown', (ev) => { if (ev.key==='Escape') list.classList.add('hidden'); if (ev.key==='Enter'){ev.preventDefault(); const first=list.querySelector('div.cursor-pointer'); first&&first.dispatchEvent(new MouseEvent('mousedown'));} });
+    document.addEventListener('mousedown', (ev) => { if (!wrap.contains(ev.target)) list.classList.add('hidden'); });
+    api.setOptions(options || [], includeAll || null);
+    return api;
+  }
+  function comboOnSelect(selectEl, fn) { selectEl._cbOnSelect = fn; }
+  // ---- /combobox ----
 
   function categoryName(c) {
     return (c && (c.name_zh_hk || c.name)) || '';
@@ -92,23 +138,34 @@
     const kids = childrenByParentId.get(Number(parentId)) || [];
     const leafKids = kids.filter((c) => isLeafById.get(c.id));
     const options = leafKids.map((c) => ({ value: c.id, text: categoryName(c) }));
-    buildOptions(els.category, options, false);
-
-    if (selectedChildId && options.some((o) => String(o.value) === String(selectedChildId))) {
-      els.category.value = String(selectedChildId);
-      return;
+    if (childCombo) {
+      childCombo.setOptions(options, null);
+      if (selectedChildId && options.some((o) => String(o.value) === String(selectedChildId))) childCombo.input.dataset.value = String(selectedChildId);
+      else if (options[0]) childCombo.input.dataset.value = String(options[0].value);
+    } else {
+      buildOptions(els.category, options, false);
+      if (selectedChildId && options.some((o) => String(o.value) === String(selectedChildId))) {
+        els.category.value = String(selectedChildId);
+        return;
+      }
+      if (options[0]) els.category.value = String(options[0].value);
     }
-    if (options[0]) els.category.value = String(options[0].value);
   }
 
   function rebuildParentOptions(selectedParentId) {
     const options = rootCategories.map((c) => ({ value: c.id, text: categoryName(c) }));
-    buildOptions(els.parentCategory, options, false);
-    if (selectedParentId && options.some((o) => String(o.value) === String(selectedParentId))) {
-      els.parentCategory.value = String(selectedParentId);
-      return;
+    if (parentCombo) {
+      parentCombo.setOptions(options, null);
+      if (selectedParentId) parentCombo.input.dataset.value = String(selectedParentId);
+      else if (options[0]) parentCombo.input.dataset.value = String(options[0].value);
+    } else {
+      buildOptions(els.parentCategory, options, false);
+      if (selectedParentId && options.some((o) => String(o.value) === String(selectedParentId))) {
+        els.parentCategory.value = String(selectedParentId);
+        return;
+      }
+      if (options[0]) els.parentCategory.value = String(options[0].value);
     }
-    if (options[0]) els.parentCategory.value = String(options[0].value);
   }
 
   async function loadCategories() {
@@ -149,8 +206,11 @@
       .sort((a, b) => a.text.localeCompare(b.text, 'zh-HK'));
 
     buildOptions(els.categoryFilter, leafOptions, true);
+    if (filterCombo) {
+      filterCombo.setOptions(leafOptions, '全部');
+    }
     rebuildParentOptions(null);
-    rebuildChildOptions(els.parentCategory.value, null);
+    rebuildChildOptions(parentCombo ? parentCombo.value() : els.parentCategory.value, null);
   }
 
   async function loadProducts() {
@@ -374,8 +434,10 @@
       rebuildParentOptions(parentId);
       rebuildChildOptions(parentId, childId);
     } else {
-      els.parentCategory.textContent = '';
-      els.category.textContent = '';
+      if (parentCombo) { parentCombo.input.dataset.value=''; parentCombo.input.value=''; }
+      else els.parentCategory.textContent = '';
+      if (childCombo) { childCombo.input.dataset.value=''; childCombo.input.value=''; }
+      else els.category.textContent = '';
     }
     els.price.value = p.price ?? '';
     els.originalPrice.value = p.original_price ?? '';
@@ -474,7 +536,7 @@
         short_description_zh_hk: els.shortDesc.value || null,
         price: els.price.value,
         original_price: els.originalPrice.value || null,
-        category_id: els.category.value ? Number(els.category.value) : null,
+        category_id: (childCombo ? childCombo.value() : els.category.value) ? Number(childCombo ? childCombo.value() : els.category.value) : null,
         image_url,
         gallery_images: null,
         status: els.status.value,
@@ -520,7 +582,7 @@
   });
   els.categoryFilter.addEventListener('change', () => loadProducts().catch((e) => setError(e.message)));
   els.parentCategory.addEventListener('change', () => {
-    rebuildChildOptions(els.parentCategory.value, null);
+    rebuildChildOptions(parentCombo ? parentCombo.value() : els.parentCategory.value, null);
   });
   if (els.skuAdjustCancel) {
     els.skuAdjustCancel.addEventListener('click', () => closeSkuAdjustModal());
@@ -551,6 +613,17 @@
 
   try {
     await loadCategories();
+    // 將三個分類 <select> 升級做搜尋 combobox（必須喺 loadCategories 之後，先有初始 options）
+    parentCombo = createCombobox(els.parentCategory, [], null);
+    childCombo = createCombobox(els.category, [], null);
+    filterCombo = createCombobox(els.categoryFilter, [], '全部');
+    comboOnSelect(els.parentCategory, () => rebuildChildOptions(parentCombo.value(), null));
+    comboOnSelect(els.categoryFilter, () => loadProducts().catch(e => setError(e.message)));
+    // 重新灌入依三個 select 已 build 好嘅 options
+    rebuildParentOptions(null);
+    rebuildChildOptions(parentCombo.value(), null);
+    const leafOpts = JSON.parse(els.categoryFilter.dataset.options || '[]');
+    filterCombo.setOptions(leafOpts.slice(1), '全部');
     await loadProducts();
     clearForm();
   } catch (e) {

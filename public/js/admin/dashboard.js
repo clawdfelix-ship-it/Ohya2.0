@@ -3,7 +3,7 @@
 
   const STATUS_LABEL = {
     pending: '待付款',
-    paid: '待發貨',
+    paid: '已付款',
     shipping: '派送中',
     completed: '已完成',
     cancelled: '已取消',

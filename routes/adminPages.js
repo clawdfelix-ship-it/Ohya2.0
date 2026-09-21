@@ -176,7 +176,7 @@ function register(app, pool) {
     res.render('admin/layout', { title: '批量更新 SKU', active: 'bulk-skus', content: 'bulk-skus' });
   });
 
-  app.get('/admin/categories', requireAdminPage('catalog:write'), (req, res) => {
+  app.get('/admin/categories', requireAdminPage('catalog:read'), (req, res) => {
     res.render('admin/layout', { title: '分類管理', active: 'categories', content: 'categories' });
   });
 
@@ -204,6 +204,49 @@ function register(app, pool) {
   app.get('/admin/settings', requireAdminPage(), (req, res) => {
     if (!req.session.isAdmin) return res.status(403).send('沒有權限');
     res.render('admin/layout', { title: '系統設定', active: 'settings', content: 'settings' });
+  });
+
+  // ---- 補接：有 API 有表、之前冇頁面入口 ----
+  // 商品線
+  app.get('/admin/brands', requireAdminPage('catalog:read'), (req, res) => {
+    res.render('admin/layout', { title: '品牌管理', active: 'brands', content: 'brands' });
+  });
+  app.get('/admin/reviews', requireAdminPage('catalog:write'), (req, res) => {
+    res.render('admin/layout', { title: '評論審核', active: 'reviews', content: 'reviews' });
+  });
+  // 營銷線（寫入 API 要超管 '*'，頁面讀取任何後台可見，寫入由 API 把關）
+  app.get('/admin/coupons', requireAdminPage(), (req, res) => {
+    res.render('admin/layout', { title: '優惠券', active: 'coupons', content: 'coupons' });
+  });
+  app.get('/admin/flash-sales', requireAdminPage(), (req, res) => {
+    res.render('admin/layout', { title: '閃購', active: 'flash-sales', content: 'flash-sales' });
+  });
+  app.get('/admin/affiliates', requireAdminPage(), (req, res) => {
+    res.render('admin/layout', { title: '聯盟營銷', active: 'affiliates', content: 'affiliates' });
+  });
+  app.get('/admin/abandoned-carts', requireAdminPage(), (req, res) => {
+    res.render('admin/layout', { title: '遺棄購物車', active: 'abandoned-carts', content: 'abandoned-carts' });
+  });
+  app.get('/admin/blog', requireAdminPage(), (req, res) => {
+    res.render('admin/layout', { title: '網誌', active: 'blog', content: 'blog' });
+  });
+  // 配置線
+  app.get('/admin/shipping-methods', requireAdminPage(), (req, res) => {
+    res.render('admin/layout', { title: '運送方式', active: 'shipping-methods', content: 'shipping-methods' });
+  });
+  app.get('/admin/pickup-points', requireAdminPage(), (req, res) => {
+    res.render('admin/layout', { title: '提貨點', active: 'pickup-points', content: 'pickup-points' });
+  });
+  app.get('/admin/payment-methods', requireAdminPage(), (req, res) => {
+    res.render('admin/layout', { title: '支付方式', active: 'payment-methods', content: 'payment-methods' });
+  });
+  // 客戶線（operation-logs API 要超管）
+  app.get('/admin/user-tags', requireAdminPage(), (req, res) => {
+    res.render('admin/layout', { title: '用戶標籤', active: 'user-tags', content: 'user-tags' });
+  });
+  app.get('/admin/operation-logs', requireAdminPage(), (req, res) => {
+    if (!req.session.isAdmin) return res.status(403).send('沒有權限');
+    res.render('admin/layout', { title: '操作日誌', active: 'operation-logs', content: 'operation-logs' });
   });
 }
 

@@ -40,7 +40,16 @@
       ]},
       { label: '商品', perm: 'catalog:read', items: [
         { key: 'products', href: '/admin/products', label: '商品', icon: '📦', perm: 'catalog:read' },
-        { key: 'categories', href: '/admin/categories', label: '分類', icon: '🗂️', perm: 'catalog:write' },
+        { key: 'categories', href: '/admin/categories', label: '分類', icon: '🗂️', perm: 'catalog:read' },
+        { key: 'brands', href: '/admin/brands', label: '品牌', icon: '🏷️', perm: 'catalog:read' },
+        { key: 'reviews', href: '/admin/reviews', label: '評論審核', icon: '⭐', perm: 'catalog:write' },
+      ]},
+      { label: '營銷', items: [
+        { key: 'coupons', href: '/admin/coupons', label: '優惠券', icon: '🎟️' },
+        { key: 'flash-sales', href: '/admin/flash-sales', label: '閃購', icon: '⚡' },
+        { key: 'affiliates', href: '/admin/affiliates', label: '聯盟營銷', icon: '🤝' },
+        { key: 'abandoned-carts', href: '/admin/abandoned-carts', label: '遺棄購物車', icon: '🛒' },
+        { key: 'blog', href: '/admin/blog', label: '網誌', icon: '📝' },
       ]},
       { label: '庫存與採購', perm: 'inventory:read', items: [
         { key: 'inventory', href: '/admin/inventory', label: '庫存', icon: '🏬', perm: 'inventory:read' },
@@ -52,11 +61,18 @@
       ]},
       { label: '客戶與財務', items: [
         { key: 'users', href: '/admin/users', label: '用戶', icon: '👥', perm: 'users:manage' },
+        { key: 'user-tags', href: '/admin/user-tags', label: '用戶標籤', icon: '🏷️' },
         { key: 'reconciliation', href: '/admin/reconciliation', label: '對賬', icon: '🧮', perm: 'reconciliation:read' },
         { key: 'reports', href: '/admin/reports', label: '報表', icon: '📈', perm: 'reports:read' },
       ]},
+      { label: '配送與支付', items: [
+        { key: 'shipping-methods', href: '/admin/shipping-methods', label: '運送方式', icon: '🚛' },
+        { key: 'pickup-points', href: '/admin/pickup-points', label: '提貨點', icon: '📍' },
+        { key: 'payment-methods', href: '/admin/payment-methods', label: '支付方式', icon: '💳' },
+      ]},
       { label: '系統', adminOnly: true, items: [
         { key: 'settings', href: '/admin/settings', label: '系統設定', icon: '⚙️' },
+        { key: 'operation-logs', href: '/admin/operation-logs', label: '操作日誌', icon: '📋' },
       ]},
     ];
   %>
