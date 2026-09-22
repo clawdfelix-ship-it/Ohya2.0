@@ -10,6 +10,8 @@
     error: $('#products-error'),
     syncResult: $('#products-sync-result'),
     tbody: $('#products-tbody'),
+    cards: $('#products-cards'),
+    empty: $('#products-empty'),
 
     form: $('#product-form'),
     id: $('#product-id'),
@@ -216,6 +218,7 @@
   async function loadProducts() {
     setError('');
     els.tbody.textContent = '';
+    if (els.cards) els.cards.textContent = '';
 
     const params = new URLSearchParams();
     const search = (els.search.value || '').trim();
@@ -226,6 +229,8 @@
     const data = await adminApiRequest('/api/admin/products?' + params.toString());
     const products = data.products || [];
 
+    if (els.empty) els.empty.classList.toggle('hidden', products.length > 0);
+
     for (const p of products) {
       const child = p.category_id ? categoriesById.get(Number(p.category_id)) : null;
       const parent = child && child.parent_id ? categoriesById.get(Number(child.parent_id)) : null;
@@ -235,6 +240,50 @@
       const stockLabel = activeSkuCount > 0 ? String(totalStock) : '—';
       const lowStock = activeSkuCount > 0 && totalStock <= 5;
       const isActive = p.status === 'active';
+      const productName = p.name_zh_hk || p.name || '';
+      const price = Number(p.price || 0);
+      const priceLabel = price > 0 ? 'HK$' + price.toFixed(2) : '未定價';
+
+      // ---- 手機卡片 ----
+      if (els.cards) {
+        const thumbBox = el('div', { class: 'p-card-thumb' }, [
+          p.image_url
+            ? el('img', { src: p.image_url, alt: '', loading: 'lazy' })
+            : el('div', { class: 'p-card-thumb-fallback' }, ['📦']),
+        ]);
+        const statusBadge = el('span', {
+          class: 'admin-badge ' + (isActive ? 'badge-active' : 'badge-inactive'),
+          text: isActive ? '上架' : '下架',
+        });
+        const metaBadges = [statusBadge];
+        if (activeSkuCount > 0) {
+          const outOfStock = totalStock <= 0;
+          const stockBadge = el('span', {
+            class: 'admin-badge ' + (outOfStock || lowStock ? 'badge-danger' : 'badge-cancelled'),
+            text: outOfStock ? '缺貨' : (lowStock ? `僅餘 ${totalStock}` : '庫存 ' + stockLabel),
+          });
+          metaBadges.push(stockBadge);
+        }
+        const editBtn = el('button', {
+          class: 'admin-btn p-card-edit',
+          type: 'button',
+          text: '編輯',
+          onclick: () => loadProductForEdit(p.id),
+        });
+        const card = el('div', { class: 'p-card' }, [
+          el('div', { class: 'p-card-top' }, [
+            thumbBox,
+            el('div', { class: 'p-card-info' }, [
+              el('div', { class: 'p-card-id', text: '#' + p.id }),
+              el('div', { class: 'p-card-name', text: productName }),
+              el('div', { class: 'p-card-price', text: priceLabel }),
+            ]),
+          ]),
+          el('div', { class: 'p-card-meta' }, metaBadges),
+          el('div', { class: 'p-card-actions' }, [editBtn]),
+        ]);
+        els.cards.appendChild(card);
+      }
 
       // 縮圖 + 名稱（同一欄）
       const thumb = el('div', { class: 'flex items-center gap-3' }, [

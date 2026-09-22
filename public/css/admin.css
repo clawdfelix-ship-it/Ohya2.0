@@ -317,3 +317,51 @@ textarea.admin-input {
   .admin-link-btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0.45rem 0.5rem; }
   [role='tab'] { min-height: 40px; }
 }
+
+/* ============================================================
+   手機商品卡片（products 頁）— <1024px 顯示卡片、隱藏表格
+   桌面顯示表格、隱藏卡片。只切換顯示，兩者共用同一份數據。
+   ============================================================ */
+.products-mobile-card { display: none; }
+@media (max-width: 1023px) {
+  .products-mobile-card { display: block; padding: 0.9rem; }
+  .products-table-card { display: none; }
+
+  .p-card {
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-radius);
+    padding: 0.9rem;
+    background: #fff;
+  }
+  .p-card-top { display: flex; gap: 0.8rem; align-items: flex-start; }
+  .p-card-thumb {
+    width: 4rem; height: 4rem; flex-shrink: 0;
+    border-radius: var(--ad-radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--ad-line);
+    background: var(--ad-line-soft);
+  }
+  .p-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .p-card-thumb-fallback {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+  }
+  .p-card-info { min-width: 0; flex: 1; }
+  .p-card-id { font-size: 0.7rem; color: var(--ad-muted); font-variant-numeric: tabular-nums; }
+  .p-card-name {
+    font-size: 0.92rem; font-weight: 600; color: var(--ad-ink);
+    line-height: 1.5; margin: 0.15rem 0 0.3rem;
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .p-card-price { font-size: 0.9rem; font-weight: 700; color: var(--ad-primary); font-variant-numeric: tabular-nums; }
+  .p-card-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+  .p-card-meta .admin-badge { padding: 0.25rem 0.6rem; }
+  .p-card-actions { margin-top: 0.7rem; display: flex; }
+  .p-card-edit { flex: 1; }
+}
+@media (min-width: 1024px) {
+  .products-table-card { display: block; }
+  .products-mobile-card { display: none; }
+}
