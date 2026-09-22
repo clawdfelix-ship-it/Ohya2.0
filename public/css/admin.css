@@ -161,6 +161,12 @@
 .admin-kpi .kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--ad-ink); line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .admin-kpi .kpi-hint { font-size: 0.75rem; color: var(--ad-muted); }
 .admin-kpi.accent .kpi-value { color: var(--ad-primary); }
+.admin-kpi .admin-kpi-label { font-size: 0.8rem; font-weight: 500; color: var(--ad-muted); }
+.admin-kpi .admin-kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--ad-ink); line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.admin-kpi.is-alert { border-color: #ecd9a4; background: #fffdf5; }
+.admin-kpi.is-alert .admin-kpi-value { color: #b98900; }
+.dash-segbar.is-empty { background: var(--ad-line-soft); position: relative; }
+.dash-seg-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--ad-muted); }
 
 /* ---------- Tables ---------- */
 .admin-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
@@ -278,7 +284,63 @@ textarea.admin-input {
 }
 
 /* ============================================================
-   Mobile / tablet（<1024px）
+   Dashboard #2：分組側邊欄 + 超大細體 Hero + 三個大數字 + 分段比例條
+   ============================================================ */
+.dash-hero { margin: 0.25rem 0 1.5rem; }
+.dash-hero-title {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--ad-ink);
+  margin: 0;
+}
+.dash-hero-sub { color: var(--ad-muted); margin: .4rem 0 0; font-size: .95rem; }
+.dash-hero-sub strong { color: var(--ad-primary); font-weight: 700; }
+
+.dash-bignumbers {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1rem; margin-bottom: 1.25rem;
+}
+.dash-big {
+  background: var(--ad-surface);
+  border: 1px solid var(--ad-line);
+  border-radius: var(--ad-radius);
+  padding: 1.2rem 1.3rem;
+  box-shadow: var(--ad-shadow-sm);
+  min-width: 0;
+}
+.dash-big-value {
+  font-size: clamp(1.4rem, 3.4vw, 2.1rem);
+  font-weight: 700; letter-spacing: -0.02em;
+  color: var(--ad-ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dash-big-unit { margin-top: .4rem; font-size: .78rem; color: var(--ad-muted); }
+
+.dash-seg-card { margin-bottom: 1.25rem; }
+.dash-segbar {
+  display: flex; width: 100%; height: 14px;
+  border-radius: 7px; overflow: hidden;
+  background: var(--ad-line-soft);
+}
+.dash-seg-seg { display: block; height: 100%; min-width: 2px; transition: width .4s ease; }
+.dash-seg-seg + .dash-seg-seg { margin-left: 1px; }
+.dash-seg-legend {
+  display: flex; flex-wrap: wrap; gap: .4rem 1.1rem;
+  margin-top: .7rem; font-size: .78rem; color: var(--ad-body);
+}
+.dash-legend-item { display: inline-flex; align-items: center; gap: .4rem; }
+.dash-legend-item i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.dash-legend-item b { color: var(--ad-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) {
+  .dash-bignumbers { grid-template-columns: 1fr; gap: .7rem; }
+  .dash-big { padding: 1rem 1.1rem; display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .dash-big-value { font-size: 1.5rem; }
+  .dash-big-unit { margin-top: 0; }
+}
    目標：零橫向溢出、表格喺自己框內滑、觸控目標 ≥44px。
    ============================================================ */
 @media (max-width: 1023px) {

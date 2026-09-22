@@ -5,7 +5,8 @@ module.exports = function(app, pool, requireAdmin, upload) {
   app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
     try {
       const [usersResult, productsResult, categoriesResult, ordersResult, pendingOrdersResult,
-             todayResult, weekResult, lowStockResult, paidPendingResult] = await Promise.all([
+             todayResult, weekResult, lowStockResult, paidPendingResult,
+             statusBreakdownResult] = await Promise.all([
         pool.query('SELECT COUNT(*) as count FROM users'),
         pool.query('SELECT COUNT(*) as count FROM products WHERE status = \'active\''),
         pool.query('SELECT COUNT(*) as count FROM categories WHERE status = \'active\''),
@@ -22,6 +23,9 @@ module.exports = function(app, pool, requireAdmin, upload) {
                       GROUP BY p.id HAVING COALESCE(SUM(ps.stock),0) <= 5
                     ) low`),
         pool.query(`SELECT COUNT(*) as count FROM orders WHERE status IN ('pending','paid')`),
+        pool.query(`SELECT status, COUNT(*)::int as count
+                    FROM orders WHERE status IS NOT NULL
+                    GROUP BY status`),
       ]);
 
       // Get recent orders
@@ -45,7 +49,8 @@ module.exports = function(app, pool, requireAdmin, upload) {
           week_orders: weekResult.rows[0].orders,
           week_revenue: Number(weekResult.rows[0].revenue) || 0,
           actionable_orders: parseInt(paidPendingResult.rows[0].count),
-          low_stock: lowStockResult.rows[0].count
+          low_stock: lowStockResult.rows[0].count,
+          status_breakdown: statusBreakdownResult.rows.map(r => ({ status: r.status, count: r.count }))
         },
         recent_orders: recentOrders.rows
       });
