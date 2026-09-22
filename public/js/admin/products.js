@@ -53,18 +53,18 @@
     if (!msg) {
       els.syncResult.classList.add('hidden');
       els.syncResult.textContent = '';
-      els.syncResult.classList.remove('border-red-200', 'bg-red-50', 'text-red-800');
-      els.syncResult.classList.add('border-green-200', 'bg-green-50', 'text-green-800');
+      els.syncResult.classList.remove('border-[#f5b9ad]', 'bg-[#ffeeeb]', 'text-[#a8250b]');
+      els.syncResult.classList.add('border-[#a9e2cc]', 'bg-[#e6f7f0]', 'text-[#005c44]');
       return;
     }
     els.syncResult.classList.remove('hidden');
     els.syncResult.textContent = msg;
     if (isError) {
-      els.syncResult.classList.remove('border-green-200', 'bg-green-50', 'text-green-800');
-      els.syncResult.classList.add('border-red-200', 'bg-red-50', 'text-red-800');
+      els.syncResult.classList.remove('border-[#a9e2cc]', 'bg-[#e6f7f0]', 'text-[#005c44]');
+      els.syncResult.classList.add('border-[#f5b9ad]', 'bg-[#ffeeeb]', 'text-[#a8250b]');
     } else {
-      els.syncResult.classList.remove('border-red-200', 'bg-red-50', 'text-red-800');
-      els.syncResult.classList.add('border-green-200', 'bg-green-50', 'text-green-800');
+      els.syncResult.classList.remove('border-[#f5b9ad]', 'bg-[#ffeeeb]', 'text-[#a8250b]');
+      els.syncResult.classList.add('border-[#a9e2cc]', 'bg-[#e6f7f0]', 'text-[#005c44]');
     }
   }
 
@@ -99,7 +99,7 @@
       const matched = full.filter(o => !q || o.text.toLowerCase().includes(q)).slice(0, 200);
       if (!matched.length) list.appendChild(el('div', { class: 'px-3 py-2 text-sm text-gray-400', text: '無符合分類' }));
       matched.forEach(o => {
-        const item = el('div', { class: 'cursor-pointer px-3 py-2 text-sm text-gray-700 hover:bg-red-50' + (String(o.value)===String(input.dataset.value||'')?' bg-red-50 font-bold':''), text: o.text });
+        const item = el('div', { class: 'cursor-pointer px-3 py-2 text-sm text-gray-700 hover:bg-[#f0faf4]' + (String(o.value)===String(input.dataset.value||'')?' bg-[#f0faf4] font-semibold text-[#005c44]':''), text: o.text });
         item.addEventListener('mousedown', (ev) => {
           ev.preventDefault();
           input.dataset.value = String(o.value);

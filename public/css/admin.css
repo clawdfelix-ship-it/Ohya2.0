@@ -1,95 +1,95 @@
 /* ============================================================
-   Ohya2.0 Admin Design System (2026-09-18 UI Designer pass)
-   Modern e-commerce back-office（Shopify/Shopline 風格基礎）
-   保留全部舊 class 名向後兼容；舊頁無需改即自動升級外觀。
+   Ohya2.0 Admin Design System — Polaris-grade pass (2026-09-22)
+   對標 Shopify Polaris / ShopLINE：白色側欄、Polaris 綠、
+   冷灰中性色、細邊框、8px 節奏、單線 icon。
+   保留全部舊 class 名向後兼容；舊頁無需改結構即自動升級。
    ============================================================ */
 
 :root {
-  /* Brand */
-  --ad-primary: #b91c1c;        /* red-700，與前台一致 */
-  --ad-primary-600: #dc2626;
-  --ad-primary-soft: #fef2f2;
-  --ad-accent: #ea580c;         /* orange-600 */
+  /* —— Brand（Polaris green）—— */
+  --ad-primary: #008060;          /* Polaris primary */
+  --ad-primary-hover: #006e52;
+  --ad-primary-active: #005c44;
+  --ad-primary-soft: #f0faf4;
+  --ad-primary-ring: rgba(0, 128, 96, 0.18);
 
-  /* Neutrals */
-  --ad-ink: #111827;
-  --ad-body: #4b5563;
-  --ad-muted: #6b7280;
-  --ad-line: #e5e7eb;
-  --ad-line-soft: #f1f5f9;
-  --ad-bg: #f6f7f9;
+  /* —— Neutrals（Polaris 冷灰）—— */
+  --ad-ink: #202223;             /* primary text */
+  --ad-body: #424649;            /* secondary text */
+  --ad-muted: #6d7175;           /* tertiary text */
+  --ad-line: #dfe3e8;            /* border */
+  --ad-line-strong: #c9cccf;
+  --ad-line-soft: #f1f2f3;       /* table head bg / hairlines */
+  --ad-bg: #f6f6f7;              /* page bg */
   --ad-surface: #ffffff;
-  --ad-sidebar: #111827;
-  --ad-sidebar-ink: #c7cbd4;
-  --ad-sidebar-active: #ffffff;
+  --ad-hover: #f6f6f7;
 
-  /* Status */
-  --ad-success: #059669;
-  --ad-success-bg: #ecfdf5;
-  --ad-warning: #d97706;
-  --ad-warning-bg: #fffbeb;
-  --ad-danger: #dc2626;
-  --ad-danger-bg: #fef2f2;
-  --ad-info: #2563eb;
-  --ad-info-bg: #eff6ff;
+  /* —— Sidebar（白）—— */
+  --ad-sidebar: #ffffff;
+  --ad-sidebar-ink: #424649;
+  --ad-sidebar-group: #6d7175;
+  --ad-sidebar-active-bg: #e6f7f0;
+  --ad-sidebar-active-ink: #005c44;
 
-  /* Radius / shadow / spacing rhythm */
-  --ad-radius: 12px;
-  --ad-radius-sm: 8px;
-  --ad-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --ad-shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
-  --ad-shadow-md: 0 6px 16px -6px rgba(16, 24, 40, 0.14);
+  /* —— Status —— */
+  --ad-success: #008060;
+  --ad-success-bg: #e6f7f0;
+  --ad-warning: #b98900;
+  --ad-warning-bg: #fcf1cd;
+  --ad-warning-solid: #ffc96b;
+  --ad-danger: #d72c0d;
+  --ad-danger-bg: #ffeeeb;
+  --ad-info: #2c6ecb;
+  --ad-info-bg: #e8f2ff;
+  --ad-purple: #7c54c9;
+  --ad-purple-bg: #f0ebfa;
+
+  /* —— Radius / shadow —— */
+  --ad-radius: 10px;
+  --ad-radius-sm: 6px;
+  --ad-shadow-sm: 0 1px 2px rgba(31, 33, 34, 0.06);
+  --ad-shadow: 0 1px 2px rgba(31, 33, 34, 0.08), 0 0 0 1px rgba(31, 33, 34, 0.04);
+  --ad-shadow-pop: 0 8px 24px rgba(31, 33, 34, 0.12), 0 2px 6px rgba(31, 33, 34, 0.08);
 }
 
 /* ---------- Base ---------- */
-.mz-body { background: var(--ad-bg); }
+.mz-body { background: var(--ad-bg); color: var(--ad-ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", "Noto Sans TC", Roboto, sans-serif; }
 
 /* ---------- App shell ---------- */
-.admin-shell {
-  border: none !important;
-  background: transparent !important;
-}
-.admin-shell .mz-wrapper,
-.mz-wrapper { border: none; box-shadow: none; }
+.admin-shell { border: none !important; background: transparent !important; }
+.admin-shell .mz-wrapper, .mz-wrapper { border: none; box-shadow: none; }
 
-.admin-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-}
+.admin-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
 @media (min-width: 1024px) {
-  .admin-grid {
-    grid-template-columns: 15.5rem minmax(0, 1fr);
-    align-items: start;
-  }
+  .admin-grid { grid-template-columns: 15.5rem minmax(0, 1fr); align-items: start; }
 }
 
-/* ---------- Sidebar ---------- */
+/* ---------- Sidebar（白色 Polaris 式）---------- */
 .admin-nav {
   border: none !important;
-  border-right: 1px solid var(--ad-line) !important;
   background: var(--ad-sidebar);
-  padding: 1rem 0.75rem !important;
+  padding: 0.85rem 0.7rem !important;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 @media (min-width: 1024px) {
   .admin-nav {
     position: sticky;
-    top: 0.75rem;
-    min-height: calc(100vh - 1.5rem);
-    border-radius: var(--ad-radius);
+    top: 0;
+    min-height: 100vh;
+    border-right: 1px solid var(--ad-line) !important;
+    border-radius: 0;
   }
 }
 .admin-nav .admin-nav-group {
-  margin-top: 0.85rem;
-  padding: 0 0.75rem 0.35rem;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  margin-top: 0.9rem;
+  padding: 0 0.65rem 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: var(--ad-sidebar-group);
 }
 .admin-nav .admin-nav-group:first-child { margin-top: 0.25rem; }
 
@@ -97,126 +97,92 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.6rem 0.75rem;
+  padding: 0.5rem 0.65rem;
   border: 1px solid transparent;
   border-radius: var(--ad-radius-sm);
   color: var(--ad-sidebar-ink);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.875rem;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.12s ease, color 0.12s ease;
 }
-.admin-link:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: transparent;
-  color: #fff;
-}
+.admin-link > span:first-child { display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; font-size: 1rem; line-height: 1; }
+.ad-svg { width: 1.05rem; height: 1.05rem; flex-shrink: 0; }
+.admin-link-icon { display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; }
+.admin-link-icon .ad-svg { width: 1.1rem; height: 1.1rem; }
+.admin-link:hover { background: var(--ad-hover); color: var(--ad-ink); }
 .admin-link.active {
-  background: var(--ad-sidebar-active);
-  border-color: var(--ad-sidebar-active);
-  color: var(--ad-ink);
-  box-shadow: var(--ad-shadow-sm);
+  background: var(--ad-sidebar-active-bg);
+  color: var(--ad-sidebar-active-ink);
+  font-weight: 600;
 }
 
 /* ---------- Main column ---------- */
-.admin-main {
-  padding: 1.25rem !important;
-  min-width: 0;
-}
-.admin-page-title {
-  font-size: 1.4rem;
-  font-weight: 900;
-  color: var(--ad-ink);
-  margin: 0 0 0.25rem;
-}
-.admin-page-sub {
-  font-size: 0.85rem;
-  color: var(--ad-muted);
-  margin: 0 0 1.1rem;
-}
+.admin-main { padding: 1.5rem 1.75rem !important; min-width: 0; }
+.admin-page-title { font-size: 1.35rem; font-weight: 700; color: var(--ad-ink); margin: 0 0 0.25rem; letter-spacing: -0.01em; }
+.admin-page-sub { font-size: 0.875rem; color: var(--ad-muted); margin: 0 0 1.25rem; }
 
 /* ---------- Top bar ---------- */
 .admin-top {
   border: none !important;
   background: var(--ad-surface) !important;
-  border-radius: var(--ad-radius);
-  box-shadow: var(--ad-shadow-sm);
-  padding: 0.7rem 1rem !important;
-  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--ad-line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0.65rem 1.25rem !important;
+  margin-bottom: 0 !important;
 }
-.admin-top .admin-brand { font-weight: 900; color: var(--ad-primary); letter-spacing: -0.01em; }
-.admin-top .admin-brand small { color: var(--ad-muted); font-weight: 600; margin-left: 0.4rem; }
+.admin-top .admin-brand { font-weight: 700; color: var(--ad-ink); letter-spacing: -0.01em; }
+.admin-top .admin-brand small { color: var(--ad-muted); font-weight: 400; margin-left: 0.5rem; font-size: 0.8rem; }
 
 /* ---------- Cards ---------- */
 .admin-card {
   border: 1px solid var(--ad-line);
   border-radius: var(--ad-radius);
-  padding: 1rem;
+  padding: 1.4rem;
   background: var(--ad-surface);
-  box-shadow: var(--ad-shadow-sm);
+  box-shadow: var(--ad-shadow);
 }
 
-/* KPI cards（dashboard） */
-.admin-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.9rem;
-}
+/* KPI cards */
+.admin-kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
 @media (min-width: 768px) { .admin-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1024px) { .admin-kpi-grid { grid-template-columns: repeat(5, 1fr); } }
 .admin-kpi {
   background: var(--ad-surface);
   border: 1px solid var(--ad-line);
   border-radius: var(--ad-radius);
-  padding: 1rem 1.05rem;
-  box-shadow: var(--ad-shadow-sm);
+  padding: 1.2rem 1.25rem;
+  box-shadow: var(--ad-shadow);
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
-.admin-kpi .kpi-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--ad-muted);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.admin-kpi .kpi-value {
-  font-size: 1.55rem;
-  font-weight: 900;
-  color: var(--ad-ink);
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-.admin-kpi .kpi-hint { font-size: 0.72rem; color: var(--ad-muted); }
+.admin-kpi .kpi-label { font-size: 0.8rem; font-weight: 500; color: var(--ad-muted); display: flex; align-items: center; gap: 0.45rem; }
+.admin-kpi .kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--ad-ink); line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.admin-kpi .kpi-hint { font-size: 0.75rem; color: var(--ad-muted); }
 .admin-kpi.accent .kpi-value { color: var(--ad-primary); }
 
 /* ---------- Tables ---------- */
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
+.admin-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .admin-table thead th {
-  background: var(--ad-line-soft);
+  background: var(--ad-surface);
   color: var(--ad-muted);
   font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 0.65rem 0.8rem;
+  padding: 0.6rem 0.85rem;
   border-bottom: 1px solid var(--ad-line);
   white-space: nowrap;
 }
-.admin-table th,
-.admin-table td {
+.admin-table th, .admin-table td {
   border-bottom: 1px solid var(--ad-line-soft);
-  padding: 0.7rem 0.8rem;
+  padding: 0.7rem 0.85rem;
   text-align: left;
   vertical-align: middle;
 }
 .admin-table tbody tr { transition: background 0.12s ease; }
-.admin-table tbody tr:hover { background: #fafbfc; }
+.admin-table tbody tr:hover { background: var(--ad-hover); }
 .admin-table tbody tr.is-selected { background: var(--ad-primary-soft); }
 
 /* ---------- Badges / status pills ---------- */
@@ -224,20 +190,21 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.18rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 500;
   white-space: nowrap;
+  border: 1px solid transparent;
 }
-.badge-pending   { background: var(--ad-warning-bg); color: #92400e; }
-.badge-paid      { background: var(--ad-info-bg); color: #1e40af; }
-.badge-shipping  { background: #f5f3ff; color: #6d28d9; }
-.badge-completed { background: var(--ad-success-bg); color: #065f46; }
-.badge-cancelled { background: #f3f4f6; color: #4b5563; }
-.badge-active    { background: var(--ad-success-bg); color: #065f46; }
-.badge-inactive  { background: #f3f4f6; color: #4b5563; }
-.badge-danger    { background: var(--ad-danger-bg); color: #991b1b; }
+.badge-pending   { background: var(--ad-warning-bg); color: #6b5600; border-color: #ecd9a4; }
+.badge-paid      { background: var(--ad-info-bg); color: #1a56b5; border-color: #c3dafc; }
+.badge-shipping  { background: var(--ad-purple-bg); color: #5b3aa0; border-color: #d9cdf2; }
+.badge-completed { background: var(--ad-success-bg); color: #005c44; border-color: #a9e2cc; }
+.badge-cancelled { background: #f1f2f3; color: #6d7175; border-color: #dfe3e8; }
+.badge-active    { background: var(--ad-success-bg); color: #005c44; border-color: #a9e2cc; }
+.badge-inactive  { background: #f1f2f3; color: #6d7175; border-color: #dfe3e8; }
+.badge-danger    { background: var(--ad-danger-bg); color: #a8250b; border-color: #f5b9ad; }
 
 /* ---------- Forms & buttons ---------- */
 .admin-input,
@@ -245,18 +212,19 @@
 input.admin-input,
 select.admin-input,
 textarea.admin-input {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--ad-line-strong);
   border-radius: var(--ad-radius-sm);
-  padding: 0.55rem 0.7rem;
+  padding: 0.5rem 0.7rem;
   background: #fff;
   font-size: 0.875rem;
   color: var(--ad-ink);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
+.admin-input::placeholder { color: #9ea3a8; }
 .admin-input:focus {
   outline: none;
-  border-color: var(--ad-primary-600);
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
+  border-color: var(--ad-primary);
+  box-shadow: 0 0 0 3px var(--ad-primary-ring);
 }
 
 .admin-btn,
@@ -266,141 +234,86 @@ textarea.admin-input {
   justify-content: center;
   gap: 0.4rem;
   border-radius: var(--ad-radius-sm);
-  padding: 0.55rem 0.95rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  line-height: 1.1;
-  min-height: 40px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.15;
+  min-height: 38px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.04s ease;
 }
-.admin-btn {
-  border: 1px solid var(--ad-primary);
-  background: var(--ad-primary);
-  color: #fff;
-}
-.admin-btn:hover { background: #991b1b; border-color: #991b1b; box-shadow: var(--ad-shadow-sm); }
-.admin-btn:active { transform: translateY(1px); }
-.admin-btn-secondary {
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: var(--ad-ink);
-}
-.admin-btn-secondary:hover { border-color: #9ca3af; background: #f9fafb; }
-.admin-btn:disabled,
-.admin-btn-secondary:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+.admin-btn { border: 1px solid var(--ad-primary); background: var(--ad-primary); color: #fff; }
+.admin-btn:hover { background: var(--ad-primary-hover); border-color: var(--ad-primary-hover); box-shadow: var(--ad-shadow-sm); }
+.admin-btn:active { background: var(--ad-primary-active); transform: translateY(0.5px); }
+.admin-btn-secondary { border: 1px solid var(--ad-line-strong); background: #fff; color: var(--ad-ink); }
+.admin-btn-secondary:hover { background: var(--ad-hover); border-color: var(--ad-line-strong); }
+.admin-btn:disabled, .admin-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
-.admin-link-btn {
-  color: var(--ad-primary);
-  font-weight: 700;
-  font-size: 0.8rem;
-  text-decoration: none;
-}
-.admin-link-btn:hover { text-decoration: underline; }
+.admin-link-btn { color: var(--ad-primary); font-weight: 500; font-size: 0.875rem; text-decoration: none; }
+.admin-link-btn:hover { color: var(--ad-primary-hover); text-decoration: underline; }
 
 /* ---------- Misc ---------- */
 .admin-pre {
-  background: #0b1020;
-  color: #e5e7eb;
+  background: #202223;
+  color: #e6e8eb;
   padding: 0.9rem;
   border-radius: var(--ad-radius-sm);
   overflow: auto;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 .admin-error {
-  border: 1px solid #fecaca;
+  border: 1px solid #f5b9ad;
   background: var(--ad-danger-bg);
-  color: #991b1b;
+  color: #a8250b;
   border-radius: var(--ad-radius-sm);
   padding: 0.7rem 0.85rem;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 .admin-error.hidden { display: none; }
 
-.admin-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
+.admin-grid-2 { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
 @media (min-width: 1024px) {
   .admin-grid-2 { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
 }
 
 /* ============================================================
-   Mobile / tablet（<1024px）— 2026-09-22 UI 設計師手機版 pass
+   Mobile / tablet（<1024px）
    目標：零橫向溢出、表格喺自己框內滑、觸控目標 ≥44px。
    ============================================================ */
 @media (max-width: 1023px) {
-  /* 側邊欄 → 橫向滑動 nav（分段 label 收起） */
   .admin-nav {
     flex-direction: row;
     overflow-x: auto;
-    border-radius: var(--ad-radius);
+    border-bottom: 1px solid var(--ad-line) !important;
+    border-radius: 0;
     margin-bottom: 0.75rem;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
   }
   .admin-nav .admin-nav-group { display: none; }
-  /* 鎖死 nav 寬度：滑動只喺 nav 入面發生，唔會撐大成頁橫滑 */
-  .admin-shell,
-  .admin-grid,
-  .admin-nav { width: 100%; max-width: 100%; min-width: 0; }
-  .admin-link {
-    white-space: nowrap;
-    min-height: 44px;
-    padding: 0.6rem 0.85rem;
-  }
+  .admin-shell, .admin-grid, .admin-nav { width: 100%; max-width: 100%; min-width: 0; }
+  .admin-link { white-space: nowrap; min-height: 44px; padding: 0.6rem 0.85rem; }
 
-  /* 頂欄：品牌與按鈕不擠行 */
-  .admin-top { flex-wrap: wrap; gap: 0.5rem; }
+  .admin-top { flex-wrap: wrap; gap: 0.5rem; padding: 0.65rem 0.9rem !important; }
   .admin-top .admin-brand small { display: none; }
+  .admin-main { padding: 1rem 0.85rem !important; }
 
-  /* 主區留白收窄 */
-  .admin-main { padding: 0.9rem 0.6rem !important; }
-
-  /* ★ 核心修正：寬表格喺自己嘅框內橫向滑，唔再撐爆成頁。
-     .admin-card 同 main 都要 min-width:0 先可以正確收縮。 */
-  .admin-main,
-  .admin-card,
-  .admin-grid-2 > *,
-  .admin-shell { min-width: 0; }
-  .admin-table-wrap {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: var(--ad-radius-sm);
-  }
-  /* 若模板未包 wrapper，表格本身亦可橫滑（多數頁用 admin-card 包表格，
-     呢條保險令冇 wrapper 嘅頁都唔爆框） */
+  .admin-main, .admin-card, .admin-grid-2 > *, .admin-shell { min-width: 0; }
+  .admin-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--ad-radius-sm); }
   table.admin-table { display: block; overflow-x: auto; white-space: nowrap; }
-  table.admin-table thead,
-  table.admin-table tbody,
-  table.admin-table tr { display: table; width: max-content; min-width: 100%; table-layout: fixed; }
+  table.admin-table thead, table.admin-table tbody, table.admin-table tr { display: table; width: max-content; min-width: 100%; table-layout: fixed; }
 
-  /* KPI 卡：手機維持 2 欄，數字唔逼出框 */
-  .admin-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
-  .admin-kpi { padding: 0.8rem; }
+  .admin-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
+  .admin-kpi { padding: 0.85rem; }
   .admin-kpi .kpi-value { font-size: 1.3rem; word-break: break-word; }
 
-  /* 表單：輸入元件唔好超出容器；按鈕易點 */
-  .admin-input,
-  .admin-btn,
-  .admin-btn-secondary { max-width: 100%; min-height: 44px; }
+  .admin-input, .admin-btn, .admin-btn-secondary { max-width: 100%; min-height: 44px; }
 
-  /* 篩選列：本來 flex 會逼出框，改可換行；內含輸入框可收縮 */
-  .admin-main .flex.flex-wrap { flex-wrap: wrap; }
-  .admin-main .flex.gap-2 { flex-wrap: wrap; }
+  .admin-main .flex.flex-wrap, .admin-main .flex.gap-2 { flex-wrap: wrap; }
   .admin-main .flex > label { min-width: 0; }
   .admin-main .flex > label > .admin-input { max-width: 100%; }
 
-  /* 表格內連結掣（編輯等）：本來 ~19px，手機加大觸控目標 */
-  .admin-link-btn {
-    display: inline-flex;
-    align-items: center;
-    min-height: 40px;
-    padding: 0.45rem 0.5rem;
-  }
-  /* 報表分頁（原生 Tailwind tab）觸控目標 */
+  .admin-link-btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0.45rem 0.5rem; }
   [role='tab'] { min-height: 40px; }
 }

@@ -57,7 +57,7 @@
 
     const low = $('#qa-lowstock');
     if (low && (s.low_stock || 0) > 0) {
-      low.classList.add('!border-red-300', '!text-red-700');
+      low.classList.add('!border-[#ecd9a4]', '!text-[#6b5600]', 'bg-[#fcf1cd]');
       low.textContent = `低庫存預警（${s.low_stock}）`;
     }
   }

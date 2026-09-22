@@ -14,7 +14,7 @@
       <div class="text-lg font-black mb-4">後台登入</div>
 
       <% if (error) { %>
-        <div class="mb-3 p-2 border border-red-300 bg-red-50 text-red-700 text-sm"><%= error %></div>
+        <div class="mb-3 p-2 border rounded-md text-sm" style="border-color:#f5b9ad;background:#ffeeeb;color:#a8250b"><%= error %></div>
       <% } %>
 
       <form method="POST" action="/admin/login" class="space-y-3">
