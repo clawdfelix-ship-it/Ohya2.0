@@ -327,15 +327,70 @@ textarea.admin-input {
   .admin-grid-2 { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
 }
 
-/* Mobile: 側邊欄變橫向滑動 nav，避免擠壓 */
+/* ============================================================
+   Mobile / tablet（<1024px）— 2026-09-22 UI 設計師手機版 pass
+   目標：零橫向溢出、表格喺自己框內滑、觸控目標 ≥44px。
+   ============================================================ */
 @media (max-width: 1023px) {
+  /* 側邊欄 → 橫向滑動 nav（分段 label 收起） */
   .admin-nav {
     flex-direction: row;
     overflow-x: auto;
     border-radius: var(--ad-radius);
     margin-bottom: 0.75rem;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
   }
   .admin-nav .admin-nav-group { display: none; }
-  .admin-link { white-space: nowrap; }
+  /* 鎖死 nav 寬度：滑動只喺 nav 入面發生，唔會撐大成頁橫滑 */
+  .admin-shell,
+  .admin-grid,
+  .admin-nav { width: 100%; max-width: 100%; min-width: 0; }
+  .admin-link {
+    white-space: nowrap;
+    min-height: 44px;
+    padding: 0.6rem 0.85rem;
+  }
+
+  /* 頂欄：品牌與按鈕不擠行 */
+  .admin-top { flex-wrap: wrap; gap: 0.5rem; }
+  .admin-top .admin-brand small { display: none; }
+
+  /* 主區留白收窄 */
+  .admin-main { padding: 0.9rem 0.6rem !important; }
+
+  /* ★ 核心修正：寬表格喺自己嘅框內橫向滑，唔再撐爆成頁。
+     .admin-card 同 main 都要 min-width:0 先可以正確收縮。 */
+  .admin-main,
+  .admin-card,
+  .admin-grid-2 > *,
+  .admin-shell { min-width: 0; }
+  .admin-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--ad-radius-sm);
+  }
+  /* 若模板未包 wrapper，表格本身亦可橫滑（多數頁用 admin-card 包表格，
+     呢條保險令冇 wrapper 嘅頁都唔爆框） */
+  table.admin-table { display: block; overflow-x: auto; white-space: nowrap; }
+  table.admin-table thead,
+  table.admin-table tbody,
+  table.admin-table tr { display: table; width: max-content; min-width: 100%; table-layout: fixed; }
+
+  /* KPI 卡：手機維持 2 欄，數字唔逼出框 */
+  .admin-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+  .admin-kpi { padding: 0.8rem; }
+  .admin-kpi .kpi-value { font-size: 1.3rem; word-break: break-word; }
+
+  /* 表單：輸入元件唔好超出容器；按鈕易點 */
+  .admin-input,
+  .admin-btn,
+  .admin-btn-secondary { max-width: 100%; min-height: 44px; }
+
+  /* 篩選列：本來 flex 會逼出框，改可換行；內含輸入框可收縮 */
+  .admin-main .flex.flex-wrap { flex-wrap: wrap; }
+  .admin-main .flex.gap-2 { flex-wrap: wrap; }
+  .admin-main .flex > label { min-width: 0; }
+  .admin-main .flex > label > .admin-input { max-width: 100%; }
 }
