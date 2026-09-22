@@ -128,9 +128,9 @@
   function buildGenerateLabelPayloadFromListOrder(o) {
     return {
       order_id: o.id,
-      recipient_name: o.recipient_name || o.username || '',
-      recipient_phone: o.recipient_phone || o.phone || o.whatsapp || '',
-      recipient_address: o.recipient_address || o.address || '',
+      recipient_name: o.contact_name || o.recipient_name || o.username || '',
+      recipient_phone: o.contact_phone || o.recipient_phone || o.phone || o.whatsapp || '',
+      recipient_address: o.contact_address || o.recipient_address || o.address || '',
       district: o.district || '',
       service_type: o.service_type || 'sf_express',
       weight: o.weight || 1,
@@ -304,9 +304,9 @@
             method: 'POST',
             json: {
               order_id: order.id,
-              recipient_name: order.recipient_name || order.username || '',
-              recipient_phone: order.recipient_phone || order.phone || order.whatsapp || '',
-              recipient_address: order.recipient_address || order.address || '',
+              recipient_name: order.contact_name || order.recipient_name || order.username || '',
+              recipient_phone: order.contact_phone || order.recipient_phone || order.phone || order.whatsapp || '',
+              recipient_address: order.contact_address || order.recipient_address || order.address || '',
               district: order.district || '',
               service_type: order.service_type || 'sf_express',
               weight: order.weight || 1,

@@ -11,3 +11,10 @@ test('computePaymentStatusAfterRefund: partial refund', () => {
   assert.equal(computePaymentStatusAfterRefund({ orderTotal: 100, refundAmount: 10 }), 'partial_refunded');
 });
 
+test('computePaymentStatusAfterRefund: cumulative refunds reach full refund', () => {
+  const { computePaymentStatusAfterRefund } = require('../utils/refundsLogic');
+  assert.equal(
+    computePaymentStatusAfterRefund({ orderTotal: 100, refundAmount: 40, totalRefundAmount: 100 }),
+    'refunded'
+  );
+});

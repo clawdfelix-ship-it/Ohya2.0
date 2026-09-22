@@ -168,11 +168,16 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Middleware
 const { buildCorsOptions } = require('./utils/security/cors');
+const sharedLoginLimiter = loginLimiter();
 app.use(cors(buildCorsOptions({
   nodeEnv: process.env.NODE_ENV,
   allowedOriginsEnv: process.env.CORS_ALLOWED_ORIGINS || '',
 })));
-app.use('/api/auth/login', loginLimiter());
+app.use(['/api/auth/login', '/admin/login'], (req, res, next) => {
+  const method = String(req.method || 'GET').toUpperCase();
+  if (method !== 'POST') return next();
+  return sharedLoginLimiter(req, res, next);
+});
 app.use('/webhooks', webhookLimiter());
 app.use(cspReportPath, cspReportLimiter());
 app.use(cspReportPath, express.json({ type: ['application/csp-report', 'application/reports+json', 'application/json'] }));
