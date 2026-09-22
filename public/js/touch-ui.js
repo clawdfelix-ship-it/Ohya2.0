@@ -350,12 +350,64 @@
     return { next: () => go(idx + 1), prev: () => go(idx - 1), go };
   };
 
+  /* ----------------------------------------------------------
+     ⑪ Focus Group（選中一張，其他後退）
+     用法：容器加 data-focus-group；內裡每一項加 data-focus-item。
+     桌面 hover 聚焦；觸控點一下選中（其他降飽和＋縮小＋微模糊），
+     再點選中項內嘅連結先會導航。點空白處解除。
+  ---------------------------------------------------------- */
+  function initFocusGroups() {
+    $all('[data-focus-group]').forEach(group => {
+      if (group.dataset.focusBound) return;
+      group.dataset.focusBound = '1';
+      const items = () => $all('[data-focus-item]', group);
+
+      // 桌面：hover 即聚焦，離開還原
+      group.addEventListener('pointerover', (ev) => {
+        const item = ev.target.closest('[data-focus-item]');
+        if (!item || window.matchMedia('(hover: none)').matches) return;
+        items().forEach(it => {
+          it.classList.toggle('is-dim', it !== item);
+          it.classList.toggle('is-spotlit', it === item);
+        });
+      });
+      group.addEventListener('pointerout', (ev) => {
+        if (window.matchMedia('(hover: none)').matches) return;
+        if (!ev.relatedTarget || !group.contains(ev.relatedTarget)) {
+          items().forEach(it => it.classList.remove('is-dim', 'is-spotlit'));
+        }
+      });
+
+      // 觸控：點擊切換選中；未選中時先攔截導航
+      group.addEventListener('click', (ev) => {
+        if (!window.matchMedia('(hover: none)').matches) return;
+        const item = ev.target.closest('[data-focus-item]');
+        if (!item) {
+          items().forEach(it => it.classList.remove('is-dim', 'is-spotlit'));
+          return;
+        }
+        if (!item.classList.contains('is-spotlit')) {
+          // 第一次點：只選中，唔導航
+          ev.preventDefault();
+          ev.stopPropagation();
+          items().forEach(it => {
+            const on = it === item;
+            it.classList.toggle('is-spotlit', on);
+            it.classList.toggle('is-dim', !on);
+          });
+        }
+        // 已選中：放行內部連結／按鈕（默認行為照走）
+      }, true);
+    });
+  }
+
   function initAll() {
     initFlip();
     initHold();
     initSlide();
     initRadial();
     initContext();
+    initFocusGroups();
     $all('.coverflow').forEach(r => window.initCoverFlow(r));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAll);

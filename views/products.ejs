@@ -68,9 +68,9 @@
 
     <!-- 產品列表 -->
     <% if (products && products.length > 0) { %>
-      <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+      <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4" data-focus-group>
         <% products.forEach(product => { %>
-          <div class="group flex flex-col overflow-hidden rounded-2xl border border-ink-600 bg-ink-850 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-gold/40 hover:shadow-lg">
+          <div data-focus-item class="group flex flex-col overflow-hidden rounded-2xl border border-ink-600 bg-ink-850 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-gold/40 hover:shadow-lg">
             <a href="/product/<%= product.id %>" class="relative block aspect-square overflow-hidden bg-ink-800" aria-label="<%= product.name %>">
               <div class="absolute left-2 top-2 z-10 flex flex-col gap-1">
                 <% if (product.originalPrice && product.originalPrice > product.price) { %>
