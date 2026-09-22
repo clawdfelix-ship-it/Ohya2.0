@@ -811,7 +811,6 @@ app.use(async (req, res, next) => {
       const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
 
       let categoryId = null;
-      let categoryIds = null;
       let selectedCategory = '全部商品';
       let selectedCategorySlug = 'all';
 
@@ -819,7 +818,7 @@ app.use(async (req, res, next) => {
         const c = await pool.query(
           `SELECT id, name, name_zh_hk
            FROM categories
-           WHERE slug = $1
+           WHERE slug = $1 AND source = 'storefront'
            LIMIT 1`,
           [categoryFilter]
         );
@@ -834,28 +833,9 @@ app.use(async (req, res, next) => {
       const params = [];
       let paramIndex = 1;
       if (categoryId) {
-        const descendantIds = await pool.query(
-          `WITH RECURSIVE descendants AS (
-             SELECT id
-             FROM categories
-             WHERE id = $1
-               AND status = 'active'
-             UNION ALL
-             SELECT c.id
-             FROM categories c
-             JOIN descendants d
-               ON c.parent_id = d.id
-             WHERE c.status = 'active'
-           )
-           SELECT id
-           FROM descendants
-           ORDER BY id ASC`,
-          [categoryId]
-        );
-        categoryIds = (descendantIds.rows || []).map(r => Number(r.id));
-        if (!categoryIds.length) categoryIds = [categoryId];
-        where += ` AND p.category_id = ANY($${paramIndex})`;
-        params.push(categoryIds);
+        // 門市分類扁平：產品經 product_storefront 對應（同步層已隱藏）
+        where += ` AND EXISTS (SELECT 1 FROM product_storefront ps WHERE ps.product_id = p.id AND ps.storefront_category_id = $${paramIndex})`;
+        params.push(categoryId);
         paramIndex++;
       }
       if (q) {
@@ -868,18 +848,9 @@ app.use(async (req, res, next) => {
       const total = countResult.rows[0] ? Number(countResult.rows[0].total) : 0;
       const totalPages = Math.max(1, Math.ceil(total / perPage));
 
-      // mzakka 標準 order: when browsing a category with the default sort,
-      // order by that exact node's mzakka rank (the node's page lists its whole
-      // subtree in mzakka 標準 order). User-chosen sorts (price/newest/popular)
-      // still win; products without a rank sink to the end.
-      const rankParamIndex = categoryId ? paramIndex++ : null;
-      if (categoryId) params.push(categoryId);
-      const orderBy = (categoryId && sort === 'recommend')
-        ? `mr.rank NULLS LAST, p.created_at DESC`
-        : getProductsOrderBy(sort);
-      const rankJoin = categoryId
-        ? `LEFT JOIN mzakka_category_rank mr ON mr.product_id = p.id AND mr.category_id = $${rankParamIndex}`
-        : '';
+      // 門市分類頁：扁平、無子類，rank 不適用；一律用用戶選擇或默認排序
+      const orderBy = getProductsOrderBy(sort);
+      const rankJoin = '';
 
       const listResult = await pool.query(
         `SELECT p.id,
