@@ -811,10 +811,19 @@ app.use(async (req, res, next) => {
       const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
 
       let categoryId = null;
+      let dynamicSection = null;           // 'new' | 'sale' | null（動態專區）
       let selectedCategory = '全部商品';
       let selectedCategorySlug = 'all';
 
-      if (categoryFilter && categoryFilter !== 'all') {
+      if (categoryFilter === 'storefront-new') {
+        dynamicSection = 'new';
+        selectedCategory = '新到推介';
+        selectedCategorySlug = 'storefront-new';
+      } else if (categoryFilter === 'storefront-sale') {
+        dynamicSection = 'sale';
+        selectedCategory = '特價區';
+        selectedCategorySlug = 'storefront-sale';
+      } else if (categoryFilter && categoryFilter !== 'all') {
         const c = await pool.query(
           `SELECT id, name, name_zh_hk
            FROM categories
@@ -837,6 +846,13 @@ app.use(async (req, res, next) => {
         where += ` AND EXISTS (SELECT 1 FROM product_storefront ps WHERE ps.product_id = p.id AND ps.storefront_category_id = $${paramIndex})`;
         params.push(categoryId);
         paramIndex++;
+      }
+      if (dynamicSection === 'new') {
+        where += ` AND p.created_at > NOW() - INTERVAL '30 days'`;
+      } else if (dynamicSection === 'sale') {
+        // 真正抵買：相對建議零售價折讓 ≥30%
+        where += ` AND p.original_price IS NOT NULL AND p.original_price > p.price
+                   AND (1 - p.price / NULLIF(p.original_price,0)) >= 0.30`;
       }
       if (q) {
         where += ` AND (COALESCE(p.name_zh_hk, p.name) ILIKE $${paramIndex} OR COALESCE(NULLIF(p.description_zh_hk, ''), NULLIF(p.description, '')) ILIKE $${paramIndex})`;
