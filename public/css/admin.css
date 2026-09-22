@@ -393,4 +393,14 @@ textarea.admin-input {
   .admin-main .flex.gap-2 { flex-wrap: wrap; }
   .admin-main .flex > label { min-width: 0; }
   .admin-main .flex > label > .admin-input { max-width: 100%; }
+
+  /* 表格內連結掣（編輯等）：本來 ~19px，手機加大觸控目標 */
+  .admin-link-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0.45rem 0.5rem;
+  }
+  /* 報表分頁（原生 Tailwind tab）觸控目標 */
+  [role='tab'] { min-height: 40px; }
 }
