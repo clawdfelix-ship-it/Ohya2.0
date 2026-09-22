@@ -219,3 +219,72 @@
   [data-focus-group] [data-focus-item].is-dim { transform: none; filter: none; opacity: .65; }
   [data-focus-group] [data-focus-item].is-spotlit { transform: none; filter: none; }
 }
+
+/* ---------------- ⑫ Density Switch：三檔密度 ---------------- */
+[data-density-control] { display: inline-flex; gap: 2px; }
+[data-density-set] {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 38px; padding: 0 12px;
+  border-radius: 999px; border: 1px solid var(--ad-line, #dfe3e8);
+  background: var(--ad-surface, #fff); color: var(--ad-muted, #6d7175);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all .2s ease;
+}
+[data-density-set].is-active {
+  background: #008060; border-color: #008060; color: #fff;
+}
+
+/* 商品網格：由 data-density 接管列數 */
+[data-focus-group][data-density] { display: grid; gap: 14px; }
+[data-focus-group][data-density="cozy"]     { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
+[data-focus-group][data-density="standard"] { grid-template-columns: repeat(2, minmax(0,1fr)); }
+@media (min-width: 768px) {
+  [data-focus-group][data-density="cozy"]     { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  [data-focus-group][data-density="standard"] { grid-template-columns: repeat(3, minmax(0,1fr)); }
+}
+@media (min-width: 1024px) {
+  [data-focus-group][data-density="cozy"]     { grid-template-columns: repeat(3, minmax(0,1fr)); }
+}
+@media (min-width: 1280px) {
+  [data-focus-group][data-density="cozy"]     { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  [data-focus-group][data-density="standard"] { grid-template-columns: repeat(4, minmax(0,1fr)); }
+}
+
+/* 大圖模式：圖片更大、字更鬆 */
+[data-focus-group][data-density="cozy"] [data-focus-item] img { min-height: 100%; }
+[data-focus-group][data-density="cozy"] [data-focus-item] .aspect-square { aspect-ratio: 4 / 3.4; }
+
+/* 文字行模式：單列、每行一項、圖細 + 橫排資訊 */
+[data-focus-group][data-density="compact"] {
+  grid-template-columns: minmax(0,1fr); gap: 8px;
+}
+[data-focus-group][data-density="compact"] [data-focus-item] {
+  flex-direction: row; align-items: stretch;
+}
+[data-focus-group][data-density="compact"] [data-focus-item] a[href^="/product/"][class*="aspect-square"],
+[data-focus-group][data-density="compact"] [data-focus-item] .aspect-square {
+  width: 92px; min-width: 92px; aspect-ratio: 1 / 1; height: auto;
+}
+[data-focus-group][data-density="compact"] [data-focus-item] { position: relative; }
+[data-focus-group][data-density="compact"] [data-focus-item] > a:first-child {
+  width: 92px; min-width: 92px; height: auto;
+}
+[data-focus-group][data-density="compact"] [data-focus-item] > :last-child {
+  flex: 1; padding: 10px 12px; gap: 4px;
+}
+[data-focus-group][data-density="compact"] [data-focus-item] h3 {
+  height: auto; margin: 2px 0; font-size: 13px;
+}
+[data-focus-group][data-density="compact"] [data-focus-item] h3 a { color: #fff; }
+/* 隱藏文字行模式下嘅累贅元素：分類章、積分行 */
+[data-focus-group][data-density="compact"] [data-focus-item] > :last-child > span:first-child,
+[data-focus-group][data-density="compact"] [data-focus-item] .text-gold:has(.font-bold) { display: none; }
+[data-focus-group][data-density="compact"] [data-focus-item] [data-add-to-cart] { display: none; }
+[data-focus-group][data-density="compact"] [data-focus-item] > :last-child > .mt-auto {
+  margin-top: 0; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px;
+}
+[data-focus-group][data-density="compact"] [data-focus-item] > :last-child > .mt-auto > a { flex: 0 0 auto; padding: 0 16px; min-height: 38px; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-focus-group], [data-focus-item] { transition: none !important; }
+}

@@ -64,11 +64,19 @@
           <option value="popular" <%= (typeof sort === 'string' ? sort : 'recommend') === 'popular' ? 'selected' : '' %>>人氣排序</option>
         </select>
       </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="text-sm text-gray-500">密度</div>
+        <div class="data-density-control" data-density-control data-target="#product-grid" role="group" aria-label="商品密度">
+          <button type="button" data-density-set="cozy">大圖</button>
+          <button type="button" data-density-set="standard">標準</button>
+          <button type="button" data-density-set="compact">文字行</button>
+        </div>
+      </div>
     </div>
 
     <!-- 產品列表 -->
     <% if (products && products.length > 0) { %>
-      <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4" data-focus-group>
+      <div id="product-grid" class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4" data-focus-group>
         <% products.forEach(product => { %>
           <div data-focus-item class="group flex flex-col overflow-hidden rounded-2xl border border-ink-600 bg-ink-850 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-gold/40 hover:shadow-lg">
             <a href="/product/<%= product.id %>" class="relative block aspect-square overflow-hidden bg-ink-800" aria-label="<%= product.name %>">

@@ -401,6 +401,74 @@
     });
   }
 
+  /* ----------------------------------------------------------
+     ⑫ Density Switch（捏合改密度 + 換列走弧線）
+     用法：控件 [data-density-control] data-target=<grid selector>
+     內裡按鈕 data-density-set="cozy|standard|compact"。
+     切換時用 FLIP：每項沿弧線移動到新位置，相鄰項錯開延遲。
+  ---------------------------------------------------------- */
+  const DENSITY_KEY = 'ohya-density';
+  const DENSITY_MODES = ['cozy', 'standard', 'compact'];
+
+  function arcAnimate(grid, mode) {
+    if (reduced) { grid.dataset.density = mode; return; }
+    const items = $all('[data-focus-item], [data-density-item]', grid);
+    // FLIP - First
+    const first = items.map(it => it.getBoundingClientRect());
+    grid.dataset.density = mode;
+    // FLIP - Last + Invert + Play
+    const anims = items.map((it, i) => {
+      const r = it.getBoundingClientRect();
+      const dx = first[i].left - r.left;
+      const dy = first[i].top - r.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return null;
+      const arc = Math.min(34, 12 + Math.hypot(dx, dy) * 0.08);
+      const a = it.animate([
+        { transform: `translate(${dx}px, ${dy}px)` },
+        { transform: `translate(${dx / 2}px, ${dy / 2 - arc}px) scale(1.02)`, offset: 0.5 },
+        { transform: 'translate(0, 0) scale(1)' },
+      ], {
+        duration: 430,
+        delay: Math.min(i * 22, 320),
+        easing: 'cubic-bezier(.22,1,.36,1)',
+      });
+      return a;
+    });
+    return Promise.all(anims.filter(Boolean).map(a => a.finished.catch(() => {})));
+  }
+
+  function syncControlActive(control, mode) {
+    $all('[data-density-set]', control).forEach(btn => {
+      const on = btn.getAttribute('data-density-set') === mode;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function initDensitySwitch() {
+    $all('[data-density-control]').forEach(control => {
+      if (control.dataset.densityBound) return;
+      control.dataset.densityBound = '1';
+      const grid = $(control.getAttribute('data-target'));
+      if (!grid) return;
+
+      const saved = localStorage.getItem(DENSITY_KEY);
+      const initial = DENSITY_MODES.indexOf(saved) >= 0 ? saved : (grid.dataset.density || 'standard');
+      grid.dataset.density = initial;
+      syncControlActive(control, initial);
+
+      control.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-density-set]');
+        if (!btn) return;
+        const mode = btn.getAttribute('data-density-set');
+        if (mode === grid.dataset.density) return;
+        syncControlActive(control, mode);
+        localStorage.setItem(DENSITY_KEY, mode);
+        arcAnimate(grid, mode);
+      });
+    });
+  }
+
   function initAll() {
     initFlip();
     initHold();
@@ -408,6 +476,7 @@
     initRadial();
     initContext();
     initFocusGroups();
+    initDensitySwitch();
     $all('.coverflow').forEach(r => window.initCoverFlow(r));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAll);
