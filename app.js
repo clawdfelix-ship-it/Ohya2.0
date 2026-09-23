@@ -534,42 +534,51 @@ async function loadStorefrontCategories() {
   );
   const totalCount = totalResult.rows[0] ? Number(totalResult.rows[0].total) : 0;
 
-  // 門市分類（source='storefront'）係扁平結構，商品經 product_storefront
-  // 對應表掛上門市分類（products.category_id 指住舊 mzakka 分類，唔適用）。
-  // new/sale 兩個動態區塊唔靠對應表，分別用上架時間同折讓計算。
+  // 門市分類為三層樹（source='storefront'）。product_storefront 對應
+  // 商品實際所屬（最深層）分類；每個分類數量＝自己子樹的彙總。
+  // new/sale 為動態區塊，分別用最新匯入與折讓計算。
   const result = await pool.query(
-    `SELECT c.id,
-            c.parent_id,
-            c.slug,
-            c.name,
-            c.name_zh_hk,
-            CASE c.slug
-              WHEN 'storefront-new' THEN (
-                SELECT COUNT(*)::int FROM products p
-                WHERE p.status='active'
-                  AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
-                  AND p.id >= COALESCE((
-                    SELECT id FROM products
-                    WHERE status='active'
-                      AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
-                    ORDER BY id DESC LIMIT 1 OFFSET 199), 0))
-              WHEN 'storefront-sale' THEN (
-                SELECT COUNT(*)::int FROM products p
-                WHERE p.status='active'
-                  AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
-                  AND p.original_price IS NOT NULL AND p.original_price > p.price
-                  AND (1 - p.price / NULLIF(p.original_price,0)) >= 0.30)
-              ELSE COALESCE(psc.cnt, 0)::int
-            END as count
+    `WITH RECURSIVE direct AS (
+       SELECT storefront_category_id AS cid, COUNT(*)::int n
+       FROM product_storefront GROUP BY 1
+     ),
+     descendants AS (
+       SELECT c.id AS root_id, c.id AS cid
+       FROM categories c WHERE c.status='active' AND c.source='storefront'
+       UNION ALL
+       SELECT d.root_id, c.id
+       FROM descendants d
+       JOIN categories c ON c.parent_id = d.cid
+       WHERE c.status='active' AND c.source='storefront'
+     ),
+     subtree AS (
+       SELECT d.root_id, SUM(direct.n)::int n
+       FROM descendants d LEFT JOIN direct ON direct.cid = d.cid
+       GROUP BY d.root_id
+     )
+     SELECT c.id, c.parent_id, c.slug, c.name, c.name_zh_hk,
+       CASE c.slug
+         WHEN 'storefront-new' THEN (
+           SELECT COUNT(*)::int FROM products p
+           WHERE p.status='active'
+             AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
+             AND p.id >= COALESCE((SELECT id FROM products
+               WHERE status='active'
+                 AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
+               ORDER BY id DESC LIMIT 1 OFFSET 199), 0))
+         WHEN 'storefront-sale' THEN (
+           SELECT COUNT(*)::int FROM products p
+           WHERE p.status='active'
+             AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
+             AND p.original_price IS NOT NULL AND p.original_price > p.price
+             AND (1 - p.price / NULLIF(p.original_price,0)) >= 0.30)
+         ELSE COALESCE(subtree.n, 0)
+       END AS count
      FROM categories c
-     LEFT JOIN (
-       SELECT storefront_category_id, COUNT(*)::int cnt
-       FROM product_storefront
-       GROUP BY storefront_category_id
-     ) psc ON psc.storefront_category_id = c.id
-     WHERE c.status = 'active' AND c.source = 'storefront'
+     LEFT JOIN subtree ON subtree.root_id = c.id
+     WHERE c.status='active' AND c.source='storefront'
      ORDER BY c.id ASC
-     LIMIT 500`
+     LIMIT 1000`
   );
 
   const rows = result.rows.map((row) => ({
@@ -841,8 +850,17 @@ app.use(async (req, res, next) => {
       const params = [];
       let paramIndex = 1;
       if (categoryId) {
-        // 門市分類扁平：產品經 product_storefront 對應（同步層已隱藏）
-        where += ` AND EXISTS (SELECT 1 FROM product_storefront ps WHERE ps.product_id = p.id AND ps.storefront_category_id = $${paramIndex})`;
+        // 門市三層：商品所屬門市分類落在選取分類的子樹內（含自身）
+        where += ` AND EXISTS (
+                     SELECT 1 FROM product_storefront ps
+                     WHERE ps.product_id = p.id AND ps.storefront_category_id IN (
+                       WITH RECURSIVE sub AS (
+                         SELECT id FROM categories WHERE id = $${paramIndex}
+                         UNION ALL
+                         SELECT c.id FROM sub JOIN categories c ON c.parent_id = sub.id
+                       )
+                       SELECT id FROM sub
+                     ))`;
         params.push(categoryId);
         paramIndex++;
       }
