@@ -534,42 +534,37 @@ async function loadStorefrontCategories() {
   );
   const totalCount = totalResult.rows[0] ? Number(totalResult.rows[0].total) : 0;
 
+  // 門市分類（source='storefront'）係扁平結構，商品經 product_storefront
+  // 對應表掛上門市分類（products.category_id 指住舊 mzakka 分類，唔適用）。
+  // new/sale 兩個動態區塊唔靠對應表，分別用上架時間同折讓計算。
   const result = await pool.query(
-    `WITH RECURSIVE product_counts AS (
-       SELECT p.category_id, COUNT(*)::int as direct_count
-       FROM products p
-       WHERE p.status = 'active'
-         AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
-       GROUP BY p.category_id
-     ),
-     category_descendants AS (
-       SELECT c.id as ancestor_id, c.id as descendant_id
-       FROM categories c
-       WHERE c.status = 'active'
-       UNION ALL
-       SELECT d.ancestor_id, c.id
-       FROM category_descendants d
-       JOIN categories c
-         ON c.parent_id = d.descendant_id
-        AND c.status = 'active'
-     ),
-     category_totals AS (
-       SELECT d.ancestor_id as category_id,
-              COALESCE(SUM(pc.direct_count), 0)::int as total_count
-       FROM category_descendants d
-       LEFT JOIN product_counts pc ON pc.category_id = d.descendant_id
-       GROUP BY d.ancestor_id
-     )
-     SELECT c.id,
+    `SELECT c.id,
             c.parent_id,
             c.slug,
             c.name,
             c.name_zh_hk,
-            COALESCE(ct.total_count, 0)::int as count
+            CASE c.slug
+              WHEN 'storefront-new' THEN (
+                SELECT COUNT(*)::int FROM products p
+                WHERE p.status='active'
+                  AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
+                  AND p.created_at > NOW() - INTERVAL '30 days')
+              WHEN 'storefront-sale' THEN (
+                SELECT COUNT(*)::int FROM products p
+                WHERE p.status='active'
+                  AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
+                  AND p.original_price IS NOT NULL AND p.original_price > p.price
+                  AND (1 - p.price / NULLIF(p.original_price,0)) >= 0.30)
+              ELSE COALESCE(psc.cnt, 0)::int
+            END as count
      FROM categories c
-     LEFT JOIN category_totals ct ON ct.category_id = c.id
-     WHERE c.status = 'active'
-     ORDER BY COALESCE(ct.total_count, 0) DESC, COALESCE(c.name_zh_hk, c.name) ASC
+     LEFT JOIN (
+       SELECT storefront_category_id, COUNT(*)::int cnt
+       FROM product_storefront
+       GROUP BY storefront_category_id
+     ) psc ON psc.storefront_category_id = c.id
+     WHERE c.status = 'active' AND c.source = 'storefront'
+     ORDER BY c.id ASC
      LIMIT 500`
   );
 
