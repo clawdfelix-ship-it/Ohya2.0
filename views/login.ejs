@@ -50,12 +50,12 @@
         <input type="hidden" name="redirect" value="<%= typeof redirect === 'string' && /^\/[a-zA-Z0-9_\-\/.?=&%]*$/.test(redirect) && !redirect.startsWith('//') ? redirect : '' %>">
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-300 mb-2">電郵地址或用戶名</label>
-          <input type="text" name="email" value="<%= loginFormData.email || '' %>" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-wine focus:outline-none transition" placeholder="your@email.com / username">
+          <input type="text" name="email" value="<%= loginFormData.email || '' %>" required class="w-full border-2 border-gray-600 rounded-lg px-4 py-3 bg-ink-800 text-gray-100 placeholder-gray-500 focus:border-gold focus:outline-none transition" placeholder="your@email.com / username">
         </div>
         
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-300 mb-2">密碼</label>
-          <input type="password" name="password" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-wine focus:outline-none transition" placeholder="••••••••">
+          <input type="password" name="password" required class="w-full border-2 border-gray-600 rounded-lg px-4 py-3 bg-ink-800 text-gray-100 placeholder-gray-500 focus:border-gold focus:outline-none transition" placeholder="••••••••">
         </div>
         
         <button type="submit" class="w-full bg-wine text-white py-3 rounded-lg font-bold hover:bg-wine transition text-lg">

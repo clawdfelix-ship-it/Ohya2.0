@@ -49,17 +49,17 @@
         <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-300 mb-2">用戶名</label>
-          <input type="text" name="username" value="<%= registerFormData.username || '' %>" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-wine focus:outline-none transition" placeholder="您的用戶名">
+          <input type="text" name="username" value="<%= registerFormData.username || '' %>" required class="w-full border-2 border-gray-600 rounded-lg px-4 py-3 bg-ink-800 text-gray-100 placeholder-gray-500 focus:border-gold focus:outline-none transition" placeholder="您的用戶名">
         </div>
         
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-300 mb-2">電郵地址</label>
-          <input type="email" name="email" value="<%= registerFormData.email || '' %>" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-wine focus:outline-none transition" placeholder="your@email.com">
+          <input type="email" name="email" value="<%= registerFormData.email || '' %>" required class="w-full border-2 border-gray-600 rounded-lg px-4 py-3 bg-ink-800 text-gray-100 placeholder-gray-500 focus:border-gold focus:outline-none transition" placeholder="your@email.com">
         </div>
         
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-300 mb-2">密碼</label>
-          <input type="password" name="password" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-wine focus:outline-none transition" placeholder="••••••••">
+          <input type="password" name="password" required class="w-full border-2 border-gray-600 rounded-lg px-4 py-3 bg-ink-800 text-gray-100 placeholder-gray-500 focus:border-gold focus:outline-none transition" placeholder="••••••••">
         </div>
         
         <button type="submit" class="w-full bg-wine text-white py-3 rounded-lg font-bold hover:bg-wine transition text-lg">
