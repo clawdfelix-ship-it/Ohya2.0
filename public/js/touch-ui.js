@@ -540,6 +540,69 @@
     });
   }
 
+  /* ----------------------------------------------------------
+     ⑭ Adaptive Invert（跟背景換黑白）
+     用法：元素加 data-adaptive。佢會採樣自己中心點背後嘅實際背景亮度，
+     自動喺黑／白間連續過渡（唔硬切）。滾動時即時更新。
+     data-adaptive-threshold 可調（默認 .55）。
+  ---------------------------------------------------------- */
+  function bgLuminanceAt(x, y, self) {
+    let stack = document.elementsFromPoint(x, y);
+    // 排除被採樣元素自己同佢嘅子元素，否則會採到自己嘅半透明底色
+    if (self) stack = stack.filter(el => el !== self && !self.contains(el));
+    for (const el of stack) {
+      if (!el || el.nodeType !== 1) continue;
+      const bg = getComputedStyle(el).backgroundColor;
+      const m = bg && bg.match(/rgba?\(([^)]+)\)/);
+      if (!m) continue;
+      const parts = m[1].split(',').map(s => parseFloat(s));
+      const a = parts.length === 4 ? parts[3] : 1;
+      if (a < 0.1) continue; // 透明，落到下一層
+      const [r, g, b] = parts;
+      // WCAG relative luminance（sRGB 线性化）
+      const lin = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+      const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+      return L;
+    }
+    // 冇任何實心背景 → 當頁面底色
+    return document.body.classList.contains('mz-body') ? 0 : 1;
+  }
+
+  function initAdaptive() {
+    const nodes = $all('[data-adaptive]');
+    if (!nodes.length) return;
+    let ticking = false;
+    function update() {
+      ticking = false;
+      nodes.forEach(node => {
+        const r = node.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) return;
+        const x = r.left + r.width / 2;
+        const y = r.top + r.height / 2;
+        const L = bgLuminanceAt(x, y, node);
+        // 連續映射：亮底 → 黑前景；暗底 → 白前景。用 CSS var 供子樣式使用
+        node.style.setProperty('--bg-lum', L.toFixed(3));
+        // 前景色在黑白間連續插值（threshold 附近自然過渡，唔硬切）
+        const k = Math.min(1, Math.max(0, (L - 0.18) / 0.5)); // 0..1
+        const v = Math.round((1 - k) * 255); // 暗底→255 白，亮底→0 黑
+        node.style.setProperty('--adaptive-fg', `rgb(${v},${v},${v})`);
+        node.classList.toggle('on-dark', L < 0.5);
+        node.classList.toggle('on-light', L >= 0.5);
+      });
+    }
+    function schedule() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    }
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    update();
+    // 圖片/字體載入可能改變佈局，延遲再補一次
+    setTimeout(update, 400);
+    window.__adaptiveUpdate = update;
+  }
+
   function initAll() {
     initFlip();
     initHold();
@@ -549,6 +612,7 @@
     initFocusGroups();
     initDensitySwitch();
     initPullZoom();
+    initAdaptive();
     $all('.coverflow').forEach(r => window.initCoverFlow(r));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAll);

@@ -299,3 +299,32 @@
 @media (prefers-reduced-motion: reduce) {
   [data-pullzoom] [data-pullzoom-media] { transition: none !important; }
 }
+
+/* ---------------- ⑭ Adaptive Invert：跟背景換黑白 ---------------- */
+[data-adaptive] {
+  color: var(--adaptive-fg, #fff);
+  transition: color .28s ease, background-color .28s ease, border-color .28s ease, box-shadow .28s ease;
+}
+[data-adaptive].on-dark {
+  background: rgba(255,255,255,.1);
+  border-color: rgba(255,255,255,.22);
+}
+[data-adaptive].on-light {
+  background: rgba(0,0,0,.06);
+  border-color: rgba(0,0,0,.14);
+}
+
+/* 浮動客服 FAB */
+.mz-fab {
+  position: fixed; right: 16px; bottom: 16px; z-index: 70;
+  display: flex; align-items: center; gap: 8px;
+  min-height: 52px; padding: 0 18px;
+  border-radius: 999px; border-width: 1px; border-style: solid;
+  font-size: 14px; font-weight: 700; text-decoration: none;
+  box-shadow: 0 10px 28px rgba(0,0,0,.28);
+  backdrop-filter: blur(6px);
+}
+.mz-fab svg { width: 20px; height: 20px; }
+@media (prefers-reduced-motion: reduce) {
+  [data-adaptive] { transition: none; }
+}
