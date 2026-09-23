@@ -1,12 +1,12 @@
 <div id="admin-orders" class="space-y-3">
-  <div class="flex gap-2 items-end">
-    <label class="text-sm">
+  <div class="flex flex-wrap gap-2 items-end">
+    <label class="flex-1 min-w-[9.5rem] text-sm">
       <div class="mb-1">搜尋（訂單號/收貨人/電話）</div>
-      <input id="orders-q" class="admin-input" placeholder="例如：1001 / Chan / 9xxxxxxx" />
+      <input id="orders-q" class="admin-input w-full" placeholder="例如：1001 / Chan / 9xxxxxxx" />
     </label>
-    <label class="text-sm">
+    <label class="min-w-[7rem] text-sm">
       <div class="mb-1">狀態</div>
-      <select id="orders-status" class="admin-input">
+      <select id="orders-status" class="admin-input w-full">
         <option value="">全部</option>
         <option value="pending">待付款</option>
         <option value="paid">已付款</option>

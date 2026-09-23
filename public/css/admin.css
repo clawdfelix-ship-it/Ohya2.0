@@ -341,20 +341,12 @@ textarea.admin-input {
   .dash-big-value { font-size: 1.5rem; }
   .dash-big-unit { margin-top: 0; }
 }
+/* ============================================================
+   手機版（<1024px）通用微調（抽屜選單規則見檔尾）
    目標：零橫向溢出、表格喺自己框內滑、觸控目標 ≥44px。
    ============================================================ */
 @media (max-width: 1023px) {
-  .admin-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    border-bottom: 1px solid var(--ad-line) !important;
-    border-radius: 0;
-    margin-bottom: 0.75rem;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-  }
-  .admin-nav .admin-nav-group { display: none; }
-  .admin-shell, .admin-grid, .admin-nav { width: 100%; max-width: 100%; min-width: 0; }
+  .admin-shell, .admin-grid { width: 100%; max-width: 100%; min-width: 0; }
   .admin-link { white-space: nowrap; min-height: 44px; padding: 0.6rem 0.85rem; }
 
   .admin-top { flex-wrap: wrap; gap: 0.5rem; padding: 0.65rem 0.9rem !important; }
@@ -362,9 +354,7 @@ textarea.admin-input {
   .admin-main { padding: 1rem 0.85rem !important; }
 
   .admin-main, .admin-card, .admin-grid-2 > *, .admin-shell { min-width: 0; }
-  .admin-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--ad-radius-sm); }
-  table.admin-table { display: block; overflow-x: auto; white-space: nowrap; }
-  table.admin-table thead, table.admin-table tbody, table.admin-table tr { display: table; width: max-content; min-width: 100%; table-layout: fixed; }
+  .admin-table-wrap { border-radius: var(--ad-radius-sm); }
 
   .admin-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
   .admin-kpi { padding: 0.85rem; }
@@ -372,7 +362,7 @@ textarea.admin-input {
 
   .admin-input, .admin-btn, .admin-btn-secondary { max-width: 100%; min-height: 44px; }
 
-  .admin-main .flex.flex-wrap, .admin-main .flex.gap-2 { flex-wrap: wrap; }
+  .admin-main .flex.gap-2 { flex-wrap: wrap; }
   .admin-main .flex > label { min-width: 0; }
   .admin-main .flex > label > .admin-input { max-width: 100%; }
 
@@ -426,4 +416,77 @@ textarea.admin-input {
 @media (min-width: 1024px) {
   .products-table-card { display: block; }
   .products-mobile-card { display: none; }
+}
+
+/* ============================================================
+   手機版摺疊選單（2026-09-23）
+   <1024px：漢堡掣 + 左側抽屜；≥1024px：維持固定側欄
+   ============================================================ */
+
+/* 漢堡掣：手機顯示，桌面隱藏 */
+.admin-nav-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ad-line);
+  border-radius: var(--ad-radius-sm);
+  background: var(--ad-surface);
+  color: var(--ad-body);
+  box-shadow: var(--ad-shadow-sm);
+  transition: background .12s ease;
+}
+.admin-nav-toggle:hover { background: var(--ad-hover); }
+.admin-nav-toggle .ad-svg { width: 1.3rem; height: 1.3rem; }
+
+/* 遮罩：桌面唔用 */
+.admin-nav-backdrop { display: none; }
+
+@media (max-width: 1023.98px) {
+  /* 側欄變抽屜：固定、離屏、滑入 */
+  .admin-nav {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    z-index: 1040;
+    min-height: 100vh;
+    height: 100vh;
+    width: min(18.5rem, 85vw);
+    overflow-y: auto;
+    border-right: 1px solid var(--ad-line) !important;
+    border-radius: 0 !important;
+    box-shadow: var(--ad-shadow-pop);
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.admin-nav-open .admin-nav { transform: translateX(0); }
+
+  /* 遮罩淡入 */
+  .admin-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1030;
+    background: rgba(15, 17, 17, .5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  body.admin-nav-open .admin-nav-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-nav-toggle { display: none !important; }
+}
+
+/* 表格橫向捲軸包裹（手機防溢出，桌面透明無影響）*/
+.admin-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: inherit; }
+.admin-table-wrap table { margin-bottom: 0; }
+@media (max-width: 640px) {
+  .admin-table-wrap { margin: 0 -0.25rem; padding: 0 0.25rem; }
 }

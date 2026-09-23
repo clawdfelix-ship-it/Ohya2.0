@@ -119,7 +119,12 @@
   %>
   <div class="mx-auto max-w-[1400px] px-2 pb-6 pt-3 sm:px-4">
     <div class="admin-top flex items-center justify-between">
-      <div class="admin-brand">OHYA2.0 <small>商家管理後台</small></div>
+      <div class="flex items-center gap-2.5">
+        <button type="button" id="admin-nav-toggle" class="admin-nav-toggle" aria-label="開啟選單" aria-expanded="false" aria-controls="admin-nav">
+          <svg class="ad-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div class="admin-brand">OHYA2.0 <small>商家管理後台</small></div>
+      </div>
       <div class="flex items-center gap-3">
         <a href="/" target="_blank" rel="noopener" class="hidden text-sm font-medium text-gray-500 hover:text-[#008060] sm:inline">查看前台 ↗</a>
         <span class="hidden text-sm text-gray-500 md:inline"><%= adminName %></span>
@@ -131,8 +136,9 @@
     </div>
 
     <div class="admin-shell">
+      <div id="admin-nav-backdrop" class="admin-nav-backdrop"></div>
       <div class="admin-grid">
-        <aside class="admin-nav" aria-label="後台導航">
+        <aside id="admin-nav" class="admin-nav" aria-label="後台導航">
           <% groups.forEach(group => {
             const visible = group.items.filter(it => {
               if (it.adminOnly || group.adminOnly) return isSuperAdmin;
@@ -155,5 +161,33 @@
       </div>
     </div>
   </div>
+  <script>
+  (function () {
+    var btn = document.getElementById('admin-nav-toggle');
+    if (!btn) return;
+    var nav = document.getElementById('admin-nav');
+    var backdrop = document.getElementById('admin-nav-backdrop');
+    function setOpen(open) {
+      document.body.classList.toggle('admin-nav-open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.setAttribute('aria-label', open ? '關閉選單' : '開啟選單');
+      document.body.style.overflow = open ? 'hidden' : '';
+    }
+    function isOpen() { return document.body.classList.contains('admin-nav-open'); }
+    btn.addEventListener('click', function () { setOpen(!isOpen()); });
+    backdrop.addEventListener('click', function () { setOpen(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+    nav.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { setOpen(false); }); });
+
+    // 手機版：表格包一層橫向捲軸容器，避免溢出頁面（桌面版無影響）
+    document.querySelectorAll('.admin-main table').forEach(function (t) {
+      if (t.parentElement && t.parentElement.classList.contains('admin-table-wrap')) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'admin-table-wrap';
+      t.parentNode.insertBefore(wrap, t);
+      wrap.appendChild(t);
+    });
+  })();
+  </script>
 </body>
 </html>
