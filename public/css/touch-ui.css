@@ -328,3 +328,9 @@
 @media (prefers-reduced-motion: reduce) {
   [data-adaptive] { transition: none; }
 }
+
+/* ---------------- ⑮ Motion Blur：甩起来嘅拖影 ---------------- */
+[data-motion-blur] { will-change: filter; }
+@media (prefers-reduced-motion: reduce) {
+  [data-motion-blur] { filter: none !important; }
+}

@@ -603,6 +603,76 @@
     window.__adaptiveUpdate = update;
   }
 
+  /* ----------------------------------------------------------
+     ⑮ Motion Blur（甩起来嘅拖影）
+     用法：元素加 data-motion-blur。滾動時按速度加方向性模糊，
+     速度歸零平滑恢復清晰。用 SVG feGaussianBlur 做到單軸模糊。
+     data-motion-blur-k 可調靈敏度（默認 .18）。
+  ---------------------------------------------------------- */
+  function ensureMotionFilter() {
+    let svg = document.getElementById('mz-motion-svg');
+    if (svg) return document.getElementById('mz-motion-std');
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'mz-motion-svg';
+    svg.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none');
+    const fid = 'mz-motion-filter';
+    svg.innerHTML = `<filter id="${fid}"><feGaussianBlur id="mz-motion-std" in="SourceGraphic" stdDeviation="0,0"/></filter>`;
+    document.body.appendChild(svg);
+    return document.getElementById('mz-motion-std');
+  }
+
+  function initMotionBlur() {
+    const targets = $all('[data-motion-blur]');
+    if (!targets.length || reduced) return;
+    const std = ensureMotionFilter();
+    const FILTER = 'url(#mz-motion-filter)';
+
+    let lastY = window.scrollY;
+    let lastT = performance.now();
+    let velocity = 0;      // px/ms，有方向
+    let current = 0;       // 當前模糊強度
+    let raf = null;
+    let activeCount = 0;   // 仲有幾多目標套緊 filter
+
+    function applyBlur(amount) {
+      // 垂直滾動 → 垂直軸模糊
+      std.setAttribute('stdDeviation', `0,${amount.toFixed(2)}`);
+    }
+    function frame(now) {
+      // 速度自然衰減（冇新滾動事件時快速歸零）
+      velocity *= 0.86;
+      if (Math.abs(velocity) < 0.02) velocity = 0;
+      // 目標模糊強度跟速度，平滑逼近，唔跳變
+      const target = Math.min(7, Math.abs(velocity) * 0.18);
+      current += (target - current) * 0.35;
+      applyBlur(current);
+      if (current < 0.05 && !velocity) {
+        // 收尾：除 filter，還原清晰
+        std.setAttribute('stdDeviation', '0,0');
+        targets.forEach(t => { t.style.filter = ''; });
+        activeCount = 0;
+        raf = null;
+        return;
+      }
+      raf = requestAnimationFrame(frame);
+    }
+
+    window.addEventListener('scroll', () => {
+      const now = performance.now();
+      const y = window.scrollY;
+      const dt = Math.max(1, now - lastT);
+      // 用近期速度（加權）避免單次抖動
+      const inst = (y - lastY) / dt;
+      velocity = velocity * 0.5 + inst * 0.5;
+      lastY = y; lastT = now;
+      if (!activeCount) {
+        targets.forEach(t => { t.style.filter = FILTER; });
+        activeCount = targets.length;
+      }
+      if (!raf) raf = requestAnimationFrame(frame);
+    }, { passive: true });
+  }
+
   function initAll() {
     initFlip();
     initHold();
@@ -613,6 +683,7 @@
     initDensitySwitch();
     initPullZoom();
     initAdaptive();
+    initMotionBlur();
     $all('.coverflow').forEach(r => window.initCoverFlow(r));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAll);
