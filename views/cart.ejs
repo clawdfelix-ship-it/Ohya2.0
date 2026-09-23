@@ -85,14 +85,14 @@
         </label>
       </div>
 
-      <p id="guest-checkout-hint" class="hidden mt-4 mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700">
+      <p id="guest-checkout-hint" class="hidden mt-4 mb-4 rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-3 text-sm text-amber-300">
         請先登入，登入後會自動將暫存購物車轉入會員購物車並可正式下單。
       </p>
       <div id="checkout-fields" class="hidden space-y-3 mb-4">
-        <input id="checkout-name" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-wine focus:outline-none" placeholder="收件人姓名">
-        <input id="checkout-phone" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-wine focus:outline-none" placeholder="聯絡電話">
-        <textarea id="checkout-address" rows="3" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-wine focus:outline-none" placeholder="送貨地址"></textarea>
-        <textarea id="checkout-note" rows="2" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-wine focus:outline-none" placeholder="訂單備註（可選）"></textarea>
+        <input id="checkout-name" type="text" class="w-full rounded-lg border border-gray-600 bg-ink-800 text-gray-100 placeholder-gray-500 px-4 py-3 focus:border-gold focus:outline-none" placeholder="收件人姓名">
+        <input id="checkout-phone" type="text" class="w-full rounded-lg border border-gray-600 bg-ink-800 text-gray-100 placeholder-gray-500 px-4 py-3 focus:border-gold focus:outline-none" placeholder="聯絡電話">
+        <textarea id="checkout-address" rows="3" class="w-full rounded-lg border border-gray-600 bg-ink-800 text-gray-100 placeholder-gray-500 px-4 py-3 focus:border-gold focus:outline-none" placeholder="送貨地址"></textarea>
+        <textarea id="checkout-note" rows="2" class="w-full rounded-lg border border-gray-600 bg-ink-800 text-gray-100 placeholder-gray-500 px-4 py-3 focus:border-gold focus:outline-none" placeholder="訂單備註（可選）"></textarea>
       </div>
       <button id="checkout-button" onclick="checkout()" class="w-full bg-wine text-white py-4 rounded-xl font-bold text-lg hover:bg-wine transition">
         📦 結帳
@@ -179,7 +179,7 @@
       if (!box) return;
 
       const toneClasses = tone === 'success'
-        ? ['border-green-200', 'bg-green-50', 'text-green-700']
+        ? ['border-green-500/40', 'bg-green-500/10', 'text-green-300']
         : ['border-gold/40', 'bg-wine/15', 'text-wine-light'];
 
       box.className = `mb-4 rounded-xl border px-4 py-3 text-sm ${toneClasses.join(' ')}`;

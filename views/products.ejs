@@ -56,7 +56,7 @@
       <% const sortLabels = { recommend: '推介排序', price_asc: '價格由低至高', price_desc: '價格由高至低', newest: '最新上架', popular: '人氣排序' }; %>
       <div class="text-sm text-gray-500">目前排序：<span class="font-bold text-white"><%= sortLabels[sort] || '推介排序' %></span></div>
       <div class="flex gap-2">
-        <select id="mz-sort" class="rounded-full border border-gray-300 px-3 py-2 text-sm focus:border-wine focus:outline-none">
+        <select id="mz-sort" class="rounded-full border border-gray-600 bg-ink-800 text-gray-200 px-3 py-2 text-sm focus:border-gold focus:outline-none">
           <option value="recommend" <%= (typeof sort === 'string' ? sort : 'recommend') === 'recommend' ? 'selected' : '' %>>推介排序</option>
           <option value="price_asc" <%= (typeof sort === 'string' ? sort : 'recommend') === 'price_asc' ? 'selected' : '' %>>價格由低至高</option>
           <option value="price_desc" <%= (typeof sort === 'string' ? sort : 'recommend') === 'price_desc' ? 'selected' : '' %>>價格由高至低</option>

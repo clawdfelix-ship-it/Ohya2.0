@@ -53,14 +53,14 @@
         <% orders.forEach(o => { %>
           <%
             const orderNo = o.order_number || ('#' + o.id);
-            const payBadge = o.payment_status === 'paid' ? 'bg-green-100 text-green-700'
-              : o.payment_status === 'proof_pending' ? 'bg-purple-100 text-purple-700'
-              : o.payment_status === 'pending' ? 'bg-amber-100 text-amber-700'
+            const payBadge = o.payment_status === 'paid' ? 'bg-green-500/15 text-green-300'
+              : o.payment_status === 'proof_pending' ? 'bg-purple-500/15 text-purple-300'
+              : o.payment_status === 'pending' ? 'bg-amber-500/15 text-amber-300'
               : 'bg-ink-700 text-gray-400';
-            const shipBadge = o.status === 'cancelled' ? 'bg-gray-200 text-gray-400'
-              : o.status === 'completed' || o.status === 'delivered' ? 'bg-green-100 text-green-700'
-              : o.status === 'shipping' || o.status === 'shipped' ? 'bg-blue-100 text-blue-700'
-              : 'bg-amber-100 text-amber-700';
+            const shipBadge = o.status === 'cancelled' ? 'bg-ink-700 text-gray-500'
+              : o.status === 'completed' || o.status === 'delivered' ? 'bg-green-500/15 text-green-300'
+              : o.status === 'shipping' || o.status === 'shipped' ? 'bg-blue-500/15 text-blue-300'
+              : 'bg-amber-500/15 text-amber-300';
             const dateStr = (() => { try { return new Date(o.created_at).toLocaleDateString('zh-HK'); } catch(_) { return ''; } })();
           %>
           <a href="/order/<%= o.id %>"
