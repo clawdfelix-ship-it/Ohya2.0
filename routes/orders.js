@@ -117,7 +117,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         FROM cart_items ci
         JOIN products p ON ci.product_id = p.id
         WHERE ci.user_id = $1
-        FOR UPDATE OF p
+        FOR UPDATE OF ci, p
       `, [userId]);
 
       if (cartResult.rows.length === 0) {

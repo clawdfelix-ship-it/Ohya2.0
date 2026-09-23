@@ -34,35 +34,26 @@ module.exports = function(app, pool, requireAuth) {
   app.post('/api/cart/add', requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId;
-      const { product_id, quantity } = req.body;
+      const productId = Number(req.body && req.body.product_id);
+      const quantity = parseInt(req.body && req.body.quantity, 10);
 
-      if (!product_id || !quantity || quantity < 1) {
+      if (!Number.isInteger(productId) || !Number.isInteger(quantity) || quantity < 1) {
         return res.status(400).json({ error: '產品ID和數量不正確' });
       }
 
       // 預購模式：商品有效即可，不檢查庫存
-      const product = await pool.query('SELECT id, name, price FROM products WHERE id = $1 AND status = \'active\'', [product_id]);
+      const product = await pool.query('SELECT id, name, price FROM products WHERE id = $1 AND status = \'active\'', [productId]);
       if (product.rows.length === 0) {
         return res.status(404).json({ error: '產品不存在' });
       }
 
-      // Check if already in cart
-      const existing = await pool.query('SELECT id, quantity FROM cart_items WHERE user_id = $1 AND product_id = $2', [userId, product_id]);
-
-      if (existing.rows.length > 0) {
-        // Update quantity（預購不設上限）
-        const newQuantity = existing.rows[0].quantity + quantity;
-        await pool.query(
-          'UPDATE cart_items SET quantity = $1, updated_at = NOW() WHERE id = $2',
-          [newQuantity, existing.rows[0].id]
-        );
-      } else {
-        // Add new item
-        await pool.query(
-          'INSERT INTO cart_items (user_id, product_id, quantity) VALUES ($1, $2, $3)',
-          [userId, product_id, quantity]
-        );
-      }
+      await pool.query(
+        `INSERT INTO cart_items (user_id, product_id, quantity)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, product_id)
+         DO UPDATE SET quantity = cart_items.quantity + EXCLUDED.quantity, updated_at = NOW()`,
+        [userId, productId, quantity]
+      );
 
       res.json({ success: true });
     } catch (err) {
@@ -76,12 +67,16 @@ module.exports = function(app, pool, requireAuth) {
     try {
       const userId = req.session.userId;
       const { id } = req.params;
-      const { quantity } = req.body;
+      const quantity = parseInt(req.body && req.body.quantity, 10);
 
       // Verify ownership（預購模式：不需庫存）
       const item = await pool.query('SELECT ci.* FROM cart_items ci WHERE ci.id = $1 AND ci.user_id = $2', [id, userId]);
       if (item.rows.length === 0) {
         return res.status(404).json({ error: '購物車項目不存在' });
+      }
+
+      if (!Number.isInteger(quantity)) {
+        return res.status(400).json({ error: '數量不正確' });
       }
 
       if (quantity < 1) {
