@@ -673,6 +673,55 @@
     }, { passive: true });
   }
 
+  /* ----------------------------------------------------------
+     ⑯ Scroll Drive（滚动带着进度走）
+     用法：元素加 data-scroll-drive。滾過視窗期間佢會獲得
+     CSS 變數 --drive（0→1，可逆；停住就停在對應進度）。
+     子元素 / CSS animation 可綁定呢個變數。
+     data-drive-mode="viewport"（默認：由底部入場到頂部離場）。
+     另有 data-scroll-progress="<selector>"：整頁閱讀進度條，
+     其寬度 / --p 跟全頁滾動位置。
+  ---------------------------------------------------------- */
+  function initScrollDrive() {
+    const drives = $all('[data-scroll-drive]');
+    const bars = $all('[data-scroll-progress]');
+    if ((!drives.length && !bars.length) || reduced) {
+      // 進度條即使 reduced 都可用（唔係裝飾動畫），故只喺完全無元素時退
+      if (!bars.length) return;
+    }
+    let ticking = false;
+
+    function update() {
+      ticking = false;
+      const vh = window.innerHeight;
+      drives.forEach(node => {
+        const r = node.getBoundingClientRect();
+        // 元素底部入視窗（0）→ 元素頂部離開視窗頂（1）
+        const span = vh + r.height;
+        let p = (vh - r.top) / span;
+        p = Math.min(1, Math.max(0, p));
+        node.style.setProperty('--drive', p.toFixed(4));
+      });
+      // 整頁閱讀進度
+      const doc = document.documentElement;
+      const max = Math.max(1, doc.scrollHeight - vh);
+      const pageP = Math.min(1, Math.max(0, window.scrollY / max));
+      bars.forEach(bar => {
+        bar.style.setProperty('--p', pageP.toFixed(4));
+        bar.style.transform = `scaleX(${pageP})`;
+      });
+    }
+    function schedule() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    }
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    update();
+    setTimeout(update, 500);
+  }
+
   function initAll() {
     initFlip();
     initHold();
@@ -684,6 +733,7 @@
     initPullZoom();
     initAdaptive();
     initMotionBlur();
+    initScrollDrive();
     $all('.coverflow').forEach(r => window.initCoverFlow(r));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAll);
