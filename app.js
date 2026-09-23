@@ -548,7 +548,11 @@ async function loadStorefrontCategories() {
                 SELECT COUNT(*)::int FROM products p
                 WHERE p.status='active'
                   AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
-                  AND p.created_at > NOW() - INTERVAL '30 days')
+                  AND p.id >= COALESCE((
+                    SELECT id FROM products
+                    WHERE status='active'
+                      AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
+                    ORDER BY id DESC LIMIT 1 OFFSET 199), 0))
               WHEN 'storefront-sale' THEN (
                 SELECT COUNT(*)::int FROM products p
                 WHERE p.status='active'
@@ -843,7 +847,12 @@ app.use(async (req, res, next) => {
         paramIndex++;
       }
       if (dynamicSection === 'new') {
-        where += ` AND p.created_at > NOW() - INTERVAL '30 days'`;
+        // 新到推介：最新匯入嘅 200 件（id 反映匯入次序，同 count SQL 一致）
+        where += ` AND p.id >= COALESCE((
+                     SELECT id FROM products
+                     WHERE status='active'
+                       AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
+                     ORDER BY id DESC LIMIT 1 OFFSET 199), 0)`;
       } else if (dynamicSection === 'sale') {
         // 真正抵買：相對建議零售價折讓 ≥30%
         where += ` AND p.original_price IS NOT NULL AND p.original_price > p.price
