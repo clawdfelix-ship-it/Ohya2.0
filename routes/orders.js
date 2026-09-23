@@ -272,34 +272,64 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
 
   // Admin: Update order status
   app.put('/api/admin/orders/:id/status', requirePermission('orders:write'), async (req, res) => {
+    const client = await pool.connect();
     try {
-      const { id } = req.params;
+      const orderId = parseInt(req.params.id, 10);
       const { status, tracking_number } = req.body;
 
       const allowedStatuses = ['pending', 'paid', 'shipping', 'completed', 'cancelled'];
       if (!allowedStatuses.includes(status)) {
         return res.status(400).json({ error: '無效狀態' });
       }
+      const adminId = req.session.userId;
+      const base = '後台手動更新狀態';
+      const svc = createOrderService(client);
+      let derived;
 
-      let updateQuery = 'UPDATE orders SET status = $1, updated_at = NOW()';
-      let params = [status, id];
-
-      if (tracking_number !== undefined) {
-        updateQuery += ', tracking_number = $' + (params.length + 1);
-        params.push(tracking_number);
+      await client.query('BEGIN');
+      if (status === 'paid') {
+        derived = await svc.transitionPayment(orderId, 'paid', { note: base + '→已付款', processedBy: adminId });
+        await client.query('UPDATE orders SET paid_at=COALESCE(paid_at,NOW()) WHERE id=$1', [orderId]);
+      } else if (status === 'shipping') {
+        const itemsR = await client.query(`
+          SELECT oi.id, oi.quantity
+            - COALESCE((
+                SELECT SUM(offi.quantity) FROM order_fulfillment_items offi
+                JOIN order_fulfillments f ON f.id=offi.fulfillment_id
+                WHERE offi.order_item_id=oi.id AND f.state<>'cancelled'), 0) AS remaining
+          FROM order_items oi WHERE oi.order_id=$1`, [orderId]);
+        const remaining = itemsR.rows
+          .map(r => ({ order_item_id: r.id, quantity: Number(r.remaining) }))
+          .filter(x => x.quantity > 0);
+        if (!remaining.length) {
+          throw Object.assign(new Error('所有商品已出貨，無需再建出貨單'), { code: 'NOTHING_TO_SHIP' });
+        }
+        if (tracking_number) {
+          await client.query('UPDATE orders SET tracking_number=$1 WHERE id=$2', [tracking_number, orderId]);
+        }
+        derived = await svc.createFulfillment(orderId, remaining,
+          { tracking_number: tracking_number || null },
+          { note: base + '→派送中', processedBy: adminId });
+      } else if (status === 'completed') {
+        derived = await svc.completeOrder(orderId, { note: base + '→已完成', processedBy: adminId });
+      } else if (status === 'cancelled') {
+        derived = await svc.cancelOrder(orderId, { note: base + '→已取消', processedBy: adminId });
+      } else {
+        throw Object.assign(new Error('唔可以手動設為待付款；如需重置請用駁回憑證'), { code: 'INVALID_ORDER_TRANSITION' });
       }
-      updateQuery += ' WHERE id = $' + params.length + ' RETURNING *';
+      await client.query('COMMIT');
 
-      const result = await pool.query(updateQuery, params);
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: '訂單不存在' });
-      }
-
-      res.json({ success: true, order: result.rows[0] });
+      const result = await pool.query('SELECT * FROM orders WHERE id=$1', [orderId]);
+      res.json({ success: true, status: derived, order: result.rows[0] });
     } catch (err) {
+      await client.query('ROLLBACK').catch(()=>{});
+      if (err && (err.code === 'INVALID_ORDER_TRANSITION' || err.code === 'NOTHING_TO_SHIP')) {
+        return res.status(400).json({ error: err.message });
+      }
       console.error(err);
       res.status(500).json({ error: '服務器錯誤' });
+    } finally {
+      client.release();
     }
   });
 

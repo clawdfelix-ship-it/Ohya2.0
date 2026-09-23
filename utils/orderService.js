@@ -112,9 +112,55 @@ function createOrderService(db) {
     return persistDerived(orderId, { fulfillment }, ctx);
   }
 
+  /** 取消訂單（顯式；未出貨先可以）。 */
+  async function cancelOrder(orderId, ctx) {
+    const before = await getOrderSnapshot(orderId);
+    const legacy = sm.fromLegacyRow(before);
+    if (legacy.cancelled) return 'cancelled';
+    if (legacy.fulfillment !== sm.FULFILLMENT_STATES.UNFULFILLED) {
+      throw Object.assign(new Error('已出貨訂單唔可以直接取消，請安排退貨'), { code: 'INVALID_ORDER_TRANSITION' });
+    }
+    return persistDerived(orderId, { cancelled: true }, ctx);
+  }
+
+  /** 標記完成（買家已收貨／確認交付）。 */
+  async function completeOrder(orderId, ctx) {
+    const before = await getOrderSnapshot(orderId);
+    const legacy = sm.fromLegacyRow(before);
+    if (legacy.fulfillment === sm.FULFILLMENT_STATES.DELIVERED) return 'completed';
+    if (legacy.fulfillment === sm.FULFILLMENT_STATES.PARTIALLY_SHIPPED) {
+      throw Object.assign(new Error('尚有商品未出齊，唔可以標記完成'), { code: 'INVALID_ORDER_TRANSITION' });
+    }
+    if (legacy.fulfillment === sm.FULFILLMENT_STATES.UNFULFILLED) {
+      // 面交／到店自取：補建一張已交付出貨記錄（含全部明細）
+      const fr = await db.query(
+        `INSERT INTO order_fulfillments (order_id, state, handler_admin_id, note, shipped_at, delivered_at)
+         VALUES ($1,'delivered',$2,'面交／自取直接完成',NOW(),NOW()) RETURNING id`,
+        [orderId, (ctx && ctx.processedBy) || null]
+      );
+      const itemsR = await db.query('SELECT id, quantity FROM order_items WHERE order_id=$1', [orderId]);
+      for (const r of itemsR.rows) {
+        await db.query(
+          'INSERT INTO order_fulfillment_items (fulfillment_id, order_item_id, quantity) VALUES ($1,$2,$3)',
+          [fr.rows[0].id, r.id, r.quantity]
+        );
+      }
+    } else {
+      // shipped → delivered：更新現有出貨單
+      sm.transitionFulfillment(legacy.fulfillment, sm.FULFILLMENT_STATES.DELIVERED);
+      await db.query(
+        `UPDATE order_fulfillments SET state='delivered', delivered_at=NOW(), updated_at=NOW()
+         WHERE order_id=$1 AND state='shipped'`, [orderId]
+      );
+    }
+    return persistDerived(orderId, { fulfillment: sm.FULFILLMENT_STATES.DELIVERED }, ctx);
+  }
+
   return {
     transitionPayment,
     createFulfillment,
+    cancelOrder,
+    completeOrder,
     getOrderSnapshot,
   };
 }
