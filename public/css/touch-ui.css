@@ -288,3 +288,14 @@
 @media (prefers-reduced-motion: reduce) {
   [data-focus-group], [data-focus-item] { transition: none !important; }
 }
+
+/* ---------------- ⑬ Pull Zoom：下拉拉大頂圖 ---------------- */
+[data-pullzoom] [data-pullzoom-media] {
+  transform-origin: center top;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+[data-pullzoom] { touch-action: pan-y; }
+@media (prefers-reduced-motion: reduce) {
+  [data-pullzoom] [data-pullzoom-media] { transition: none !important; }
+}

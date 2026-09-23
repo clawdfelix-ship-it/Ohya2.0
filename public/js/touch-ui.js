@@ -469,6 +469,77 @@
     });
   }
 
+  /* ----------------------------------------------------------
+     ⑬ Pull Zoom（下拉拉大頂圖）
+     用法：容器加 data-pullzoom；內裡被放大嘅媒體加 data-pullzoom-media；
+     要隨下拉淡出嘅覆蓋元素加 data-pullzoom-fade。
+     頁面到頂再向下拉時觸發；鬆手帶阻尼回彈。觸控裝置限定。
+  ---------------------------------------------------------- */
+  function initPullZoom() {
+    if (!('ontouchstart' in window) && window.matchMedia('(hover: hover)').matches) {
+      // 桌面無觸屏：native rubber-band 冇 API，唔啟用
+    }
+    $all('[data-pullzoom]').forEach(scope => {
+      if (scope.dataset.pullzoomBound) return;
+      scope.dataset.pullzoomBound = '1';
+      const media = $('[data-pullzoom-media]', scope) || scope;
+      const fades = () => $all('[data-pullzoom-fade]', scope);
+
+      let startY = null;
+      let pulling = false;
+      const MAX_PULL = 220;
+      const ZOOM_K = 0.0022; // 每拉 1px 嘅 scale 增量
+
+      function apply(pull) {
+        const scale = 1 + pull * ZOOM_K;
+        media.style.transform = `scale(${scale})`;
+        const op = Math.max(0, 1 - pull / 110);
+        fades().forEach(n => { n.style.opacity = op; });
+      }
+      function reset() {
+        media.style.transition = 'transform .5s cubic-bezier(.34,1.4,.5,1)';
+        media.style.transform = 'scale(1)';
+        fades().forEach(n => {
+          n.style.transition = 'opacity .5s ease';
+          n.style.opacity = '';
+        });
+        setTimeout(() => {
+          media.style.transition = '';
+          fades().forEach(n => { n.style.transition = ''; });
+        }, 520);
+      }
+
+      scope.addEventListener('touchstart', (ev) => {
+        if (window.scrollY > 2) { startY = null; return; }
+        startY = ev.touches[0].clientY;
+        pulling = false;
+      }, { passive: true });
+
+      // 非被動：要喺到頂下拉時攔截原生滾動
+      scope.addEventListener('touchmove', (ev) => {
+        if (startY == null) return;
+        const d = ev.touches[0].clientY - startY;
+        if (d <= 0) return;
+        if (window.scrollY > 0) return;
+        if (!pulling) {
+          // 越過小門檻先接管，避免誤觸
+          if (d < 6) return;
+          pulling = true;
+        }
+        ev.preventDefault();
+        apply(Math.min(d, MAX_PULL));
+      }, { passive: false });
+
+      const end = () => {
+        if (pulling) reset();
+        startY = null;
+        pulling = false;
+      };
+      scope.addEventListener('touchend', end);
+      scope.addEventListener('touchcancel', end);
+    });
+  }
+
   function initAll() {
     initFlip();
     initHold();
@@ -477,6 +548,7 @@
     initContext();
     initFocusGroups();
     initDensitySwitch();
+    initPullZoom();
     $all('.coverflow').forEach(r => window.initCoverFlow(r));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAll);
