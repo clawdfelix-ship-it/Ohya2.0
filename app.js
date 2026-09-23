@@ -581,7 +581,7 @@ async function loadStorefrontCategories() {
      LIMIT 1000`
   );
 
-  const rows = result.rows.map((row) => ({
+  const allRows = result.rows.map((row) => ({
     id: Number(row.id),
     parentId: row.parent_id != null ? Number(row.parent_id) : null,
     slug: String(row.slug),
@@ -589,7 +589,15 @@ async function loadStorefrontCategories() {
     count: Number(row.count || 0),
   }));
 
-  return buildCategoryTree(rows, { totalCount });
+  // 新到推介 / 特價區屬橫切標籤（會同其他分類重叠），唔計入互斥分類樹，
+  // 獨立做「特別專區」，避免頂層數字加總多過全店總數。
+  const SPECIAL_SLUGS = new Set(['storefront-new', 'storefront-sale']);
+  const mainRows = allRows.filter((r) => !SPECIAL_SLUGS.has(r.slug));
+  const specials = allRows
+    .filter((r) => SPECIAL_SLUGS.has(r.slug))
+    .map((r) => ({ id: r.id, slug: r.slug, name: r.name, count: r.count }));
+
+  return { ...buildCategoryTree(mainRows, { totalCount }), specials };
 }
 
 function getFallbackHomeModules() {
@@ -628,6 +636,7 @@ app.use(async (req, res, next) => {
     const sampleCategoryData = getSampleCategoryData();
     res.locals.categories = sampleCategoryData.flat;
     res.locals.categoriesTree = sampleCategoryData.tree;
+    res.locals.categorySpecials = [];
     return next();
   }
 
@@ -640,6 +649,7 @@ app.use(async (req, res, next) => {
 
     res.locals.categories = categoriesCache.value.flat;
     res.locals.categoriesTree = categoriesCache.value.tree;
+    res.locals.categorySpecials = categoriesCache.value.specials || [];
   } catch (err) {
     const sampleCategoryData = getSampleCategoryData();
     res.locals.categories = sampleCategoryData.flat;

@@ -1,4 +1,5 @@
 <% const mobileCategoryTree = Array.isArray(categoriesTree) ? categoriesTree : []; %>
+<% const mobileSpecialEntries = Array.isArray(categorySpecials) ? categorySpecials : []; %>
 <% const mobileActiveSlug = typeof selectedCategorySlug === 'string' ? selectedCategorySlug : null; %>
 <% const mobileSelectedName = mobileActiveSlug && Array.isArray(categories) ? (categories.find((cat) => cat.slug === mobileActiveSlug)?.name || null) : null; %>
 <%
@@ -41,6 +42,16 @@
           <% mobileCategoryTree.forEach((node) => { %>
             <%- include('category-mobile-node', { node, depth: 0, activeSlug: mobileActiveSlug, nodeContainsActive }) %>
           <% }) %>
+
+          <% if (mobileSpecialEntries.length) { %>
+            <div class="mb-1 mt-3 text-[11px] font-black uppercase tracking-wider text-gray-500">特別專區</div>
+            <% mobileSpecialEntries.forEach((sp) => { %>
+              <a href="/products?category=<%= sp.slug %>&page=1" class="<%= mobileActiveSlug === sp.slug ? 'border-gold/40 bg-wine/15 text-gold-light' : 'border-ink-600 text-gray-300' %> mt-2 flex items-center justify-between rounded-2xl border px-3 py-3 text-sm font-semibold">
+                <span><%= sp.name %></span>
+                <span class="text-[11px] text-gray-500"><%= sp.count %></span>
+              </a>
+            <% }) %>
+          <% } %>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 <% const categoryTreeData = Array.isArray(categoriesTree) ? categoriesTree : []; %>
+<% const specialEntries = Array.isArray(categorySpecials) ? categorySpecials : []; %>
 <% const activeSlug = typeof selectedCategorySlug === 'string' ? selectedCategorySlug : null; %>
 <%
   function nodeContainsActive(node, slug) {
@@ -26,6 +27,19 @@
             <%- include('category-tree-node', { node: cat, depth: 0, activeSlug, nodeContainsActive }) %>
           <% }) %>
         </div>
+
+        <% if (specialEntries.length) { %>
+          <div class="mb-2 mt-3 px-1 text-[11px] font-black uppercase tracking-wider text-gray-500">特別專區</div>
+          <div class="space-y-2">
+            <% specialEntries.forEach(sp => { %>
+              <a href="/products?category=<%= sp.slug %>&page=1" class="<%= activeSlug === sp.slug ? 'bg-wine/15 text-gold-light border-gold/40' : 'border-transparent text-gray-300 hover:bg-ink-700' %> flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-semibold transition">
+                <span><%= sp.name %></span>
+                <span class="text-xs text-gray-500"><%= sp.count %></span>
+              </a>
+            <% }) %>
+          </div>
+          <p class="mt-2 px-1 text-[11px] leading-relaxed text-gray-600">專區商品會同上面分類重疊。</p>
+        <% } %>
       </div>
     </div>
   </div>
