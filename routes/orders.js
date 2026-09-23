@@ -2,6 +2,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
   const path = require('path');
   const multer = require('multer');
   const { requirePermission } = require('./middleware/auth');
+  const { createOrderService } = require('../utils/orderService');
 
   // 入數證明：memory storage，只收圖片，上限 8MB
   const proofUpload = multer({
@@ -384,10 +385,14 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         return res.status(400).json({ error: '冇待審嘅憑證' });
       }
       await client.query(`
-        UPDATE orders SET payment_status='paid', paid_at=NOW(), updated_at=NOW() WHERE id=$1
+        UPDATE orders SET paid_at=NOW() WHERE id=$1
       `, [id]);
+      const orderSvc = createOrderService(client);
+      const derived = await orderSvc.transitionPayment(id, 'paid', {
+        note: '入數證明已審批確認收款', processedBy: reviewerId,
+      });
       await client.query('COMMIT');
-      res.json({ ok: true, payment_status: 'paid' });
+      res.json({ ok: true, payment_status: 'paid', status: derived });
     } catch (err) {
       await client.query('ROLLBACK').catch(()=>{});
       console.error(err);
@@ -413,9 +418,13 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: '冇待審嘅憑證' });
       }
-      await client.query("UPDATE orders SET payment_status='pending', updated_at=NOW() WHERE id=$1", [id]);
+      await client.query("UPDATE orders SET updated_at=NOW() WHERE id=$1", [id]);
+      const orderSvc = createOrderService(client);
+      const derived = await orderSvc.transitionPayment(id, 'unpaid', {
+        note: '入數證明被駁回：' + (reason || '冇註明原因'), processedBy: reviewerId,
+      });
       await client.query('COMMIT');
-      res.json({ ok: true, payment_status: 'pending' });
+      res.json({ ok: true, payment_status: 'pending', status: derived });
     } catch (err) {
       await client.query('ROLLBACK').catch(()=>{});
       console.error(err);
