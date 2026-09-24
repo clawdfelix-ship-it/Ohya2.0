@@ -485,3 +485,25 @@
   .mz-undo { animation: none; }
   .mz-undo__progress span { animation-duration: 10s; }
 }
+
+/* ==========================================================================
+   商品卡交錯彈入（spring cascade stagger）
+   每張卡按 --stagger-i 延遲，從下方帶微彈向上彈入。
+   只喺載入播一次；hover/transition 由原有 class 處理，唔會互相干擾。
+   ========================================================================== */
+.mz-card-enter {
+  animation: mzCardEnter 0.55s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  animation-delay: calc(var(--stagger-i, 0) * 45ms);
+}
+@keyframes mzCardEnter {
+  0%   { opacity: 0; transform: translateY(22px) scale(0.97); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mz-card-enter {
+    animation: mzCardFade 0.3s ease both;
+    animation-delay: calc(var(--stagger-i, 0) * 20ms);
+  }
+  @keyframes mzCardFade { from { opacity: 0; } to { opacity: 1; } }
+}
