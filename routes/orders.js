@@ -173,6 +173,37 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
 
       await client.query('COMMIT');
 
+      // Email 通知（best-effort，唔可以因為 SMTP 失敗而影響落單）
+      // 用 pool（而非交易 client）喺 COMMIT 後讀取，唔阻塞回應。
+      try {
+        const { sendOrderConfirmation, sendAdminNewOrder } = require('../utils/orderEmails');
+        const [userRow, itemRows] = await Promise.all([
+          pool.query('SELECT email FROM users WHERE id = $1', [userId]),
+          pool.query(`
+            SELECT oi.quantity, oi.unit_price, p.name
+            FROM order_items oi JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = $1
+          `, [orderId]),
+        ]);
+        const emailOrder = {
+          ...orderResult.rows[0],
+          order_number: orderNumber,
+          contact_name: contact_name,
+          contact_phone: contact_phone,
+          contact_address: contact_address,
+          note: note || null,
+          total_amount: subtotalMoney,
+          payment_method_code: paymentCode,
+          email: (userRow.rows[0] && userRow.rows[0].email) || null,
+        };
+        await Promise.all([
+          sendOrderConfirmation(emailOrder, itemRows.rows),
+          sendAdminNewOrder(emailOrder, itemRows.rows),
+        ]);
+      } catch (mailErr) {
+        console.error('[orders] notification email failed:', mailErr && mailErr.message ? mailErr.message : String(mailErr));
+      }
+
       res.json({ success: true, orderId, orderNumber, paymentMethod: paymentCode });
     } catch (err) {
       try { await client.query('ROLLBACK'); } catch (_) {}
