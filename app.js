@@ -896,9 +896,30 @@ app.use(async (req, res, next) => {
       const total = countResult.rows[0] ? Number(countResult.rows[0].total) : 0;
       const totalPages = Math.max(1, Math.ceil(total / perPage));
 
-      // 門市分類頁：扁平、無子類，rank 不適用；一律用用戶選擇或默認排序
-      const orderBy = getProductsOrderBy(sort);
-      const rankJoin = '';
+      // 默認「推薦/標準」排序：跟返 mzakka 線上「當前分類」內排名。
+      // mzakka 喺每一層都有排名，所以搵選取 storefront 分類對應嘅 mzakka
+      // 分類 id，再 join 該分類嘅 rank。冇對應（特別專區/無連接）用 id 補。
+      let mzakkaRankCatId = null;
+      if (categoryId) {
+        const mapRes = await pool.query(
+          `SELECT m.mzakka_category_id
+           FROM storefront_category_map m
+           WHERE m.storefront_category_id = $1
+           LIMIT 1`,
+          [categoryId]
+        );
+        if (mapRes.rows[0]) mzakkaRankCatId = Number(mapRes.rows[0].mzakka_category_id);
+      }
+      const useMzakkaRank = sort === 'recommend' && mzakkaRankCatId;
+      const rankJoin = useMzakkaRank
+        ? `LEFT JOIN mzakka_category_rank mzrank
+             ON mzrank.product_id = p.id
+            AND mzrank.category_id = $${paramIndex}`
+        : '';
+      if (useMzakkaRank) { params.push(mzakkaRankCatId); paramIndex++; }
+      const orderBy = useMzakkaRank
+        ? 'mzrank.rank NULLS LAST, p.id DESC'
+        : getProductsOrderBy(sort);
 
       const listResult = await pool.query(
         `SELECT p.id,
