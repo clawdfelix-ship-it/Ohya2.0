@@ -57,6 +57,34 @@ module.exports = function (app) {
         out.tpl_admin = results[1] && results[1].messageId ? 'SENT ' + results[1].messageId : ('NULL_OR_FAIL ' + JSON.stringify(results[1]));
       }
 
+      // Optional: replicate the exact orders.js email wiring for an existing order
+      if (String(req.query.orderflow || '') !== '') {
+        const orderId = parseInt(req.query.orderflow, 10);
+        const pg = require('../utils/getPool');
+        const dbPool = pg.getPool();
+        const logs = [];
+        const { sendOrderConfirmation, sendAdminNewOrder } = require('../utils/orderEmails');
+        const [userRow, orderRow, itemRows] = await Promise.all([
+          dbPool.query('SELECT email FROM users WHERE id = (SELECT user_id FROM orders WHERE id=$1)', [orderId]),
+          dbPool.query('SELECT * FROM orders WHERE id=$1', [orderId]),
+          dbPool.query('SELECT oi.quantity, oi.unit_price, p.name FROM order_items oi JOIN products p ON oi.product_id=p.id WHERE oi.order_id=$1', [orderId]),
+        ]);
+        logs.push('user email = ' + JSON.stringify(userRow.rows[0]));
+        logs.push('order found = ' + (orderRow.rows.length === 1));
+        logs.push('items = ' + itemRows.rows.length);
+        const order = orderRow.rows[0];
+        const emailOrder = Object.assign({}, order, {
+          email: (userRow.rows[0] && userRow.rows[0].email) || null,
+        });
+        const [cust, adm] = await Promise.all([
+          sendOrderConfirmation(emailOrder, itemRows.rows),
+          sendAdminNewOrder(emailOrder, itemRows.rows),
+        ]);
+        logs.push('customer -> ' + (cust ? cust.messageId : 'NULL'));
+        logs.push('admin -> ' + (adm ? adm.messageId : 'NULL'));
+        out.orderflow = logs;
+      }
+
       // Optional: plain send to notify address
       if (String(req.query.send || '') === '1') {
         const info = await Promise.race([
