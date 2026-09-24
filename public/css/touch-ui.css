@@ -325,6 +325,10 @@
   backdrop-filter: blur(6px);
 }
 .mz-fab svg { width: 20px; height: 20px; }
+/* 手機有底部 tabbar：FAB 提高到 tabbar 上面，唔好遮右下角（lg 以上 tabbar 隱藏，還原 16px）*/
+@media (max-width: 1023px) {
+  .mz-fab { bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
 @media (prefers-reduced-motion: reduce) {
   [data-adaptive] { transition: none; }
 }
