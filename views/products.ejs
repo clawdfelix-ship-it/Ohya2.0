@@ -118,7 +118,7 @@
                 <%# 預購模式：不追蹤庫存，不顯示缺貨/存貨徽章 %>
               </div>
               <% if (product.image) { %>
-                <img src="<%= product.image %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                <img src="<%= product.image %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" style="view-transition-name: pimg-<%= product.id %>">
               <% } else { %>
                 <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-6xl">📦</div>
               <% } %>
