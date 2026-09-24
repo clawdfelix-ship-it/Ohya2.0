@@ -51,6 +51,32 @@
 
     <%- include('partials/category-mobile-drawer') %>
 
+    <%# Facet 篩選：價格區間 + 現貨 %>
+    <form class="mb-6 rounded-2xl border border-ink-600 bg-ink-850 p-4 shadow-sm" data-facet-form>
+      <div class="flex flex-wrap items-end gap-4">
+        <div class="flex items-end gap-2">
+          <label class="text-xs font-bold text-gray-400" for="facet-min">價格（HK$）
+            <span class="mt-1 flex items-center gap-2">
+              <input id="facet-min" name="min_price" type="number" min="0" inputmode="numeric" value="<%= minPrice != null ? minPrice : '' %>" placeholder="最低" class="w-24 rounded-full border border-ink-500 bg-ink-800 px-3 py-2 text-sm text-gray-200 focus:border-gold focus:outline-none">
+              <span class="text-gray-500">–</span>
+              <input name="max_price" type="number" min="0" inputmode="numeric" value="<%= maxPrice != null ? maxPrice : '' %>" placeholder="最高" class="w-24 rounded-full border border-ink-500 bg-ink-800 px-3 py-2 text-sm text-gray-200 focus:border-gold focus:outline-none">
+            </span>
+          </label>
+        </div>
+        <label class="flex items-center gap-2 pb-2 text-sm text-gray-300">
+          <input type="checkbox" name="in_stock" value="1" <%= inStockOnly ? 'checked' : '' %> class="h-4 w-4 accent-wine">
+          只睇有現貨
+        </label>
+        <div class="flex items-center gap-2 pb-1">
+          <button type="submit" class="rounded-full bg-wine px-5 py-2 text-sm font-bold text-white transition hover:bg-wine-light active:scale-[0.98]">套用篩選</button>
+          <a href="/products?page=1" class="rounded-full border border-ink-500 px-4 py-2 text-sm text-gray-400 hover:text-gold-light">清除</a>
+        </div>
+        <% if (minPrice != null || maxPrice != null || inStockOnly) { %>
+          <div class="pb-2 text-xs text-gray-500">已套用篩選</div>
+        <% } %>
+      </div>
+    </form>
+
     <!-- 排序 -->
     <div class="mb-6 flex items-center justify-between rounded-2xl border border-ink-600 bg-ink-850 p-4 shadow-sm">
       <% const sortLabels = { recommend: '推介排序', price_asc: '價格由低至高', price_desc: '價格由高至低', newest: '最新上架', popular: '人氣排序' }; %>
@@ -122,9 +148,13 @@
           const pages = typeof totalPages === 'number' ? totalPages : 1;
           const qParam = (typeof q === 'string' && q.trim()) ? ('&q=' + encodeURIComponent(q.trim())) : '';
           const sortParam = (typeof sort === 'string' && sort) ? ('&sort=' + encodeURIComponent(sort)) : '';
+          const facetParams =
+            (minPrice != null ? '&min_price=' + encodeURIComponent(minPrice) : '') +
+            (maxPrice != null ? '&max_price=' + encodeURIComponent(maxPrice) : '') +
+            (inStockOnly ? '&in_stock=1' : '');
           const base = selectedCategorySlug && selectedCategorySlug !== 'all'
-            ? ('/products?category=' + encodeURIComponent(selectedCategorySlug) + qParam + sortParam + '&page=')
-            : ('/products?' + (qParam ? qParam.slice(1) + '&' : '') + (sortParam ? sortParam.slice(1) + '&' : '') + 'page=');
+            ? ('/products?category=' + encodeURIComponent(selectedCategorySlug) + qParam + sortParam + facetParams + '&page=')
+            : ('/products?' + (qParam ? qParam.slice(1) + '&' : '') + (sortParam ? sortParam.slice(1) + '&' : '') + (facetParams ? facetParams.slice(1) + '&' : '') + 'page=');
           const startPage = Math.max(1, currentPage - 2);
           const endPage = Math.min(pages, currentPage + 2);
         %>
@@ -217,6 +247,23 @@
         params.set('page', '1');
         const next = window.location.pathname + '?' + params.toString();
         window.location.href = next;
+      });
+    })();
+
+    // Facet 表單：保留目前分類/搜尋/排序，提交時回到第 1 頁
+    (function initFacets() {
+      const form = document.querySelector('[data-facet-form]');
+      if (!form) return;
+      form.addEventListener('submit', function () {
+        const cur = new URLSearchParams(window.location.search);
+        ['category', 'q', 'sort'].forEach(function (k) {
+          const v = cur.get(k);
+          if (v && !form.querySelector('[name="' + k + '"]')) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden'; hidden.name = k; hidden.value = v;
+            form.appendChild(hidden);
+          }
+        });
       });
     })();
   </script>

@@ -18,16 +18,24 @@
           全部商品
         </a>
 
-        <form action="/products" method="get" class="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1">
-          <div class="flex items-stretch overflow-hidden rounded-full border border-ink-600 bg-ink-800 focus-within:border-gold/60 focus-within:ring-2 focus-within:ring-gold/15">
-            <select name="category" class="hidden lg:block w-44 bg-ink-700 px-3 text-xs text-gray-300 focus:outline-none">
-              <% categoryOptions.slice(0, 50).forEach(cat => { %>
-                <option value="<%= cat.slug %>" <%= (typeof selectedCategorySlug === 'string' && selectedCategorySlug === cat.slug) ? 'selected' : '' %>><%= cat.name %></option>
+        <form action="/products" method="get" class="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1" data-search-form>
+          <div class="relative flex items-stretch overflow-hidden rounded-full border border-ink-600 bg-ink-800 focus-within:border-gold/60 focus-within:ring-2 focus-within:ring-gold/15" data-search-combobox>
+            <%# 全分類分組下拉：optgroup=頂層分類，只列子分類；頂層自身放喺組內第一項 %>
+            <select name="category" aria-label="按分類篩選" class="hidden lg:block w-44 bg-ink-700 px-3 text-xs text-gray-300 focus:outline-none" data-search-category>
+              <option value="all" <%= (!selectedCategorySlug || selectedCategorySlug === 'all') ? 'selected' : '' %>>全部商品</option>
+              <% (Array.isArray(categoriesTree) ? categoriesTree : []).forEach(root => { %>
+                <optgroup label="<%= root.name %>">
+                  <option value="<%= root.slug %>" <%= selectedCategorySlug === root.slug ? 'selected' : '' %><%= root.count ? ' (' + root.count + ')' : '' %>>　<%= root.name %></option>
+                  <% (root.children || []).forEach(child => { %>
+                    <option value="<%= child.slug %>" <%= selectedCategorySlug === child.slug ? 'selected' : '' %>>　<%= child.name %></option>
+                  <% }) %>
+                </optgroup>
               <% }) %>
             </select>
-            <input name="q" type="text" value="<%= typeof q === 'string' ? q : '' %>" placeholder="搜尋商品、分類、關鍵字" class="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none">
+            <input name="q" type="text" role="combobox" aria-expanded="false" aria-controls="mz-search-panel" aria-autocomplete="list" autocomplete="off" value="<%= typeof q === 'string' ? q : '' %>" placeholder="搜尋商品、分類、關鍵字" class="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none" data-search-input>
             <button type="submit" class="shrink-0 whitespace-nowrap bg-wine px-4 sm:px-5 text-sm font-bold text-white hover:bg-wine-light">搜尋</button>
           </div>
+          <div id="mz-search-panel" class="mz-search-panel hidden" role="listbox" aria-label="搜尋建議" data-search-panel></div>
         </form>
 
         <div class="flex shrink-0 items-center gap-2 text-xs sm:gap-3">
@@ -88,3 +96,4 @@
   </div>
 
   <script src="/js/interactions.js" defer></script>
+  <script src="/js/search-autocomplete.js" defer></script>

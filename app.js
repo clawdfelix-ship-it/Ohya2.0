@@ -780,6 +780,10 @@ app.use(async (req, res, next) => {
       if (!connectionString) {
         const categoryFilter = typeof req.query.category === 'string' ? req.query.category : null;
         const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+        const minPrice = Math.max(0, parseFloat(req.query.min_price) || 0);
+        const maxPriceParsed = parseFloat(req.query.max_price);
+        const maxPrice = Number.isFinite(maxPriceParsed) && maxPriceParsed > 0 ? maxPriceParsed : null;
+        const inStockOnly = req.query.in_stock === '1';
         let products = getSampleProducts();
         const categories = getSampleCategories();
         const selectedCategorySlug = (categoryFilter && categoryFilter !== 'all') ? categoryFilter : 'all';
@@ -796,6 +800,13 @@ app.use(async (req, res, next) => {
         }
 
         products = products.filter(p => !String(p.name || '').includes('販売終了'));
+
+        if (minPrice > 0) {
+          products = products.filter(p => (p.price || 0) >= minPrice * 100);
+        }
+        if (maxPrice != null) {
+          products = products.filter(p => (p.price || 0) <= maxPrice * 100);
+        }
 
         if (sort === 'price_asc') {
           products = products.slice().sort((a, b) => (a.price || 0) - (b.price || 0));
@@ -819,6 +830,9 @@ app.use(async (req, res, next) => {
           perPage: products.length,
           q,
           sort,
+          minPrice: minPrice > 0 ? minPrice : null,
+          maxPrice,
+          inStockOnly,
         });
       }
 
@@ -827,6 +841,11 @@ app.use(async (req, res, next) => {
       const offset = (page - 1) * perPage;
       const categoryFilter = typeof req.query.category === 'string' ? req.query.category : null;
       const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+      // 價格區間（港幣，整數/一位小數）+ 現貨 facet
+      const minPrice = Math.max(0, parseFloat(req.query.min_price) || 0);
+      const maxPriceParsed = parseFloat(req.query.max_price);
+      const maxPrice = Number.isFinite(maxPriceParsed) && maxPriceParsed > 0 ? maxPriceParsed : null;
+      const inStockOnly = req.query.in_stock === '1';
 
       let categoryId = null;
       let dynamicSection = null;           // 'new' | 'sale' | null（動態專區）
@@ -890,6 +909,20 @@ app.use(async (req, res, next) => {
         where += ` AND (COALESCE(p.name_zh_hk, p.name) ILIKE $${paramIndex} OR COALESCE(NULLIF(p.description_zh_hk, ''), NULLIF(p.description, '')) ILIKE $${paramIndex})`;
         params.push(`%${q}%`);
         paramIndex++;
+      }
+      if (minPrice > 0) {
+        where += ` AND p.price >= $${paramIndex}`;
+        params.push(minPrice);
+        paramIndex++;
+      }
+      if (maxPrice != null) {
+        where += ` AND p.price <= $${paramIndex}`;
+        params.push(maxPrice);
+        paramIndex++;
+      }
+      // 現貨：任一 active SKU 庫存 > 0。用 EXISTS 令 count SQL 同 list SQL 可以共用 where
+      if (inStockOnly) {
+        where += ` AND EXISTS (SELECT 1 FROM product_skus ps WHERE ps.product_id = p.id AND ps.is_active = true AND ps.stock > 0)`;
       }
 
       const countResult = await pool.query(`SELECT COUNT(*)::int as total FROM products p WHERE ${where}`, params);
@@ -964,6 +997,9 @@ app.use(async (req, res, next) => {
         perPage,
         q,
         sort,
+        minPrice: minPrice > 0 ? minPrice : null,
+        maxPrice,
+        inStockOnly,
       });
     } catch (err) {
       console.error('Products page error:', err);
@@ -979,8 +1015,62 @@ app.use(async (req, res, next) => {
         totalPages: 1,
         total: getSampleProducts().length,
         perPage: getSampleProducts().length,
+        q: '',
         sort: 'recommend',
+        minPrice: null,
+        maxPrice: null,
+        inStockOnly: false,
       });
+    }
+  });
+
+  // 搜尋建議（header autocomplete 用）：商品 + 分類
+  // 競態由前端 AbortController/request id 處理；呢度只管快速返回
+  app.get('/api/search-suggestions', async (req, res) => {
+    try {
+      const term = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+      if (!connectionString || term.length < 1 || term.length > 64) {
+        return res.json({ products: [], categories: [] });
+      }
+      const like = `%${term.replace(/[%_]/g, m => '\\' + m)}%`;
+
+      const [prodRes, catRes] = await Promise.all([
+        pool.query(
+          `SELECT p.id,
+                  COALESCE(p.name_zh_hk, p.name) as name,
+                  (p.price * 100)::int as price_cents,
+                  p.image_url
+           FROM products p
+           WHERE p.status = 'active'
+             AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
+             AND COALESCE(p.name_zh_hk, p.name) ILIKE $1
+           ORDER BY p.id DESC
+           LIMIT 8`,
+          [like]
+        ),
+        pool.query(
+          `SELECT slug, COALESCE(name_zh_hk, name) as name
+           FROM categories
+           WHERE source = 'storefront'
+             AND COALESCE(name_zh_hk, name) ILIKE $1
+           ORDER BY COALESCE(name_zh_hk, name)
+           LIMIT 4`,
+          [like]
+        ),
+      ]);
+
+      res.json({
+        products: prodRes.rows.map(r => ({
+          id: Number(r.id),
+          name: String(r.name),
+          priceCents: Number(r.price_cents),
+          image: app.locals.toProxyUrl ? app.locals.toProxyUrl(r.image_url) : r.image_url,
+        })),
+        categories: catRes.rows.map(r => ({ slug: r.slug, name: String(r.name) })),
+      });
+    } catch (err) {
+      console.error('search suggestions error:', err);
+      res.status(500).json({ products: [], categories: [] });
     }
   });
   
