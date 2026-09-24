@@ -175,6 +175,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
 
       // Email 通知（best-effort，唔可以因為 SMTP 失敗而影響落單）
       // 用 pool（而非交易 client）喺 COMMIT 後讀取，唔阻塞回應。
+      let mailDebug = { attempted: true };
       try {
         const { sendOrderConfirmation, sendAdminNewOrder } = require('../utils/orderEmails');
         const [userRow, itemRows] = await Promise.all([
@@ -185,6 +186,8 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
             WHERE oi.order_id = $1
           `, [orderId]),
         ]);
+        mailDebug.userEmail = (userRow.rows[0] && userRow.rows[0].email) || null;
+        mailDebug.itemCount = itemRows.rows.length;
         const emailOrder = {
           ...orderResult.rows[0],
           order_number: orderNumber,
@@ -196,15 +199,18 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
           payment_method_code: paymentCode,
           email: (userRow.rows[0] && userRow.rows[0].email) || null,
         };
-        await Promise.all([
+        const [custInfo, admInfo] = await Promise.all([
           sendOrderConfirmation(emailOrder, itemRows.rows),
           sendAdminNewOrder(emailOrder, itemRows.rows),
         ]);
+        mailDebug.customer = custInfo ? custInfo.messageId : null;
+        mailDebug.admin = admInfo ? admInfo.messageId : null;
       } catch (mailErr) {
-        console.error('[orders] notification email failed:', mailErr && mailErr.message ? mailErr.message : String(mailErr));
+        mailDebug.error = mailErr && mailErr.message ? mailErr.message : String(mailErr);
+        console.error('[orders] notification email failed:', mailDebug.error);
       }
 
-      res.json({ success: true, orderId, orderNumber, paymentMethod: paymentCode });
+      res.json({ success: true, orderId, orderNumber, paymentMethod: paymentCode, _maildebug: mailDebug });
     } catch (err) {
       try { await client.query('ROLLBACK'); } catch (_) {}
       console.error(err);
