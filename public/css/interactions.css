@@ -268,3 +268,122 @@
   .mz-search-panel { animation: none; }
   .mz-spinner { animation-duration: 1.4s; }
 }
+
+/* ==========================================================================
+   手機底部 Tab bar（mobile pattern）
+   ========================================================================== */
+.mz-tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0.35rem 0.25rem calc(0.35rem + env(safe-area-inset-bottom));
+  background: rgba(12, 12, 16, 0.92);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(200, 164, 93, 0.22);
+}
+.mz-tabbar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 52px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: #8a8a94;
+  border-radius: 0.7rem;
+}
+.mz-tabbar__item svg { width: 22px; height: 22px; }
+.mz-tabbar__item.is-active { color: #e0c084; }
+.mz-tabbar__item:active { transform: scale(0.94); }
+.mz-tabbar__badgewrap { position: relative; display: inline-flex; }
+.mz-tabbar__badge {
+  position: absolute;
+  top: -6px; right: -9px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #a01e3d;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+}
+/* 有 tabbar 嘅手機：內容唔好被遮。lg 以上 tabbar display:none，padding 自動失效 */
+@media (max-width: 1023px) {
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+}
+
+/* ==========================================================================
+   手機 Action sheet（排序用；mobile pattern）
+   ========================================================================== */
+.mz-sheet { position: fixed; inset: 0; z-index: 80; }
+.mz-sheet[hidden] { display: none; }
+.mz-sheet__scrim {
+  position: absolute; inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  animation: mzSheetFade 0.2s ease;
+}
+.mz-sheet__panel {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 0.5rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
+  background: #14141a;
+  border-radius: 1.4rem 1.4rem 0 0;
+  border-top: 1px solid rgba(200, 164, 93, 0.3);
+  box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.8);
+  animation: mzSheetUp 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes mzSheetFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mzSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.mz-sheet__grip {
+  width: 42px; height: 4px;
+  margin: 0.5rem auto 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.mz-sheet__title {
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #8a8a94;
+  margin-bottom: 0.6rem;
+}
+.mz-sheet__options {
+  overflow: hidden;
+  border-radius: 0.9rem;
+  background: #1c1c24;
+}
+.mz-sheet__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e5e5e8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.mz-sheet__option:last-child { border-bottom: 0; }
+.mz-sheet__option:active { background: rgba(160, 30, 61, 0.2); }
+.mz-sheet__option.is-current { color: #e0c084; }
+.mz-sheet__tick { color: #e0c084; font-weight: 900; }
+.mz-sheet__cancel {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 0.6rem;
+  border-radius: 0.9rem;
+  background: #1c1c24;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #e0c084;
+}
+.mz-sheet__cancel:active { background: rgba(160, 30, 61, 0.2); }
+@media (prefers-reduced-motion: reduce) {
+  .mz-sheet__scrim, .mz-sheet__panel { animation: none; }
+}

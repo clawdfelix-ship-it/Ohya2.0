@@ -82,13 +82,17 @@
       <% const sortLabels = { recommend: '推介排序', price_asc: '價格由低至高', price_desc: '價格由高至低', newest: '最新上架', popular: '人氣排序' }; %>
       <div class="text-sm text-gray-500">目前排序：<span class="font-bold text-white"><%= sortLabels[sort] || '推介排序' %></span></div>
       <div class="flex gap-2">
-        <select id="mz-sort" class="rounded-full border border-gray-600 bg-ink-800 text-gray-200 px-3 py-2 text-sm focus:border-gold focus:outline-none">
+        <select id="mz-sort" class="hidden rounded-full border border-gray-600 bg-ink-800 text-gray-200 px-3 py-2 text-sm focus:border-gold focus:outline-none sm:block">
           <option value="recommend" <%= (typeof sort === 'string' ? sort : 'newest') === 'recommend' ? 'selected' : '' %>>推介排序</option>
           <option value="price_asc" <%= (typeof sort === 'string' ? sort : 'newest') === 'price_asc' ? 'selected' : '' %>>價格由低至高</option>
           <option value="price_desc" <%= (typeof sort === 'string' ? sort : 'newest') === 'price_desc' ? 'selected' : '' %>>價格由高至低</option>
           <option value="newest" <%= (typeof sort === 'string' ? sort : 'newest') === 'newest' ? 'selected' : '' %>>最新上架</option>
           <option value="popular" <%= (typeof sort === 'string' ? sort : 'newest') === 'popular' ? 'selected' : '' %>>人氣排序</option>
         </select>
+        <%# 手機：排序 Action sheet 觸發掣（sm 以上隱藏）%>
+        <button type="button" id="mz-sort-sheet-open" class="rounded-full border border-ink-500 bg-ink-800 px-4 py-2 text-sm font-bold text-gold-light sm:hidden" aria-haspopup="dialog" aria-controls="mz-sort-sheet">
+          ⇅ 排序
+        </button>
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <div class="text-sm text-gray-500">密度</div>
@@ -214,6 +218,31 @@
 
   <%- include('partials/footer') %>
 
+  <%# 手機排序 Action sheet %>
+  <div class="mz-sheet" id="mz-sort-sheet" hidden>
+    <div class="mz-sheet__scrim" data-sheet-close></div>
+    <div class="mz-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="mz-sort-sheet-title">
+      <div class="mz-sheet__grip" aria-hidden="true"></div>
+      <h2 id="mz-sort-sheet-title" class="mz-sheet__title">選擇排序方式</h2>
+      <div class="mz-sheet__options">
+        <% const sortSheetOptions = [
+          ['recommend', '推介排序'],
+          ['price_asc', '價格由低至高'],
+          ['price_desc', '價格由高至低'],
+          ['newest', '最新上架'],
+          ['popular', '人氣排序'],
+        ]; %>
+        <% sortSheetOptions.forEach(([val, label]) => { %>
+          <button type="button" class="mz-sheet__option <%= sort === val ? 'is-current' : '' %>" data-sort-value="<%= val %>">
+            <span><%= label %></span>
+            <% if (sort === val) { %><span class="mz-sheet__tick" aria-label="目前選用">✓</span><% } %>
+          </button>
+        <% }) %>
+      </div>
+      <button type="button" class="mz-sheet__cancel" data-sheet-close>取消</button>
+    </div>
+  </div>
+
   <script id="mz-products" type="application/json"><%- JSON.stringify(products || []) %></script>
   <script src="/js/cart-client.js"></script>
 
@@ -270,6 +299,37 @@
             form.appendChild(hidden);
           }
         });
+      });
+    })();
+    // 手機排序 Action sheet
+    (function initSortSheet() {
+      const sheet = document.getElementById('mz-sort-sheet');
+      const openBtn = document.getElementById('mz-sort-sheet-open');
+      if (!sheet || !openBtn) return;
+
+      function openSheet() {
+        sheet.hidden = false;
+        document.body.style.overflow = 'hidden';
+      }
+      function closeSheet() {
+        sheet.hidden = true;
+        document.body.style.overflow = '';
+      }
+
+      openBtn.addEventListener('click', openSheet);
+      sheet.addEventListener('click', function (e) {
+        if (e.target.closest('[data-sheet-close]')) closeSheet();
+      });
+      sheet.querySelectorAll('[data-sort-value]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const params = new URLSearchParams(window.location.search);
+          params.set('sort', String(btn.dataset.sortValue || 'recommend'));
+          params.set('page', '1');
+          window.location.href = window.location.pathname + '?' + params.toString();
+        });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !sheet.hidden) closeSheet();
       });
     })();
   </script>

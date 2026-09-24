@@ -85,19 +85,37 @@
 
   function setBadgeCount(count) {
     var badge = document.getElementById('cart-count');
-    if (!badge) return;
-    var prev = parseInt(badge.textContent || '0', 10) || 0;
-    badge.textContent = String(count);
-    if (count > prev && window.MZFluid) window.MZFluid.popBadge(); // 07 COUNT
+    if (badge) {
+      var prev = parseInt(badge.textContent || '0', 10) || 0;
+      badge.textContent = String(count);
+      if (count > prev && window.MZFluid) window.MZFluid.popBadge(); // 07 COUNT
+    }
+    // 手機 tabbar badge（可能同 header badge 並存）
+    Array.prototype.forEach.call(document.querySelectorAll('[data-cart-badge]'), function (b) {
+      b.textContent = String(count);
+      b.hidden = !(count > 0);
+    });
   }
 
   function refreshCount() {
     var badge = document.getElementById('cart-count');
-    if (!badge) return Promise.resolve();
+    var hasMobileBadge = document.querySelector('[data-cart-badge]');
+    if (!badge && !hasMobileBadge) return Promise.resolve();
 
     if (!isLoggedIn()) {
       setBadgeCount(guestCount());
       return Promise.resolve();
+    }
+
+    if (!badge && hasMobileBadge) {
+      return requestJson('/api/cart')
+        .then(function (data) {
+          var count = Array.isArray(data.items)
+            ? data.items.reduce(function (sum, item) { return sum + Number(item.quantity || 0); }, 0)
+            : 0;
+          setBadgeCount(count);
+        })
+        .catch(function (err) { console.error('Failed to refresh cart count:', err); });
     }
 
     return requestJson('/api/cart')
