@@ -387,3 +387,38 @@
 @media (prefers-reduced-motion: reduce) {
   .mz-sheet__scrim, .mz-sheet__panel { animation: none; }
 }
+
+/* ==========================================================================
+   分段控件（segmented control pattern；訂單狀態用）
+   ========================================================================== */
+.mz-segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.2rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: #1a1a21;
+}
+.mz-segmented__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #9a9aa2;
+  white-space: nowrap;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+.mz-segmented__item:hover { color: #e0c084; }
+.mz-segmented__item.is-active {
+  background: linear-gradient(135deg, #a01e3d, #8a1833);
+  color: #fff;
+  box-shadow: 0 4px 14px -4px rgba(160, 30, 61, 0.7);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mz-segmented__item { transition: none; }
+}

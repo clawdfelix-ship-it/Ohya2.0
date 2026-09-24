@@ -26,10 +26,11 @@
     </div>
 
     <% const sf = typeof statusFilter === 'string' ? statusFilter : ''; %>
-    <div class="mb-5 flex flex-wrap gap-2 text-xs font-bold">
-      <% const tabs = [['','全部'],['pending','待付款'],['unshipped','待出貨'],['shipping','待收貨'],['completed','已完成'],['cancelled','已取消']]; %>
-      <% tabs.forEach(([key,label]) => { %>
-        <a href="?<%= key ? 'status='+key : '' %>" class="rounded-full px-4 py-2 transition <%= sf===key ? 'bg-wine text-white' : 'border border-ink-600 bg-ink-850 text-gray-300 hover:border-gold/50' %>"><%= label %></a>
+    <%# 分段控件：全部 / 進行中 / 已完成（mobile segmented control pattern）%>
+    <div class="mz-segmented mb-5" role="tablist" aria-label="訂單狀態範圍">
+      <% const segs = [['','全部'],['active','進行中'],['completed','已完成']]; %>
+      <% segs.forEach(([key,label]) => { %>
+        <a role="tab" aria-selected="<%= sf===key ? 'true' : 'false' %>" href="?<%= key ? 'status='+key : '' %>" class="mz-segmented__item <%= sf===key ? 'is-active' : '' %>"><%= label %></a>
       <% }) %>
     </div>
 

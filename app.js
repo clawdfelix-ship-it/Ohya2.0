@@ -1422,6 +1422,9 @@ app.use(async (req, res, next) => {
       } else if (['shipping','completed','cancelled'].includes(filter)) {
         where.push('o.status = $' + (params.length + 1));
         params.push(filter);
+      } else if (filter === 'active') {
+        // 進行中：未完成、未取消
+        where.push("o.status NOT IN ('completed','cancelled')");
       }
       const whereSql = 'WHERE ' + where.join(' AND ');
 
