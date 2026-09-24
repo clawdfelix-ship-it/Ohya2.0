@@ -171,25 +171,13 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
       // Clear cart
       await client.query('DELETE FROM cart_items WHERE user_id = $1', [userId]);
 
-      await client.query('COMMIT');
-
-      // Email 通知（best-effort，唔可以因為 SMTP 失敗而影響落單）
-      // 用 pool（而非交易 client）喺 COMMIT 後讀取，唔阻塞回應。
-      let mailDebug = { attempted: true };
+      // 喺同一個交易入面將交易電郵寫入 outbox（訂單 commit 成功 = 郵件一定已入隊）。
+      // 唔喺呢度直接 SMTP：serverless 冷啟動開新連線會逾時/被 relay 节流，
+      // 改由定時 worker（cron）補發，保證最終送到。
       try {
-        const { sendOrderConfirmation, sendAdminNewOrder } = require('../utils/orderEmails');
-        const [userRow, itemRows] = await Promise.all([
-          pool.query('SELECT email FROM users WHERE id = $1', [userId]),
-          pool.query(`
-            SELECT oi.quantity, oi.unit_price, p.name
-            FROM order_items oi JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id = $1
-          `, [orderId]),
-        ]);
-        mailDebug.userEmail = (userRow.rows[0] && userRow.rows[0].email) || null;
-        mailDebug.itemCount = itemRows.rows.length;
+        const { buildOrderConfirmation, buildAdminNewOrder } = require('../utils/orderEmails');
+        const userEmailRow = await client.query('SELECT email FROM users WHERE id = $1', [userId]);
         const emailOrder = {
-          ...orderResult.rows[0],
           order_number: orderNumber,
           contact_name: contact_name,
           contact_phone: contact_phone,
@@ -197,20 +185,38 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
           note: note || null,
           total_amount: subtotalMoney,
           payment_method_code: paymentCode,
-          email: (userRow.rows[0] && userRow.rows[0].email) || null,
+          email: (userEmailRow.rows[0] && userEmailRow.rows[0].email) || null,
         };
-        const [custInfo, admInfo] = await Promise.all([
-          sendOrderConfirmation(emailOrder, itemRows.rows),
-          sendAdminNewOrder(emailOrder, itemRows.rows),
-        ]);
-        mailDebug.customer = custInfo ? custInfo.messageId : null;
-        mailDebug.admin = admInfo ? admInfo.messageId : null;
-      } catch (mailErr) {
-        mailDebug.error = mailErr && mailErr.message ? mailErr.message : String(mailErr);
-        console.error('[orders] notification email failed:', mailDebug.error);
+        const emailItems = cartResult.rows.map((r) => ({
+          name: r.name, quantity: r.quantity, unit_price: r.price,
+        }));
+        const messages = [
+          buildOrderConfirmation(emailOrder, emailItems),
+          buildAdminNewOrder(emailOrder, emailItems),
+        ].filter(Boolean);
+        for (const msg of messages) {
+          await client.query(`
+            INSERT INTO email_outbox
+              (to_address, subject, html_body, text_body, related_type, related_id)
+            VALUES ($1, $2, $3, $4, 'order', $5)
+          `, [msg.to, msg.subject, msg.html, msg.text, orderId]);
+        }
+      } catch (queueErr) {
+        // 入隊失敗唔可以靜默：交易回滚，避免訂單成立但冇通知。
+        await client.query('ROLLBACK');
+        console.error('[orders] outbox enqueue failed:', queueErr);
+        return res.status(500).json({ error: '建立訂單通知失敗，請重試' });
       }
 
-      res.json({ success: true, orderId, orderNumber, paymentMethod: paymentCode, _maildebug: mailDebug });
+      await client.query('COMMIT');
+
+      // Best-effort：warm 實例即場試發（成功即時到，失敗由 cron 補發，唔阻塞回應）。
+      try {
+        const { flushOutbox } = require('../utils/outboxWorker');
+        await flushOutbox(pool, { limit: 5, maxRuntimeMs: 4000 });
+      } catch (_) { /* cron 會補發 */ }
+
+      res.json({ success: true, orderId, orderNumber, paymentMethod: paymentCode });
     } catch (err) {
       try { await client.query('ROLLBACK'); } catch (_) {}
       console.error(err);

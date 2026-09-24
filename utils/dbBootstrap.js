@@ -540,6 +540,32 @@ const CORE_BOOTSTRAP_STEPS = [
     `,
   },
   {
+    name: 'email_outbox',
+    sql: `
+      CREATE TABLE IF NOT EXISTS email_outbox (
+        id              BIGSERIAL PRIMARY KEY,
+        to_address      TEXT NOT NULL,
+        cc_address      TEXT,
+        bcc_address     TEXT,
+        subject         TEXT NOT NULL,
+        html_body       TEXT NOT NULL,
+        text_body       TEXT NOT NULL DEFAULT '',
+        status          TEXT NOT NULL DEFAULT 'pending',
+        attempts        INTEGER NOT NULL DEFAULT 0,
+        max_attempts    INTEGER NOT NULL DEFAULT 6,
+        last_error      TEXT,
+        available_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        sent_at         TIMESTAMPTZ,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+        related_type    TEXT,
+        related_id      BIGINT
+      );
+      CREATE INDEX IF NOT EXISTS idx_email_outbox_pending
+        ON email_outbox (available_at)
+        WHERE status = 'pending';
+    `,
+  },
+  {
     name: 'seed payment methods',
     sql: `
       INSERT INTO payment_methods (name, code, is_active, sort_order)

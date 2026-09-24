@@ -1,5 +1,6 @@
-// Transactional email templates for order lifecycle (Zoho SMTP).
-// All output is Chinese (HK) with an HTML + plain-text pair.
+// Transactional email content + sending for order lifecycle (Zoho SMTP).
+// Content builders are pure (return {to, subject, html, text}); they are used
+// to enqueue into the email_outbox so delivery can be retried reliably.
 'use strict';
 
 const { sendMail, getConfig } = require('./mailer');
@@ -61,12 +62,8 @@ function layout(title, bodyHtml, bodyText) {
   };
 }
 
-/**
- * Customer order-confirmation email.
- * @param {object} order row (order_number, contact_name, total_amount, payment_method_code, ...)
- * @param {Array<{name:string, quantity:number, unit_price:number}>} items
- */
-async function sendOrderConfirmation(order, items) {
+/** Build the customer confirmation message; returns null when no recipient. */
+function buildOrderConfirmation(order, items) {
   if (!order.email) return null;
 
   const bodyText = [
@@ -78,7 +75,7 @@ async function sendOrderConfirmation(order, items) {
     renderItemsText(items),
     '',
     `訂單總額：${money(order.total_amount)}`,
-    `付款方式：${order.payment_method_code === 'fps' ? 'FPS 轉數快' : '銀行轉帳'}`,
+    `付款方式：${order.payment_method_code === 'fps' ? 'FPS 轉數快' : (order.payment_method_label || '銀行轉帳')}`,
     '',
     order.note ? `訂單備註：${order.note}\n` : '',
     '如有查詢，可於會員中心查看訂單或聯絡我們。',
@@ -101,24 +98,22 @@ async function sendOrderConfirmation(order, items) {
     </table>
     <table style="width:100%;font-size:14px;margin-bottom:8px;">
       <tr><td style="padding:4px 0;color:#666;">訂單總額</td><td style="padding:4px 0;text-align:right;font-weight:600;">${money(order.total_amount)}</td></tr>
-      <tr><td style="padding:4px 0;color:#666;">付款方式</td><td style="padding:4px 0;text-align:right;">${order.payment_method_code === 'fps' ? 'FPS 轉數快' : '銀行轉帳'}</td></tr>
+      <tr><td style="padding:4px 0;color:#666;">付款方式</td><td style="padding:4px 0;text-align:right;">${order.payment_method_code === 'fps' ? 'FPS 轉數快' : esc(order.payment_method_label || '銀行轉帳')}</td></tr>
     </table>
     ${order.note ? `<p style="font-size:13px;color:#666;margin:16px 0 0;">訂單備註：${esc(order.note)}</p>` : ''}
   `;
 
   const tpl = layout(`訂單確認｜${order.order_number}`, bodyHtml, bodyText);
-  return sendMail({
+  return {
     to: order.email,
     subject: `【Ohya】訂單確認 ${order.order_number}`,
     html: tpl.html,
     text: tpl.text,
-  });
+  };
 }
 
-/**
- * Admin notification for a new order (fire-and-forget from checkout).
- */
-async function sendAdminNewOrder(order, items) {
+/** Build the admin new-order notification; returns null when no recipient. */
+function buildAdminNewOrder(order, items) {
   const cfg = getConfig();
   if (!cfg.notifyAddress) return null;
 
@@ -143,15 +138,27 @@ async function sendAdminNewOrder(order, items) {
   `;
 
   const tpl = layout(`新訂單通知｜${order.order_number}`, bodyHtml, bodyText);
-  return sendMail({
+  return {
     to: cfg.notifyAddress,
     subject: `【Ohya 新訂單】${order.order_number} — ${money(order.total_amount)}`,
     html: tpl.html,
     text: tpl.text,
-  });
+  };
+}
+
+async function sendOrderConfirmation(order, items) {
+  const msg = buildOrderConfirmation(order, items);
+  return msg ? sendMail(msg) : null;
+}
+
+async function sendAdminNewOrder(emailOrder, itemRows) {
+  const msg = buildAdminNewOrder(emailOrder, itemRows);
+  return msg ? sendMail(msg) : null;
 }
 
 module.exports = {
+  buildOrderConfirmation,
+  buildAdminNewOrder,
   sendOrderConfirmation,
   sendAdminNewOrder,
 };
