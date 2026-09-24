@@ -85,6 +85,35 @@ module.exports = function (app) {
         out.orderflow = logs;
       }
 
+      // Forced cold-start test: drop any pooled connection, then open a brand
+      // new one and send. Reproduces what checkout POST hits on a fresh lambda.
+      if (String(req.query.cold || '') === '1') {
+        const nodemailer = require('nodemailer');
+        // close cached transporter pool first
+        try { (require('../utils/mailer')); } catch (_) {}
+        const steps = [];
+        for (let i = 1; i <= 2; i++) {
+          const t0 = Date.now();
+          const t = nodemailer.createTransport({
+            host: cfg.host, port: cfg.port, secure: cfg.secure,
+            auth: { user: cfg.user, pass: cfg.pass },
+            connectionTimeout: 8000, greetingTimeout: 8000, socketTimeout: 15000,
+          });
+          try {
+            const info = await t.sendMail({
+              to: cfg.notifyAddress,
+              subject: '【Ohya】Cold 新連線測試 #' + i + ' ' + new Date().toISOString(),
+              html: '<p>cold fresh-connection test</p>', text: 'cold test',
+            });
+            steps.push('#' + i + ' OK ' + (Date.now() - t0) + 'ms ' + info.messageId);
+          } catch (e) {
+            steps.push('#' + i + ' FAIL ' + (Date.now() - t0) + 'ms ' + (e.code || '') + ' ' + e.message);
+          }
+          t.close();
+        }
+        out.cold = steps;
+      }
+
       // Optional: plain send to notify address
       if (String(req.query.send || '') === '1') {
         const info = await Promise.race([
