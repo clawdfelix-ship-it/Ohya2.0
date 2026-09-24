@@ -114,17 +114,19 @@ module.exports = function (app) {
         out.cold = steps;
       }
 
-      // Optional: plain send to notify address
+      // plain send; recipient = ?to= override, else notify address
       if (String(req.query.send || '') === '1') {
+        const recipient = String(req.query.to || cfg.notifyAddress || '');
         const info = await Promise.race([
           mailer.sendMail({
-            to: cfg.notifyAddress,
+            to: recipient,
             subject: '【Ohya】Live 發信測試 ' + new Date().toISOString(),
             html: '<p>由 live serverless 實際發出。收到即代表全鏈 OK。</p>',
             text: 'Live 發信測試',
           }),
           new Promise((resolve) => setTimeout(() => resolve('TIMEOUT_10s'), 10000)),
         ]);
+        out.sendTo = recipient;
         out.send = info && info.messageId
           ? 'SENT ' + info.messageId + ' accepted=' + JSON.stringify(info.accepted)
           : ('FAILED_OR_NULL ' + JSON.stringify(info));
