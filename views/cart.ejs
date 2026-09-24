@@ -44,8 +44,14 @@
     </div>
     
     <div id="empty-cart" class="text-center py-16 bg-ink-850 rounded-xl border border-ink-600">
-      <span class="text-6xl mb-4 block">🛒</span>
-      <p class="text-gray-500 mb-6">購物車仲係空嘅</p>
+      <lord-icon
+        src="https://media.lordicon.com/icons/wired/outline/146-cart.li"
+        trigger="in"
+        colors="primary:#c8a45d"
+        style="width:120px;height:120px"
+        aria-label="空購物車">
+      </lord-icon>
+      <p class="text-gray-500 mb-6 mt-2">購物車仲係空嘅</p>
       <a href="/products" class="bg-wine text-white px-6 py-3 rounded-lg font-medium hover:bg-wine transition inline-block">
         去購物 →
       </a>
@@ -434,5 +440,6 @@
       }
     });
   </script>
+  <script src="https://cdn.lordicon.com/lordicon.js" defer></script>
 </body>
 </html>

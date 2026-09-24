@@ -196,8 +196,14 @@
       </nav>
     <% } else { %>
       <div class="rounded-2xl border border-ink-600 bg-ink-850 py-20 text-center shadow-sm">
-        <span class="text-6xl mb-4 block">📦</span>
-        <p class="text-gray-500 mb-4">未找到相關商品</p>
+        <lord-icon
+          src="https://media.lordicon.com/icons/wired/outline/19-magnifier.li"
+          trigger="in"
+          colors="primary:#c8a45d"
+          style="width:120px;height:120px"
+          aria-label="搵唔到結果">
+        </lord-icon>
+        <p class="text-gray-500 mb-4 mt-2">未找到相關商品</p>
         <a href="/products" class="inline-block rounded-full bg-wine px-8 py-2 text-white font-bold transition hover:bg-wine">查看全部商品</a>
       </div>
     <% } %>
@@ -267,5 +273,6 @@
       });
     })();
   </script>
+  <script src="https://cdn.lordicon.com/lordicon.js" defer></script>
 </body>
 </html>

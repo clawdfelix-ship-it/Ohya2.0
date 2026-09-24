@@ -61,7 +61,7 @@ app.use(helmet({
       baseUri: ["'self'"],
       objectSrc: ["'none'"],
       frameAncestors: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com'],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com', 'https://cdn.lordicon.com'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com'],
       imgSrc: ["'self'", 'data:', 'https:'],
       fontSrc: ["'self'", 'data:', 'https:'],
@@ -631,6 +631,9 @@ app.use(async (req, res, next) => {
   res.locals.user = req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null;
   res.locals.formatPrice = formatPrice;
   res.locals.homeModules = getFallbackHomeModules();
+  // Header 分組下拉/autocomplete 嘅安全預設，避免其他頁面冇傳變數時 render 爆
+  res.locals.selectedCategorySlug = 'all';
+  res.locals.q = '';
 
   if (!connectionString) {
     const sampleCategoryData = getSampleCategoryData();
