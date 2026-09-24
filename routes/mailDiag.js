@@ -30,6 +30,24 @@ module.exports = function (app) {
         new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_8s')), 8000)),
       ]);
       out.verify = 'OK ' + cfg.user + ' via ' + cfg.host + ':' + cfg.port;
+
+      // Optional: actually send a test email to the notify address
+      if (String(req.query.send || '') === '1') {
+        const { sendMail, getConfig } = require('../utils/mailer');
+        const c = getConfig();
+        const info = await Promise.race([
+          sendMail({
+            to: c.notifyAddress,
+            subject: '【Ohya】Live 發信測試 ' + new Date().toISOString(),
+            html: '<p>由 live serverless 實際發出。收到即代表全鏈 OK。</p>',
+            text: 'Live 發信測試',
+          }),
+          new Promise((resolve) => setTimeout(() => resolve('TIMEOUT_10s'), 10000)),
+        ]);
+        out.send = info && info.messageId
+          ? 'SENT ' + info.messageId + ' accepted=' + JSON.stringify(info.accepted)
+          : ('FAILED_OR_NULL ' + JSON.stringify(info));
+      }
     } catch (err) {
       out.error = (err && err.message) ? err.message : String(err);
       if (err && err.code) out.error += ' | code=' + err.code;
