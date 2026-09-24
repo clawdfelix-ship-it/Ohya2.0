@@ -17,6 +17,10 @@ function findRoute(routes, method, routePath) {
   return route;
 }
 
+function lastHandler(route) {
+  return route.handlers[route.handlers.length - 1];
+}
+
 test('adminBootstrap: hasAdmin queries users.is_admin', async () => {
   const { hasAdmin } = require('../utils/adminBootstrap');
   const calls = [];
@@ -89,6 +93,7 @@ test('adminPages: admin login does not persist backoffice session for users with
             username: 'staff',
             password_hash: bcrypt.hashSync('secret123', 4),
             is_admin: false,
+            is_active: true,
             contact: 'staff@example.com',
           }]
         };
@@ -126,7 +131,7 @@ test('adminPages: admin login does not persist backoffice session for users with
     }
   };
 
-  await route.handlers[0](req, res);
+  await lastHandler(route)(req, res);
 
   assert.equal(statusCode, 403);
   assert.equal(rendered.view, 'admin/login');
@@ -149,6 +154,7 @@ test('adminPages: admin login regenerates session after permissions are confirme
             username: 'ops',
             password_hash: bcrypt.hashSync('secret123', 4),
             is_admin: false,
+            is_active: true,
             contact: 'ops@example.com',
           }]
         };
@@ -185,11 +191,68 @@ test('adminPages: admin login regenerates session after permissions are confirme
     }
   };
 
-  await route.handlers[0](req, res);
+  assert.ok(route.handlers.length >= 2, 'admin login should include rate limiter middleware');
+  await lastHandler(route)(req, res);
 
   assert.equal(regenerateCalled, true);
   assert.equal(redirected, '/admin');
   assert.equal(req.session.userId, 5);
   assert.equal(req.session.isBackoffice, true);
   assert.deepEqual(req.session.adminPermissions, ['orders:read']);
+});
+
+test('adminPages: inactive admin user cannot log in', async () => {
+  const adminPages = require('../routes/adminPages');
+  const bcrypt = require('bcryptjs');
+  const app = createRouteCapturingApp();
+  const pool = {
+    query: async (sql) => {
+      if (sql.includes('FROM users WHERE username = $1')) {
+        return {
+          rows: [{
+            id: 18,
+            username: 'inactive-admin',
+            password_hash: bcrypt.hashSync('secret123', 4),
+            is_admin: true,
+            is_active: false,
+            contact: 'inactive@example.com',
+          }]
+        };
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    }
+  };
+
+  adminPages(app, pool);
+  const route = findRoute(app.routes, 'POST', '/admin/login');
+  const req = {
+    body: { username: 'inactive-admin', password: 'secret123' },
+    session: {
+      regenerate() {
+        throw new Error('inactive login should not regenerate session');
+      }
+    }
+  };
+  let statusCode = null;
+  let rendered = null;
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    render(view, payload) {
+      rendered = { view, payload };
+      return this;
+    },
+    redirect() {
+      throw new Error('Unexpected redirect');
+    }
+  };
+
+  await lastHandler(route)(req, res);
+
+  assert.equal(statusCode, 400);
+  assert.equal(rendered.view, 'admin/login');
+  assert.equal(rendered.payload.error, '用戶名或密碼錯誤');
+  assert.equal(req.session.userId, undefined);
 });

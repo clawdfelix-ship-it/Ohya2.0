@@ -82,7 +82,7 @@ async function loginUser(pool, bcrypt, payload) {
   }
 
   const result = await pool.query(
-    `SELECT id, username, email, password_hash, is_admin, contact
+    `SELECT id, username, email, password_hash, is_admin, is_active, contact
      FROM users
      WHERE username = $1 OR LOWER(email) = LOWER($1)
      LIMIT 1`,
@@ -94,6 +94,9 @@ async function loginUser(pool, bcrypt, payload) {
   }
 
   const user = result.rows[0];
+  if (user.is_active === false) {
+    return { ok: false, status: 400, error: '電郵地址、用戶名或密碼錯誤' };
+  }
   const match = await bcrypt.compare(password, user.password_hash);
   if (!match) {
     return { ok: false, status: 400, error: '電郵地址、用戶名或密碼錯誤' };

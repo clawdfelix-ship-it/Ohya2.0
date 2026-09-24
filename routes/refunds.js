@@ -112,22 +112,48 @@ module.exports = function (app, pool) {
   });
 
   app.post('/api/admin/refunds/:id/complete', requirePermission('refunds:write'), async (req, res) => {
+    const client = await pool.connect();
     try {
       const { id } = req.params;
       const { refund_transaction_id, payment_transaction_id, note } = req.body || {};
       if (!refund_transaction_id) return res.status(400).json({ error: 'refund_transaction_id 必填' });
 
-      const r = await pool.query(`SELECT * FROM refunds WHERE id=$1`, [id]);
-      if (r.rows.length === 0) return res.status(404).json({ error: '退款單不存在' });
-      const refund = r.rows[0];
+      await client.query('BEGIN');
 
-      const o = await pool.query(`SELECT id, total_amount FROM orders WHERE id=$1`, [refund.order_id]);
-      if (o.rows.length === 0) return res.status(404).json({ error: '訂單不存在' });
+      const r = await client.query(`SELECT * FROM refunds WHERE id=$1 FOR UPDATE`, [id]);
+      if (r.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: '退款單不存在' });
+      }
+      const refund = r.rows[0];
+      if (refund.status !== 'approved') {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: '只可完成已批准的退款單' });
+      }
+
+      const o = await client.query(`SELECT id, total_amount FROM orders WHERE id=$1 FOR UPDATE`, [refund.order_id]);
+      if (o.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: '訂單不存在' });
+      }
       const order = o.rows[0];
 
-      const paymentStatus = computePaymentStatusAfterRefund({ orderTotal: order.total_amount, refundAmount: refund.amount });
+      const totals = await client.query(
+        `SELECT COALESCE(SUM(amount), 0) AS completed_amount
+         FROM refunds
+         WHERE order_id = $1
+           AND status = 'completed'
+           AND id <> $2`,
+        [refund.order_id, id]
+      );
+      const completedAmount = Number(totals.rows[0] ? totals.rows[0].completed_amount : 0);
+      const refundedAmount = completedAmount + Number(refund.amount || 0);
+      const paymentStatus = computePaymentStatusAfterRefund({
+        orderTotal: order.total_amount,
+        refundedAmount,
+      });
 
-      await pool.query(
+      await client.query(
         `UPDATE refunds
          SET status='completed', refund_transaction_id=$1, payment_transaction_id=$2,
              processed_by=$3, processed_at=NOW(), note=COALESCE($4, note)
@@ -135,21 +161,27 @@ module.exports = function (app, pool) {
         [refund_transaction_id, payment_transaction_id || null, req.user.id, note || null, id]
       );
 
-      await pool.query(
+      await client.query(
         `UPDATE orders SET payment_status=$1, updated_at=NOW() WHERE id=$2`,
         [paymentStatus, refund.order_id]
       );
 
-      await pool.query(
+      await client.query(
         `INSERT INTO order_status_histories (order_id, status, notes, created_by)
          VALUES ($1, 'refund_completed', $2, $3)`,
         [refund.order_id, `退款完成：${refund.amount}（憑證：${refund_transaction_id}）`, req.user.id]
       );
 
+      await client.query('COMMIT');
       res.json({ success: true });
     } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (_) {}
       console.error(err);
       res.status(500).json({ error: '服務器錯誤' });
+    } finally {
+      client.release();
     }
   });
 };

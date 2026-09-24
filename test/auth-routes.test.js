@@ -131,6 +131,7 @@ test('loginUser accepts email as identifier', async () => {
           email: 'alice@example.com',
           password_hash: 'stored-hash',
           is_admin: false,
+          is_active: true,
           contact: 'alice@example.com',
         }]
       };
@@ -172,6 +173,7 @@ test('storefront login regenerates session and clears stale backoffice flags', a
         email: 'alice@example.com',
         password_hash: 'stored-hash',
         is_admin: false,
+        is_active: true,
         contact: 'alice@example.com',
       }]
     })
@@ -210,7 +212,7 @@ test('storefront login regenerates session and clears stale backoffice flags', a
     }
   };
 
-  await route.handlers[0](req, res);
+  await route.handlers.at(-1)(req, res);
 
   assert.equal(regenerateCalled, true);
   assert.equal(redirected, '/');
@@ -219,4 +221,39 @@ test('storefront login regenerates session and clears stale backoffice flags', a
   assert.equal(req.session.isAdmin, false);
   assert.equal(req.session.isBackoffice, false);
   assert.equal('adminPermissions' in req.session, false);
+});
+
+test('loginUser rejects inactive users before password verification', async () => {
+  let compareCalled = false;
+  const pool = {
+    query: async () => ({
+      rows: [{
+        id: 4,
+        username: 'disabled',
+        email: 'disabled@example.com',
+        password_hash: 'stored-hash',
+        is_admin: false,
+        is_active: false,
+        contact: 'disabled@example.com',
+      }]
+    })
+  };
+  const bcrypt = {
+    compare: async () => {
+      compareCalled = true;
+      return true;
+    }
+  };
+
+  const result = await authRoutes.loginUser(pool, bcrypt, {
+    username: 'disabled',
+    password: 'secret123',
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    status: 400,
+    error: '電郵地址、用戶名或密碼錯誤',
+  });
+  assert.equal(compareCalled, false);
 });
