@@ -40,8 +40,37 @@ function getTransporter() {
     port: cfg.port,
     secure: cfg.secure,
     auth: { user: cfg.user, pass: cfg.pass },
+    // Serverless egress to Zoho is occasionally flaky: bound every phase so a
+    // stalled socket fails fast and our retry loop can open a fresh connection.
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 15000,
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 50,
   });
   return cachedTransporter;
+}
+
+function resetTransporter() {
+  if (cachedTransporter) {
+    try { cachedTransporter.close(); } catch (_) {}
+  }
+  cachedTransporter = null;
+}
+
+// Errors worth a fresh-connection retry (network / TLS / handshake), versus a
+// hard reject (auth or bad address) where retrying cannot help.
+function isRetryableError(err) {
+  if (!err) return false;
+  const code = err.code || '';
+  const retryableCodes = [
+    'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'EPIPE',
+    'EHOSTUNREACH', 'ENETUNREACH', 'EAI_AGAIN', 'ESOCKET',
+  ];
+  if (retryableCodes.includes(code)) return true;
+  const msg = String(err.message || '').toLowerCase();
+  return msg.includes('timeout') || msg.includes('greeting') || msg.includes('socket');
 }
 
 /**
@@ -62,22 +91,35 @@ async function sendMail(message) {
     return null;
   }
 
-  try {
-    const info = await transporter.sendMail({
-      from: `"${cfg.fromName}" <${cfg.fromAddress}>`,
-      to: message.to,
-      cc: message.cc,
-      bcc: message.bcc,
-      subject: message.subject,
-      text: message.text || '',
-      html: message.html || '',
-    });
-    return info;
-  } catch (err) {
-    // Never propagate — email is best-effort.
-    console.error('[mailer] send failed:', err && err.message ? err.message : String(err));
-    return null;
+  const ATTEMPTS = 3;
+  let lastErr = null;
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    try {
+      const transporter = getTransporter();
+      const info = await transporter.sendMail({
+        from: `"${cfg.fromName}" <${cfg.fromAddress}>`,
+        to: message.to,
+        cc: message.cc,
+        bcc: message.bcc,
+        subject: message.subject,
+        text: message.text || '',
+        html: message.html || '',
+      });
+      return info;
+    } catch (err) {
+      lastErr = err;
+      // Drop the (possibly half-open) pool before retrying on a fresh socket.
+      if (isRetryableError(err) && attempt < ATTEMPTS) {
+        resetTransporter();
+        await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
+        continue;
+      }
+      break;
+    }
   }
+  console.error('[mailer] send failed after', ATTEMPTS, 'attempts:',
+    lastErr && lastErr.message ? `${lastErr.code || ''} ${lastErr.message}` : String(lastErr));
+  return null;
 }
 
 /**
