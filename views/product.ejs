@@ -76,7 +76,7 @@
             <div id="mz-product-thumbs" class="grid grid-cols-5 gap-2">
               <% gallery.slice(0, 10).forEach((img, idx) => { %>
                 <button type="button" data-mz-image="<%= img %>" aria-label="切換圖片 <%= idx + 1 %>" class="<%= idx === 0 ? 'ring-2 ring-wine' : 'ring-1 ring-gray-200' %> aspect-square overflow-hidden rounded-2xl bg-ink-850">
-                  <img src="<%= img %>" alt="" loading="lazy" decoding="async" class="w-full h-full object-cover">
+                  <img src="<%= img %>" alt="" loading="lazy" decoding="async" class="w-full h-full object-contain p-0.5">
                 </button>
               <% }) %>
             </div>
@@ -209,7 +209,7 @@
             <div class="group flex flex-col overflow-hidden rounded-2xl border border-ink-600 bg-ink-850 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-gold/40 hover:shadow-lg">
               <a href="/product/<%= relProduct.id %>" class="relative block aspect-square overflow-hidden bg-ink-800" aria-label="<%= relProduct.name %>">
                 <% if (relProduct.image) { %>
-                  <img src="<%= relProduct.image %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                  <img src="<%= relProduct.image %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.03]">
                 <% } else { %>
                   <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-5xl">📦</div>
                 <% } %>
