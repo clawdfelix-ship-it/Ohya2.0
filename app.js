@@ -410,7 +410,6 @@ try {
   require('./routes/reports')(app, pool);
   require('./routes/mzakka-sync')(app, pool);
   require('./routes/admin-settings')(app, pool, requireAdmin);
-  require('./routes/mailDiag')(app); // TEMP — Zoho SMTP 診斷，移除一齊刪
   require('./routes/outbox-jobs')(app, pool);
 
   app.post(cspReportPath, (req, res) => {
