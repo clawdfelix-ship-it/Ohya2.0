@@ -85,7 +85,7 @@
                 <a href="/product/<%= p.id %>" class="flex gap-3 px-5 py-4 transition hover:bg-ink-700/60">
                   <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-ink-700">
                     <% if (p.image) { %>
-                      <img src="<%= p.image %>" alt="<%= p.name %>" loading="lazy" decoding="async" class="h-full w-full rounded-2xl object-cover">
+                      <img src="<%= p.image %>" alt="<%= p.name %>" loading="lazy" decoding="async" class="h-full w-full rounded-2xl object-contain p-1">
                     <% } %>
                   </div>
                   <div class="min-w-0 flex-1">
@@ -116,7 +116,7 @@
                   <div class="group flex flex-col overflow-hidden rounded-2xl border border-ink-600 bg-ink-800 transition hover:-translate-y-1 hover:border-gold/40 hover:shadow-glow">
                     <a href="/product/<%= product.id %>" class="mz-imgwell block aspect-square" aria-label="<%= product.name %>">
                       <% if (product.image) { %>
-                        <img src="<%= product.image %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover transition duration-500 group-hover:scale-105">
+                        <img src="<%= product.image %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-contain p-2 transition duration-500 group-hover:scale-[1.03]">
                       <% } %>
                     </a>
                     <div class="flex flex-1 flex-col p-3">
