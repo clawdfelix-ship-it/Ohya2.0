@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link rel="stylesheet" href="/css/interactions.css">
+  <link rel="stylesheet" href="/css/bottom-sheet.css">
   <%- include('partials/theme-head') %>
   <meta name="csrf-token" content="<%= csrfToken || '' %>">
   <style>
@@ -219,33 +220,9 @@
 
   <%- include('partials/footer') %>
 
-  <%# 手機排序 Action sheet %>
-  <div class="mz-sheet" id="mz-sort-sheet" hidden>
-    <div class="mz-sheet__scrim" data-sheet-close></div>
-    <div class="mz-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="mz-sort-sheet-title">
-      <div class="mz-sheet__grip" aria-hidden="true"></div>
-      <h2 id="mz-sort-sheet-title" class="mz-sheet__title">選擇排序方式</h2>
-      <div class="mz-sheet__options">
-        <% const sortSheetOptions = [
-          ['recommend', '推介排序'],
-          ['price_asc', '價格由低至高'],
-          ['price_desc', '價格由高至低'],
-          ['newest', '最新上架'],
-          ['popular', '人氣排序'],
-        ]; %>
-        <% sortSheetOptions.forEach(([val, label]) => { %>
-          <button type="button" class="mz-sheet__option <%= sort === val ? 'is-current' : '' %>" data-sort-value="<%= val %>">
-            <span><%= label %></span>
-            <% if (sort === val) { %><span class="mz-sheet__tick" aria-label="目前選用">✓</span><% } %>
-          </button>
-        <% }) %>
-      </div>
-      <button type="button" class="mz-sheet__cancel" data-sheet-close>取消</button>
-    </div>
-  </div>
-
   <script id="mz-products" type="application/json"><%- JSON.stringify(products || []) %></script>
   <script src="/js/cart-client.js"></script>
+  <script src="/js/bottom-sheet.js"></script>
 
   <script>
     function verifyAge(isAdult) {
@@ -302,35 +279,50 @@
         });
       });
     })();
-    // 手機排序 Action sheet
+    // 手機排序 BottomSheet（新引擎：half/full detents、拖拽關閉/吸附、彈性進入）
     (function initSortSheet() {
-      const sheet = document.getElementById('mz-sort-sheet');
       const openBtn = document.getElementById('mz-sort-sheet-open');
-      if (!sheet || !openBtn) return;
+      if (!openBtn || typeof BottomSheet === 'undefined') return;
 
-      function openSheet() {
-        sheet.hidden = false;
-        document.body.style.overflow = 'hidden';
-      }
-      function closeSheet() {
-        sheet.hidden = true;
-        document.body.style.overflow = '';
+      const sortOptions = [
+        ['recommend', '推介排序'],
+        ['price_asc', '價格由低至高'],
+        ['price_desc', '價格由高至低'],
+        ['newest', '最新上架'],
+        ['popular', '人氣排序'],
+      ];
+      const current = new URLSearchParams(window.location.search).get('sort') || 'recommend';
+
+      function go(val) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('sort', val);
+        params.set('page', '1');
+        window.location.href = window.location.pathname + '?' + params.toString();
       }
 
-      openBtn.addEventListener('click', openSheet);
-      sheet.addEventListener('click', function (e) {
-        if (e.target.closest('[data-sheet-close]')) closeSheet();
-      });
-      sheet.querySelectorAll('[data-sort-value]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          const params = new URLSearchParams(window.location.search);
-          params.set('sort', String(btn.dataset.sortValue || 'recommend'));
-          params.set('page', '1');
-          window.location.href = window.location.pathname + '?' + params.toString();
+      openBtn.addEventListener('click', function () {
+        const content =
+          '<div class="space-y-2">' +
+          sortOptions.map(function (o) {
+            const active = o[0] === current;
+            return '<button type="button" data-val="' + o[0] + '" ' +
+              'class="flex w-full items-center justify-between rounded-2xl px-4 py-3.5 text-left font-bold transition ' +
+              (active ? 'bg-wine/25 text-gold' : 'bg-white/5 text-gray-100 active:bg-wine/20') + '">' +
+              '<span>' + o[1] + '</span>' + (active ? '<span class="text-gold">✓</span>' : '') +
+              '</button>';
+          }).join('') +
+          '</div>';
+
+        const sheet = BottomSheet.open({
+          title: '選擇排序方式',
+          content: content,
+          detents: ['half', 'full'],
+          startDetent: 'half',
+          spring: true,
         });
-      });
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !sheet.hidden) closeSheet();
+        sheet.bodyEl.querySelectorAll('[data-val]').forEach(function (b) {
+          b.addEventListener('click', function () { go(b.dataset.val); });
+        });
       });
     })();
   </script>
