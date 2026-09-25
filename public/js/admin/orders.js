@@ -546,9 +546,29 @@
           ])
         : el('div', { class: 'text-sm text-gray-500', text: 'WhatsApp：客戶未綁定或未同意通知' }),
       proofBox,
-      el('div', { class: 'font-bold mt-3', text: '商品清單' }),
-      itemsTable,
+      el('div', { class: 'font-bold mt-3', text: '商品清單（可編輯）' }),
+      el('div', { id: 'order-items-edit-host' }, [el('div', { class: 'text-gray-400', text: '載入編輯器…' })]),
     ]));
+
+    // 掛載可編輯商品模組
+    try {
+      const host = document.getElementById('order-items-edit-host');
+      if (host && window.AdminOrderEdit && window.AdminOrderEdit.mountById) {
+        window.AdminOrderEdit.openOrder = (newId) => openOrder(Number(newId));
+        await window.AdminOrderEdit.mountById(host, order.id);
+      }
+    } catch (e) {
+      const host = document.getElementById('order-items-edit-host');
+      if (host) host.textContent = '編輯器載入失敗：' + (e.message || String(e));
+    }
+
+    // 自動捲到訂單詳情頂部，唔使手動拉落底
+    try {
+      const detailCard = els.detail.closest('.admin-card') || els.detail;
+      detailCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) {
+      els.detail.scrollIntoView();
+    }
 
     loadProof();
   }

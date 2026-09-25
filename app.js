@@ -401,6 +401,7 @@ try {
   require('./routes/products-full')(app, pool);
   require('./routes/cart')(app, pool, requireAuth);
   require('./routes/orders')(app, pool, requireAuth, requireAdmin);
+  require('./routes/admin-order-edit')(app, pool);
   require('./routes/members')(app, pool);
   require('./routes/marketing')(app, pool);
   require('./routes/shipping')(app, pool);
