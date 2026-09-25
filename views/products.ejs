@@ -142,7 +142,7 @@
               <div class="mt-auto flex gap-2">
                 <a href="/product/<%= product.id %>" class="flex min-h-[44px] flex-1 items-center justify-center rounded-full bg-wine px-3 text-center text-xs font-bold text-white transition hover:bg-wine active:scale-[0.98]"><%= t('product.cta.details') %></a>
                 <%# 預購模式：商品一律可加購，不顯示缺貨掣 %>
-                <button type="button" data-add-to-cart="<%= product.id %>" data-quantity="1" aria-label="加入購物車" class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-orange-500 px-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"><span class="mzc-label">🛒</span></button>
+                <button type="button" data-add-to-cart data-product-id="<%= product.id %>" data-quantity="1" aria-label="加入購物車" class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-orange-500 px-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"><span class="mzc-label">🛒</span></button>
               </div>
             </div>
           </div>
