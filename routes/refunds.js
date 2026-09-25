@@ -120,20 +120,42 @@ module.exports = function (app, pool) {
       const r = await pool.query(`SELECT * FROM refunds WHERE id=$1`, [id]);
       if (r.rows.length === 0) return res.status(404).json({ error: '退款單不存在' });
       const refund = r.rows[0];
+      if (refund.status !== 'approved') {
+        return res.status(400).json({ error: '僅可完成已批准退款單' });
+      }
 
       const o = await pool.query(`SELECT id, total_amount FROM orders WHERE id=$1`, [refund.order_id]);
       if (o.rows.length === 0) return res.status(404).json({ error: '訂單不存在' });
       const order = o.rows[0];
 
-      const paymentStatus = computePaymentStatusAfterRefund({ orderTotal: order.total_amount, refundAmount: refund.amount });
+      const completedRefunds = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) AS completed_amount
+         FROM refunds
+         WHERE order_id = $1 AND status = 'completed' AND id <> $2`,
+        [refund.order_id, id]
+      );
+      const completedAmount = Number(completedRefunds.rows[0] && completedRefunds.rows[0].completed_amount);
+      const nextCompletedAmount = completedAmount + Number(refund.amount);
+      if (!Number.isFinite(nextCompletedAmount) || nextCompletedAmount > Number(order.total_amount)) {
+        return res.status(400).json({ error: '退款金額超過訂單實付' });
+      }
 
-      await pool.query(
+      const paymentStatus = computePaymentStatusAfterRefund({
+        orderTotal: order.total_amount,
+        refundAmount: nextCompletedAmount,
+      });
+
+      const completed = await pool.query(
         `UPDATE refunds
          SET status='completed', refund_transaction_id=$1, payment_transaction_id=$2,
              processed_by=$3, processed_at=NOW(), note=COALESCE($4, note)
-         WHERE id=$5`,
+         WHERE id=$5 AND status='approved'
+         RETURNING *`,
         [refund_transaction_id, payment_transaction_id || null, req.user.id, note || null, id]
       );
+      if (completed.rows.length === 0) {
+        return res.status(400).json({ error: '僅可完成已批准退款單' });
+      }
 
       await pool.query(
         `UPDATE orders SET payment_status=$1, updated_at=NOW() WHERE id=$2`,

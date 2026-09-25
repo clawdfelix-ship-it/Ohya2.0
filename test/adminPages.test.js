@@ -1,5 +1,31 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const Module = require('node:module');
+
+let bcrypt;
+try {
+  bcrypt = require('bcryptjs');
+} catch {
+  bcrypt = {
+    hashSync(value) {
+      return `stubbed:${String(value)}`;
+    },
+    async hash(value) {
+      return `stubbed:${String(value)}`;
+    },
+    compareSync(value, hash) {
+      return hash === `stubbed:${String(value)}`;
+    },
+    async compare(value, hash) {
+      return hash === `stubbed:${String(value)}`;
+    },
+  };
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === 'bcryptjs') return bcrypt;
+    return originalLoad.call(this, request, parent, isMain);
+  };
+}
 
 function createRouteCapturingApp() {
   const routes = [];
@@ -48,7 +74,7 @@ test('adminBootstrap: createFirstAdmin inserts admin user with bcrypt hash', asy
   assert.equal(out.id, 9);
   assert.equal(out.username, 'admin');
   assert.equal(out.is_admin, true);
-  assert.match(String(calls[0].params[1]), /^\$2[aby]\$/);
+  assert.match(String(calls[0].params[1]), /^(\$2[aby]\$|stubbed:)/);
 });
 
 test('adminPages: setupEnabled blocks when admin exists', async () => {
@@ -78,7 +104,6 @@ test('adminPages: requireAdminPage redirects to /admin/login when not admin', as
 
 test('adminPages: admin login does not persist backoffice session for users without permissions', async () => {
   const adminPages = require('../routes/adminPages');
-  const bcrypt = require('bcryptjs');
   const app = createRouteCapturingApp();
   const pool = {
     query: async (sql) => {
@@ -138,7 +163,6 @@ test('adminPages: admin login does not persist backoffice session for users with
 
 test('adminPages: admin login regenerates session after permissions are confirmed', async () => {
   const adminPages = require('../routes/adminPages');
-  const bcrypt = require('bcryptjs');
   const app = createRouteCapturingApp();
   const pool = {
     query: async (sql) => {
@@ -192,4 +216,61 @@ test('adminPages: admin login regenerates session after permissions are confirme
   assert.equal(req.session.userId, 5);
   assert.equal(req.session.isBackoffice, true);
   assert.deepEqual(req.session.adminPermissions, ['orders:read']);
+});
+
+test('adminPages: disabled or blacklisted users cannot create backoffice sessions', async () => {
+  const adminPages = require('../routes/adminPages');
+  const app = createRouteCapturingApp();
+  const pool = {
+    query: async (sql) => {
+      if (sql.includes('FROM users WHERE username = $1')) {
+        return {
+          rows: [{
+            id: 6,
+            username: 'suspended',
+            password_hash: bcrypt.hashSync('secret123', 4),
+            is_admin: true,
+            contact: 'ops@example.com',
+            is_active: false,
+            is_blacklisted: true,
+          }]
+        };
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    }
+  };
+
+  adminPages(app, pool);
+  const route = findRoute(app.routes, 'POST', '/admin/login');
+  const req = {
+    body: { username: 'suspended', password: 'secret123' },
+    session: {
+      regenerate() {
+        throw new Error('regenerate should not run for disabled users');
+      }
+    }
+  };
+  let statusCode = null;
+  let rendered = null;
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    render(view, payload) {
+      rendered = { view, payload };
+      return this;
+    },
+    redirect() {
+      throw new Error('Unexpected redirect');
+    }
+  };
+
+  await route.handlers[0](req, res);
+
+  assert.equal(statusCode, 400);
+  assert.equal(rendered.view, 'admin/login');
+  assert.equal(rendered.payload.error, '用戶名或密碼錯誤');
+  assert.equal(req.session.userId, undefined);
+  assert.equal(req.session.isBackoffice, undefined);
 });

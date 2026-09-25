@@ -241,34 +241,38 @@ module.exports = function(app, pool) {
     try {
       const { points, order_id } = req.body;
       const userId = req.user.id;
-
-      const userResult = await pool.query('SELECT points FROM users WHERE id = $1', [userId]);
-      const currentPoints = parseInt(userResult.rows[0].points);
-
-      if (points > currentPoints) {
-        return res.status(400).json({ error: '積分不足' });
+      const pointsToRedeem = Number(points);
+      if (!Number.isInteger(pointsToRedeem) || pointsToRedeem <= 0) {
+        return res.status(400).json({ error: '積分必須為正整數' });
       }
 
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
 
-        // Deduct points
-        await client.query(`
-          UPDATE users SET points = points - $1 WHERE id = $2
-        `, [points, userId]);
+        // Use an atomic guarded update so concurrent requests cannot overspend.
+        const updatedUser = await client.query(`
+          UPDATE users
+          SET points = points - $1
+          WHERE id = $2 AND points >= $1
+          RETURNING points
+        `, [pointsToRedeem, userId]);
+        if (updatedUser.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: '積分不足' });
+        }
 
         // Log transaction
         await client.query(`
           INSERT INTO points_transactions (user_id, points, type, description, order_id)
           VALUES ($1, -$2, 'redeem', '積分兌換訂單折扣', $3)
-        `, [userId, points, order_id]);
+        `, [userId, pointsToRedeem, order_id]);
 
         await client.query('COMMIT');
 
         res.json({
           success: true,
-          remaining_points: currentPoints - points
+          remaining_points: Number(updatedUser.rows[0].points)
         });
       } catch (err) {
         await client.query('ROLLBACK');

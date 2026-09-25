@@ -90,3 +90,11 @@ test('fromLegacyRow: 映射現有 DB 值', () => {
   assert.deepEqual(sm.fromLegacyRow({ status: 'pending', payment_status: 'proof_pending' }),
     { cancelled: false, payment: 'proof_pending', fulfillment: 'unfulfilled', state: 'pending' });
 });
+
+test('fromLegacyRow: recognizes both partial refund spellings', () => {
+  assert.deepEqual(sm.fromLegacyRow({ status: 'paid', payment_status: 'partially_refunded' }),
+    { cancelled: false, payment: 'partially_refunded', fulfillment: 'unfulfilled', state: 'paid' });
+
+  assert.deepEqual(sm.fromLegacyRow({ status: 'paid', payment_status: 'partial_refunded' }),
+    { cancelled: false, payment: 'partially_refunded', fulfillment: 'unfulfilled', state: 'paid' });
+});

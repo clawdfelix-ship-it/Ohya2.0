@@ -99,6 +99,9 @@ function fromLegacyRow(row) {
   if (r.payment_status === 'paid') payment = PAYMENT_STATES.PAID;
   else if (r.payment_status === 'proof_pending') payment = PAYMENT_STATES.PROOF_PENDING;
   else if (r.payment_status === 'failed') payment = PAYMENT_STATES.FAILED;
+  else if (r.payment_status === 'partially_refunded' || r.payment_status === 'partial_refunded') {
+    payment = PAYMENT_STATES.PARTIALLY_REFUNDED;
+  }
 
   let fulfillment = FULFILLMENT_STATES.UNFULFILLED;
   if (r.status === 'completed') fulfillment = FULFILLMENT_STATES.DELIVERED;

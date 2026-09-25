@@ -102,13 +102,16 @@ function register(app, pool) {
     if (!pool) return res.status(500).send('Database not configured');
     const { username, password } = req.body || {};
     const result = await pool.query(
-      'SELECT id, username, password_hash, is_admin, contact FROM users WHERE username = $1',
+      'SELECT id, username, password_hash, is_admin, contact, is_active, is_blacklisted FROM users WHERE username = $1',
       [username]
     );
     if (result.rows.length === 0) {
       return res.status(400).render('admin/login', { title: '後台登入', error: '用戶名或密碼錯誤' });
     }
     const user = result.rows[0];
+    if (user.is_active === false || user.is_blacklisted === true) {
+      return res.status(400).render('admin/login', { title: '後台登入', error: '用戶名或密碼錯誤' });
+    }
     const ok = await bcrypt.compare(String(password || ''), user.password_hash);
     if (!ok) {
       return res.status(400).render('admin/login', { title: '後台登入', error: '用戶名或密碼錯誤' });
