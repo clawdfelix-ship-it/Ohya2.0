@@ -321,7 +321,7 @@
         return `
           <div class="bg-ink-850 rounded-xl shadow-sm p-3 sm:p-4 border border-ink-600 flex flex-col sm:flex-row sm:items-center gap-3">
           <div class="w-16 h-16 sm:w-20 sm:h-20 bg-ink-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-            ${item.image ? `<img src="${escapeHtml(item.image)}" loading="lazy" decoding="async" class="w-full h-full object-cover" alt="${escapeHtml(item.name)}">` : '📦'}
+            ${item.image ? `<img src="${escapeHtml(item.image)}" loading="lazy" decoding="async" class="w-full h-full object-contain p-0.5" alt="${escapeHtml(item.name)}">` : '📦'}
           </div>
           <div class="flex-grow min-w-0">
             <a href="${detailHref}" class="font-semibold text-white hover:text-gold line-clamp-2">${escapeHtml(item.name)}</a>
