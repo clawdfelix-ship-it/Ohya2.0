@@ -111,31 +111,32 @@
           <div data-focus-item class="mz-card-enter group flex flex-col overflow-hidden rounded-2xl border border-ink-600 bg-ink-850 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-gold/40 hover:shadow-lg" style="--stagger-i: <%= Math.min(cardIdx, 11) %>">
             <a href="/product/<%= product.id %>" class="relative block aspect-square overflow-hidden bg-ink-800" aria-label="<%= product.name %>">
               <div class="absolute left-2 top-2 z-10 flex flex-col gap-1">
-                <% if (product.originalPrice && product.originalPrice > product.price) { %>
-                  <span class="rounded-full bg-wine px-2 py-1 text-xs font-bold text-white"><%= t('product.badge.deal') %></span>
-                  <span class="rounded-full bg-orange-500 px-2 py-1 text-xs font-bold text-white">-<%= Math.round((1 - product.price / product.originalPrice) * 100) %>%OFF</span>
+                <% const _discPct = product.originalPrice && product.originalPrice > product.price
+                  ? Math.round((1 - product.price / product.originalPrice) * 100) : 0; %>
+                <% if (_discPct >= 1) { %>
+                  <span class="rounded-full bg-orange-500 px-2 py-1 text-xs font-bold text-white shadow">-<%= _discPct %>%OFF</span>
                 <% } %>
                 <%# 預購模式：不追蹤庫存，不顯示缺貨/存貨徽章 %>
               </div>
               <% if (product.image) { %>
-                <img src="<%= product.image %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" style="view-transition-name: pimg-<%= product.id %>">
+                <img src="<%= product.image %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.03]" style="view-transition-name: pimg-<%= product.id %>">
               <% } else { %>
                 <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-6xl">📦</div>
               <% } %>
             </a>
             <div class="flex flex-1 flex-col p-4">
-              <span class="w-fit rounded-full bg-wine/15 px-2 py-1 text-xs font-bold text-gold"><%= product.category %></span>
+              <span class="w-fit max-w-full truncate rounded-full bg-wine/15 px-2 py-1 text-xs font-bold text-gold"><%= product.category %></span>
               <h3 class="mt-3 mb-2 h-10 line-clamp-2 text-sm font-medium leading-tight">
                 <a href="/product/<%= product.id %>" class="text-white transition hover:text-wine-light"><%= product.name %></a>
               </h3>
               <div class="mb-3">
                 <span class="text-xl font-black text-gold"><%= formatPrice(product.price) %></span>
-                <% if (product.originalPrice && product.originalPrice > product.price) { %>
+                <% if (_discPct >= 1) { %>
                   <span class="ml-1 text-xs text-gray-500 line-through"><%= formatPrice(product.originalPrice) %></span>
                 <% } %>
               </div>
-              <div class="mb-3 text-xs text-gold">
-                <span class="font-bold">積分：<%= Math.floor(product.price / 100) %>pt</span><span class="text-gray-500">（1 倍）</span>
+              <div class="mb-3 text-xs">
+                <span class="font-bold text-gold">賺 <%= Math.floor(product.price / 100) %> 積分</span>
               </div>
               <div class="mt-auto flex gap-2">
                 <a href="/product/<%= product.id %>" class="flex min-h-[44px] flex-1 items-center justify-center rounded-full bg-wine px-3 text-center text-xs font-bold text-white transition hover:bg-wine active:scale-[0.98]"><%= t('product.cta.details') %></a>
