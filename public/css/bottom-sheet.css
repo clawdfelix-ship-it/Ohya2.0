@@ -207,6 +207,64 @@
 }
 .bs-toast.is-show { transform: translate(-50%, 0); opacity: 1; }
 
+/* ==========================================================================
+   加購物車按鈕 → morph 成功（pattern 10）
+   外層掣保持寬度（商品卡同行嘅「查看詳情」唔會跳位）；內容 morph 做一個
+   置中圓形：label 淡出 → spinner → 綠底畫對勾 → 還原。
+   ========================================================================== */
+[data-add-to-cart] { position: relative; }
+[data-add-to-cart]:active { transform: scale(.96); }
+
+.mzc-label { transition: opacity .15s ease; }
+
+.mzc-circle {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 38px; height: 38px;
+  margin: -19px 0 0 -19px;
+  border-radius: 999px;
+  background: linear-gradient(135deg,#a01e3d,#7d1530);
+  opacity: 0;
+  transform: scale(.5);
+  transition: opacity .2s ease, transform .25s cubic-bezier(.34,1.5,.5,1), background .3s ease;
+  pointer-events: none;
+}
+.mzc-spinner {
+  position: absolute; inset: 0; margin: auto;
+  width: 18px; height: 18px;
+  border: 3px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 999px;
+  animation: mzcSpin .7s linear infinite;
+}
+.mzc-check {
+  position: absolute; inset: 0; margin: auto;
+  width: 20px; height: 20px;
+  opacity: 0;
+}
+.mzc-check path { stroke-dasharray: 30; stroke-dashoffset: 30; }
+
+/* morphing：label 淡出，紅色圓形彈入顯示 spinner */
+[data-add-to-cart].is-morphing .mzc-label { opacity: 0; }
+[data-add-to-cart].is-morphing .mzc-circle {
+  opacity: 1; transform: scale(1);
+}
+/* added：圓形變綠，spinner 收走，對勾畫出 */
+[data-add-to-cart].is-added .mzc-circle {
+  background: linear-gradient(135deg,#2f9e63,#1f7d4b);
+}
+[data-add-to-cart].is-added .mzc-spinner { opacity: 0; transition: opacity .15s ease; }
+[data-add-to-cart].is-added .mzc-check { opacity: 1; }
+[data-add-to-cart].is-added .mzc-check path {
+  animation: mzcDraw .35s .05s ease forwards;
+}
+@keyframes mzcSpin { to { transform: rotate(360deg); } }
+@keyframes mzcDraw { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-add-to-cart], .mzc-circle, .mzc-label, .mzc-check path { transition: none !important; animation: none !important; }
+}
+
 /* desktop：彈窗都保持底部抽屜，但可選居中（data-present="center"） */
 @media (min-width: 768px) {
   .bs-panel { left: 50%; right: auto; width: 460px; transform: translate(-50%, 100%); }

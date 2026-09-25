@@ -267,18 +267,41 @@
 
       btn.disabled = true;
       var originalHtml = btn.innerHTML;
+
+      // Pattern 10：掣 morph 做圓形 spinner → 綠底畫對勾。外層寬度不變，唔跳版。
+      function buildMorphDom() {
+        btn.innerHTML =
+          '<span class="mzc-label"></span>' +
+          '<span class="mzc-circle">' +
+            '<span class="mzc-spinner"></span>' +
+            '<svg class="mzc-check" viewBox="0 0 24 24" fill="none" ' +
+              'stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">' +
+              '<path d="M4 12.5l5 5L20 6.5"/></svg>' +
+          '</span>';
+        btn.querySelector('.mzc-label').innerHTML = originalHtml;
+      }
+      function resetBtn() {
+        btn.classList.remove('is-morphing', 'is-added');
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+      }
+
+      buildMorphDom();
+      // force layout so the class change animates
+      void btn.offsetWidth;
+      btn.classList.add('is-morphing');
+
       add(product, qty)
         .then(function () {
           toast('已加入購物車！', 'success');
           if (window.MZFluid) window.MZFluid.burstFrom(btn); // 04 BURST
-          btn.innerHTML = '✓ 已加入';
-          setTimeout(function () { btn.innerHTML = originalHtml; }, 1200);
+          btn.classList.remove('is-morphing');
+          btn.classList.add('is-added');
+          setTimeout(resetBtn, 1100);
         })
         .catch(function (err) {
           toast(err.message || '加入購物車失敗', 'error');
-        })
-        .then(function () {
-          btn.disabled = false;
+          resetBtn();
         });
     });
   });
