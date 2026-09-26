@@ -121,4 +121,59 @@ module.exports = function (app, pool, requireAdmin) {
     const rate = req.body && req.body.rate;
     return saveRate(req, res, rate);
   });
+
+  // =========================================================================
+  // 積分系統設定
+  //  GET  /api/admin/settings/points
+  //  POST /api/admin/settings/points
+  // =========================================================================
+  const pointsService = require('../lib/pointsService');
+
+  app.get('/api/admin/settings/points', requireAdmin, async (req, res) => {
+    try {
+      const cfg = await pointsService.loadConfig(pool);
+      res.json(cfg);
+    } catch (err) {
+      console.error('Load points settings failed:', err);
+      res.status(500).json({ error: '讀取積分設定失敗' });
+    }
+  });
+
+  app.post('/api/admin/settings/points', requireAdmin, async (req, res) => {
+    try {
+      const b = req.body || {};
+      const adminId = req.session.userId;
+
+      const toInt = (v, { min = 0 } = {}) => {
+        const n = parseInt(v, 10);
+        if (!Number.isInteger(n) || n < min) return null;
+        return n;
+      };
+
+      const earnHkd   = toInt(b.earnHkd, { min: 1 });
+      const redeemHkd = toInt(b.redeemHkd, { min: 1 });
+      const minRedeem = toInt(b.minRedeem, { min: 0 });
+      const expiryDays= toInt(b.expiryDays, { min: 0 });
+      const enabled   = b.enabled === true || b.enabled === 'true' || b.enabled === 1 || b.enabled === '1';
+
+      const errors = [];
+      if (earnHkd == null) errors.push('「每幾多港幣賺 1 分」要係 ≥1 嘅整數');
+      if (redeemHkd == null) errors.push('「每幾多分兌 HK$1」要係 ≥1 嘅整數');
+      if (minRedeem == null) errors.push('最低兌換分數要係 ≥0 嘅整數');
+      if (expiryDays == null) errors.push('過期日數要係 ≥0 嘅整數（0 = 唔過期）');
+      if (errors.length) return res.status(400).json({ error: errors.join('；') });
+
+      await setSetting(pool, 'points_enabled',    enabled ? '1' : '0', adminId);
+      await setSetting(pool, 'points_earn_hkd',   String(earnHkd), adminId);
+      await setSetting(pool, 'points_redeem_hkd', String(redeemHkd), adminId);
+      await setSetting(pool, 'points_min_redeem', String(minRedeem), adminId);
+      await setSetting(pool, 'points_expiry_days',String(expiryDays), adminId);
+
+      const cfg = await pointsService.loadConfig(pool);
+      res.json({ success: true, config: cfg });
+    } catch (err) {
+      console.error('Save points settings failed:', err);
+      res.status(500).json({ error: '儲存積分設定失敗' });
+    }
+  });
 };

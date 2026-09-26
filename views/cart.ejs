@@ -71,6 +71,32 @@
           <span class="text-gray-400">商品小計</span>
           <span class="font-bold text-white" id="subtotal-price">HK$0</span>
         </div>
+
+        <%# 積分兌換（登入用戶先有） %>
+        <% if (user && pointsCfg && pointsCfg.enabled && pointsBalance > 0) { %>
+        <div class="rounded-xl border border-gold/30 bg-wine/10 p-3" id="points-redeem-box">
+          <label class="flex items-start gap-2">
+            <input type="checkbox" id="use-points-toggle" class="mt-0.5">
+            <span class="flex-1">
+              <span class="block text-sm font-bold text-gold-light">使用積分即時扣錢</span>
+              <span class="block text-xs text-gray-400">你有 <b id="user-points-avail"><%= pointsBalance %></b> 分，每 <%= pointsCfg.redeemHkd %> 分 = HK$1；最低兌換 <%= pointsCfg.minRedeem %> 分</span>
+            </span>
+          </label>
+          <div id="points-redeem-detail" class="mt-2 hidden">
+            <div class="flex items-center gap-2">
+              <input type="number" id="points-redeem-input" min="<%= pointsCfg.minRedeem %>" step="<%= pointsCfg.redeemHkd %>" max="<%= pointsBalance %>" class="w-full rounded-lg border border-gray-600 bg-ink-800 text-gray-100 px-3 py-2 text-sm" placeholder="要兌換嘅分數">
+              <button type="button" id="points-redeem-max" class="shrink-0 rounded-lg bg-ink-700 px-3 py-2 text-xs font-bold text-gold-light">用最多</button>
+            </div>
+            <div id="points-redeem-preview" class="mt-1 text-xs text-gray-400"></div>
+          </div>
+        </div>
+        <% } %>
+
+        <div class="flex justify-between" id="discount-row" style="display:none">
+          <span class="text-gray-400">積分折扣</span>
+          <span class="font-bold text-green-400" id="discount-price">-HK$0</span>
+        </div>
+
         <div class="flex justify-between">
           <span class="text-gray-400">運費</span>
           <span class="font-bold text-orange-600">到付（收貨時支付）</span>
@@ -163,6 +189,74 @@
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const isLoggedIn = document.body.dataset.loggedIn === '1';
     let cart = [];
+
+    // ===================== 積分兌換 =====================
+    // 比率由後端 render 入 JS，避免硬編碼
+    const POINTS_RATE = {
+      redeemHkd: <%- (pointsCfg && pointsCfg.redeemHkd) || 100 %>,
+      minRedeem: <%- (pointsCfg && pointsCfg.minRedeem) || 0 %>,
+    };
+    let pointsDiscount = 0;
+    let appliedRedeemPts = 0;
+
+    function calcPointsDiscount() {
+      const toggle = document.getElementById('use-points-toggle');
+      const input = document.getElementById('points-redeem-input');
+      const preview = document.getElementById('points-redeem-preview');
+      const discRow = document.getElementById('discount-row');
+      const discPrice = document.getElementById('discount-price');
+
+      if (!toggle || !toggle.checked) {
+        pointsDiscount = 0; appliedRedeemPts = 0;
+        if (discRow) discRow.style.display = 'none';
+        return;
+      }
+
+      let pts = parseInt(input.value, 10);
+      if (!Number.isInteger(pts) || pts <= 0) {
+        pointsDiscount = 0; appliedRedeemPts = 0;
+        if (preview) preview.textContent = '請輸入要兌換嘅分數';
+        if (discRow) discRow.style.display = 'none';
+        return;
+      }
+      // 對齊 redeemHkd 整數倍
+      pts = Math.floor(pts / POINTS_RATE.redeemHkd) * POINTS_RATE.redeemHkd;
+      const avail = parseInt(document.getElementById('user-points-avail').textContent, 10);
+      if (pts > avail) pts = avail;
+
+      if (pts < POINTS_RATE.minRedeem) {
+        pointsDiscount = 0; appliedRedeemPts = 0;
+        if (preview) preview.textContent = '最低兌換 ' + POINTS_RATE.minRedeem + ' 分';
+        if (discRow) discRow.style.display = 'none';
+        return;
+      }
+
+      appliedRedeemPts = pts;
+      pointsDiscount = pts / POINTS_RATE.redeemHkd;
+      if (preview) preview.textContent = pts + ' 分 → 即減 HK$' + pointsDiscount.toFixed(2);
+      if (discRow) discRow.style.display = 'flex';
+      if (discPrice) discPrice.textContent = '-HK$' + pointsDiscount.toFixed(2);
+    }
+
+    function bindPointsUI() {
+      const toggle = document.getElementById('use-points-toggle');
+      const detail = document.getElementById('points-redeem-detail');
+      const input = document.getElementById('points-redeem-input');
+      const maxBtn = document.getElementById('points-redeem-max');
+      if (!toggle) return;
+
+      toggle.addEventListener('change', () => {
+        detail.classList.toggle('hidden', !toggle.checked);
+        calcPointsDiscount();
+      });
+      if (input) input.addEventListener('input', calcPointsDiscount);
+      if (maxBtn) maxBtn.addEventListener('click', () => {
+        const avail = parseInt(document.getElementById('user-points-avail').textContent, 10);
+        const maxUsable = Math.floor(avail / POINTS_RATE.redeemHkd) * POINTS_RATE.redeemHkd;
+        input.value = String(maxUsable);
+        calcPointsDiscount();
+      });
+    }
 
     function readGuestCart() {
       return JSON.parse(localStorage.getItem('cart') || '[]');
@@ -347,9 +441,11 @@
         `;
       }).join('');
       
-      document.getElementById('total-price').textContent = formatPriceValue(total);
+      document.getElementById('total-price').textContent = formatPriceValue(total - pointsDiscount);
       const subtotalEl = document.getElementById('subtotal-price');
       if (subtotalEl) subtotalEl.textContent = formatPriceValue(total);
+      calcPointsDiscount();
+      document.getElementById('total-price').textContent = formatPriceValue(total - pointsDiscount);
       setCartCount(cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
     }
     
@@ -489,6 +585,7 @@
             contact_address,
             note,
             payment_method: selectedPayment,
+            points_redeem: appliedRedeemPts > 0 ? appliedRedeemPts : 0,
           }),
         });
 
@@ -503,6 +600,7 @@
     // Initialize
     document.addEventListener('DOMContentLoaded', async function() {
       checkAgeVerification();
+      bindPointsUI();
       try {
         await loadCart();
       } catch (error) {

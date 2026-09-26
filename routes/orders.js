@@ -96,6 +96,8 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
     try {
       const userId = req.session.userId;
       const { contact_name, contact_phone, contact_address, note, payment_method } = req.body;
+      const redeemPointsReq = parseInt(req.body.points_redeem, 10);
+      const usePoints = Number.isInteger(redeemPointsReq) && redeemPointsReq > 0;
 
       if (!contact_name || !contact_phone || !contact_address) {
         return res.status(400).json({ error: '聯絡資訊不全' });
@@ -140,17 +142,72 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
       });
       const subtotalMoney = Number(subtotal.toFixed(2));
 
+      // ---- 積分兌換：伺服器權威驗證（唔信前台） ----
+      let pointsDiscount = 0;
+      let appliedRedeem = 0;
+      let pointsCfg = null;
+      if (usePoints) {
+        const pointsService = require('../lib/pointsService');
+        pointsCfg = await pointsService.loadConfig(pool);
+        if (!pointsCfg.enabled) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: '積分系統已關閉' });
+        }
+        if (redeemPointsReq < pointsCfg.minRedeem) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: '最低兌換 ' + pointsCfg.minRedeem + ' 分' });
+        }
+
+        // 鎖用戶行，查真實結餘
+        const u = await client.query('SELECT points FROM users WHERE id=$1 FOR UPDATE', [userId]);
+        const balance = parseInt(u.rows[0] && u.rows[0].points || 0, 10);
+        if (redeemPointsReq > balance) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: '積分結餘不足' });
+        }
+
+        pointsDiscount = pointsService.pointsToHkd(redeemPointsReq, pointsCfg);
+        // 折扣唔可以超過商品小計（運費到付，唔包運費）；貼近可扣上限時向下取整到 redeemHkd 整數倍
+        if (pointsDiscount > subtotalMoney) {
+          pointsDiscount = subtotalMoney;
+        }
+        // 保證折扣對應嘅分數係 redeemHkd 整數倍（向下取整，唔會多扣）
+        const redeemHkd = pointsCfg.redeemHkd;
+        appliedRedeem = Math.floor(pointsDiscount * redeemHkd);
+        if (appliedRedeem > balance) appliedRedeem = balance;
+        pointsDiscount = Number((appliedRedeem / redeemHkd).toFixed(2));
+
+        if (appliedRedeem <= 0 || pointsDiscount <= 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: '積分兌換金額有誤' });
+        }
+      }
+
+      const totalMoney = Number((subtotalMoney - pointsDiscount).toFixed(2));
+
       const orderResult = await client.query(`
         INSERT INTO orders
           (user_id, contact_name, contact_phone, contact_address, note,
-           subtotal_amount, shipping_fee, is_cod, total_amount,
+           subtotal_amount, shipping_fee, discount_amount, coupon_discount, is_cod, total_amount,
            payment_method_code, payment_status, status)
-        VALUES ($1, $2, $3, $4, $5, $6, 0, true, $6, $7, 'pending', 'pending')
+        VALUES ($1, $2, $3, $4, $5, $6, 0, $7, 0, true, $8, $9, 'pending', 'pending')
         RETURNING id
       `, [userId, contact_name, contact_phone, contact_address, note || null,
-           subtotalMoney, paymentCode]);
+           subtotalMoney, pointsDiscount, totalMoney, paymentCode]);
 
       const orderId = orderResult.rows[0].id;
+
+      // 積分兌換落帳：同一交易內扣 users.points + 寫流水（冪等 type='redeem'）
+      if (usePoints && appliedRedeem > 0) {
+        const pointsService = require('../lib/pointsService');
+        await pointsService.postEntry(client, {
+          userId,
+          points: -appliedRedeem,
+          type: 'redeem',
+          description: '結帳兌換即減 HK$' + pointsDiscount.toFixed(2),
+          orderId,
+        });
+      }
 
       // 人睇嘅訂單編號 OHYA-YYMMDD-000123
       const now = new Date();
@@ -183,7 +240,9 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
           contact_phone: contact_phone,
           contact_address: contact_address,
           note: note || null,
-          total_amount: subtotalMoney,
+          subtotal_amount: subtotalMoney,
+          points_discount: pointsDiscount,
+          total_amount: totalMoney,
           payment_method_code: paymentCode,
           email: (userEmailRow.rows[0] && userEmailRow.rows[0].email) || null,
         };
@@ -326,10 +385,22 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
       }
       const adminId = req.session.userId;
       const base = '後台手動更新狀態';
+      const pointsService = require('../lib/pointsService');
+      const pointsCfg = await pointsService.loadConfig(pool);
       const svc = createOrderService(client);
       let derived;
+      let pointsResult = null;
 
       await client.query('BEGIN');
+      const orderRowR = await client.query(
+        'SELECT * FROM orders WHERE id = $1 FOR UPDATE',
+        [orderId]
+      );
+      if (!orderRowR.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: '訂單不存在' });
+      }
+      const orderRow = orderRowR.rows[0];
       if (status === 'paid') {
         derived = await svc.transitionPayment(orderId, 'paid', { note: base + '→已付款', processedBy: adminId });
         await client.query('UPDATE orders SET paid_at=COALESCE(paid_at,NOW()) WHERE id=$1', [orderId]);
@@ -355,15 +426,19 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
           { note: base + '→派送中', processedBy: adminId });
       } else if (status === 'completed') {
         derived = await svc.completeOrder(orderId, { note: base + '→已完成', processedBy: adminId });
+        // 完成即發分（冪等）
+        pointsResult = await pointsService.awardOrderPoints(client, orderRow, pointsCfg);
       } else if (status === 'cancelled') {
         derived = await svc.cancelOrder(orderId, { note: base + '→已取消', processedBy: adminId });
+        // 取消即追回之前嘅發分（若有）
+        pointsResult = await pointsService.revokeOrderPoints(client, orderRow, pointsCfg);
       } else {
         throw Object.assign(new Error('唔可以手動設為待付款；如需重置請用駁回憑證'), { code: 'INVALID_ORDER_TRANSITION' });
       }
       await client.query('COMMIT');
 
       const result = await pool.query('SELECT * FROM orders WHERE id=$1', [orderId]);
-      res.json({ success: true, status: derived, order: result.rows[0] });
+      res.json({ success: true, status: derived, order: result.rows[0], points: pointsResult });
     } catch (err) {
       await client.query('ROLLBACK').catch(()=>{});
       if (err && (err.code === 'INVALID_ORDER_TRANSITION' || err.code === 'NOTHING_TO_SHIP')) {

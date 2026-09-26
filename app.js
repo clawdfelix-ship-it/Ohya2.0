@@ -1255,13 +1255,30 @@ app.use(async (req, res, next) => {
   });
   
   // 購物車頁
-  app.get('/cart', (req, res) => {
-    res.render('cart', {
+  app.get('/cart', async (req, res) => {
+    const sessUser = req.session && req.session.userId;
+    const renderOpts = {
       title: '購物車 - OHYA2.0',
-      user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
+      user: sessUser ? { id: sessUser, isAdmin: req.session.isAdmin } : null,
       formatPrice: formatPrice,
       paymentInfo: getPaymentInfo(),
-    });
+      pointsCfg: { enabled: false },
+      pointsBalance: 0,
+    };
+    try {
+      if (sessUser && connectionString) {
+        const pointsService = require('./lib/pointsService');
+        const [cfg, u] = await Promise.all([
+          pointsService.loadConfig(pool),
+          pool.query('SELECT points FROM users WHERE id=$1', [sessUser]),
+        ]);
+        renderOpts.pointsCfg = cfg;
+        renderOpts.pointsBalance = parseInt(u.rows[0] && u.rows[0].points || 0, 10);
+      }
+    } catch (e) {
+      console.error('Cart points load failed:', e.message);
+    }
+    res.render('cart', renderOpts);
   });
 
   // 訂單確認頁（落單成功後跳轉；只准本人睇）
@@ -1326,10 +1343,11 @@ app.use(async (req, res, next) => {
   app.get('/account', requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId;
-      const userResult = await pool.query(
-        'SELECT id, username, email, created_at FROM users WHERE id=$1',
-        [userId]
-      );
+      const pointsService = require('./lib/pointsService');
+      const [userResult, pointsCfg] = await Promise.all([
+        pool.query('SELECT id, username, email, created_at, points FROM users WHERE id=$1', [userId]),
+        pointsService.loadConfig(pool),
+      ]);
       const accountUser = userResult.rows[0];
       if (!accountUser) {
         req.session.destroy();
@@ -1359,11 +1377,19 @@ app.use(async (req, res, next) => {
         FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 5
       `, [userId]);
 
+      // 積分流水（最近 10 筆）
+      const pointsHistory = pointsCfg.enabled
+        ? await pointsService.getHistory(pool, userId, { page: 1, pageSize: 10 })
+        : { rows: [], total: 0 };
+
       res.render('account', {
         user: accountUser,
         accountUser,
         stats,
         recentOrders: recentResult.rows,
+        pointsBalance: parseInt(accountUser.points || 0, 10),
+        pointsHistory: pointsHistory.rows,
+        pointsCfg,
         title: '會員中心',
         categories: res.locals.categories,
         categoryOptions: res.locals.categories,

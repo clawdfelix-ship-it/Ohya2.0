@@ -28,6 +28,14 @@
     newPassword: $('#user-new-password'),
     passwordConfirm: $('#user-password-confirm'),
     passwordCancel: $('#user-password-cancel'),
+
+    pointsPanel: $('#user-points-panel'),
+    pointsBalance: $('#user-points-balance'),
+    pointsDelta: $('#user-points-delta'),
+    pointsReason: $('#user-points-reason'),
+    pointsApply: $('#user-points-apply'),
+    pointsRefresh: $('#user-points-refresh'),
+    pointsTbody: $('#user-points-tbody'),
   };
 
   function setError(msg) {
@@ -76,10 +84,100 @@
     if (els.role) els.role.value = u && u.role_id ? String(u.role_id) : '';
     els.password.value = '';
     els.passwordWrap.style.display = isNew ? '' : 'none';
+
+    // 積分：現有用戶即載入結餘＋流水；新用戶清空
+    if (!isNew && u && u.id) {
+      loadPoints(u.id).catch((e) => renderPointsError(e.message));
+    } else {
+      clearPoints();
+    }
   }
 
   function clearForm() {
     fillForm({ id: '', username: '', email: '', phone: '', whatsapp: '', is_active: true, is_blacklisted: false, is_admin: false });
+  }
+
+  // ===================== 積分管理 =====================
+  const TYPE_LABEL = {
+    earn: '賺取', redeem: '兌換', adjust: '調整',
+    revoke: '追回', expire: '過期', birthday: '生日',
+  };
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function fmtTime(t) {
+    if (!t) return '';
+    try { return new Date(t).toLocaleString('zh-HK', { month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false }); }
+    catch (_) { return String(t); }
+  }
+  function clearPoints() {
+    if (els.pointsBalance) els.pointsBalance.textContent = '—';
+    if (els.pointsDelta) els.pointsDelta.value = '';
+    if (els.pointsReason) els.pointsReason.value = '';
+    if (els.pointsTbody) {
+      els.pointsTbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-3">請先選擇用戶</td></tr>';
+    }
+  }
+  function renderPointsError(msg) {
+    if (els.pointsTbody) {
+      els.pointsTbody.innerHTML = '<tr><td colspan="4" class="text-center text-red-500 py-3">' + escHtml(msg) + '</td></tr>';
+    }
+  }
+  function renderPoints(balance, rows) {
+    if (els.pointsBalance) els.pointsBalance.textContent = String(balance);
+    if (!els.pointsTbody) return;
+    if (!rows || !rows.length) {
+      els.pointsTbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-3">暫無積分流水</td></tr>';
+      return;
+    }
+    els.pointsTbody.innerHTML = rows.map((r) => {
+      const pts = parseInt(r.points, 10);
+      const color = pts > 0 ? '#065f46' : '#991b1b';
+      const sign = pts > 0 ? '+' : '';
+      return '<tr>' +
+        '<td>' + escHtml(fmtTime(r.created_at)) + '</td>' +
+        '<td style="color:' + color + ';font-weight:700">' + sign + pts + '</td>' +
+        '<td>' + escHtml(TYPE_LABEL[r.type] || r.type) + '</td>' +
+        '<td>' + escHtml(r.description || '') + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+  async function loadPoints(userId) {
+    const data = await adminApiRequest('/api/admin/users/' + encodeURIComponent(userId) + '/points');
+    renderPoints(data.balance, data.history ? data.history.rows : []);
+  }
+  if (els.pointsApply) {
+    els.pointsApply.addEventListener('click', async () => {
+      const id = (els.id.value || '').trim();
+      if (!id) { setError('請先揀一個用戶'); return; }
+      const points = parseInt(els.pointsDelta.value, 10);
+      const reason = (els.pointsReason.value || '').trim();
+      if (!Number.isInteger(points) || points === 0) { setError('請輸入非零整數（減分用負數）'); return; }
+      if (!reason) { setError('必須填寫調整原因'); return; }
+      setError('');
+      els.pointsApply.disabled = true;
+      try {
+        const data = await adminApiRequest('/api/admin/users/' + encodeURIComponent(id) + '/points', {
+          method: 'POST',
+          json: { points, reason },
+        });
+        els.pointsDelta.value = '';
+        els.pointsReason.value = '';
+        renderPoints(data.balance, data.history ? data.history.rows : []);
+      } catch (e) {
+        setError(e && e.message ? e.message : String(e));
+      } finally {
+        els.pointsApply.disabled = false;
+      }
+    });
+  }
+  if (els.pointsRefresh) {
+    els.pointsRefresh.addEventListener('click', () => {
+      const id = (els.id.value || '').trim();
+      if (id) loadPoints(id).catch((e) => renderPointsError(e.message));
+    });
   }
 
   async function loadUsers() {

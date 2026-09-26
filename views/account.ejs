@@ -42,6 +42,52 @@
       </div>
     </section>
 
+    <!-- 積分卡 -->
+    <% if (pointsCfg && pointsCfg.enabled) { %>
+    <% const ptTypeLabels = { earn:'賺取', redeem:'兌換', adjust:'調整', revoke:'追回', expire:'過期', birthday:'生日' }; %>
+    <section class="mb-6 overflow-hidden rounded-3xl border border-gold/40 bg-gradient-to-br from-ink-850 to-ink-900 shadow-glow">
+      <div class="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[0.28em] text-gold">My Points</p>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span class="text-4xl font-black text-gold-light"><%= pointsBalance %></span>
+            <span class="text-sm text-gray-400">可用積分</span>
+          </div>
+          <p class="mt-2 text-xs text-gray-500">
+            每消費 HK$<%= pointsCfg.earnHkd %> 賺 1 分；每 <%= pointsCfg.redeemHkd %> 分喺結帳即減 HK$1。
+          </p>
+        </div>
+        <a href="/cart" class="rounded-full bg-wine px-6 py-3 text-sm font-bold text-white shadow hover:bg-wine-light">去購物車用積分</a>
+      </div>
+      <div class="border-t border-ink-700 px-6 py-4">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-sm font-black text-white">積分流水</h2>
+          <span class="text-xs text-gray-500">最近 <%= pointsHistory.length %> 筆</span>
+        </div>
+        <% if (!pointsHistory.length) { %>
+          <div class="py-6 text-center text-sm text-gray-500">仲未有積分記錄，完成訂單後就會喺呢度顯示</div>
+        <% } else { %>
+        <div class="divide-y divide-ink-700">
+          <% pointsHistory.forEach(function(pt){
+            const pts = parseInt(pt.points, 10);
+          %>
+            <div class="flex items-center justify-between gap-3 py-2.5 text-sm">
+              <div class="min-w-0">
+                <div class="font-semibold text-gray-200"><%= ptTypeLabels[pt.type] || pt.type %></div>
+                <div class="truncate text-xs text-gray-500"><%= pt.description || '' %></div>
+              </div>
+              <div class="shrink-0 text-right">
+                <div class="font-black <%= pts > 0 ? 'text-green-300' : 'text-red-300' %>"><%= pts > 0 ? '+' : '' %><%= pts %></div>
+                <div class="text-[11px] text-gray-500"><%= new Date(pt.created_at).toLocaleDateString('zh-HK') %></div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+        <% } %>
+      </div>
+    </section>
+    <% } %>
+
     <!-- 訂單狀態統計 -->
     <section class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
       <% const cards = [

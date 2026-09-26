@@ -589,4 +589,61 @@ module.exports = function(app, pool) {
     }
   });
 
+  // =========================================================================
+  // 後台積分管理
+  //  GET  /api/admin/users/:id/points      — 結餘 + 流水
+  //  POST /api/admin/users/:id/points      — 人手加/減分（要寫原因）
+  // =========================================================================
+  const pointsService = require('../lib/pointsService');
+
+  app.get('/api/admin/users/:id/points', requireSuperAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id, 10);
+      if (!Number.isInteger(userId)) return res.status(400).json({ error: '無效用戶 ID' });
+
+      const u = await pool.query('SELECT points FROM users WHERE id = $1', [userId]);
+      if (!u.rows.length) return res.status(404).json({ error: '用戶不存在' });
+
+      const history = await pointsService.getHistory(pool, userId, {
+        page: parseInt(req.query.page, 10) || 1,
+        pageSize: parseInt(req.query.pageSize, 10) || 15,
+      });
+      res.json({ balance: parseInt(u.rows[0].points, 10), history });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: '讀取積分資料失敗' });
+    }
+  });
+
+  app.post('/api/admin/users/:id/points', requireSuperAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id, 10);
+      if (!Number.isInteger(userId)) return res.status(400).json({ error: '無效用戶 ID' });
+
+      const points = parseInt(req.body && req.body.points, 10);
+      const reason = String((req.body && req.body.reason) || '').trim();
+      if (!Number.isInteger(points) || points === 0) {
+        return res.status(400).json({ error: '請輸入非零整數（減分用負數）' });
+      }
+      if (!reason) {
+        return res.status(400).json({ error: '必須填寫調整原因，方便日後追溯' });
+      }
+
+      const out = await pointsService.adjustPoints(pool, {
+        userId,
+        points,
+        reason,
+        adminId: req.session.userId,
+      });
+      const history = await pointsService.getHistory(pool, userId, { page: 1, pageSize: 15 });
+      res.json({ success: true, balance: out.balance, result: out.result, history });
+    } catch (err) {
+      if (err && err.code === 'POINTS_INSUFFICIENT') {
+        return res.status(400).json({ error: '該用戶積分結餘不足，無法扣咁多分' });
+      }
+      console.error(err);
+      res.status(500).json({ error: '調整積分失敗' });
+    }
+  });
+
 };

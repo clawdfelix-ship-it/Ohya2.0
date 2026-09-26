@@ -96,6 +96,39 @@
           <button id="user-password-cancel" class="admin-btn-secondary" type="button">取消</button>
         </div>
       </div>
+
+      <!-- 積分管理（要選中用戶先操作） -->
+      <div class="mt-4 rounded-lg border border-gray-200 p-3" id="user-points-panel">
+        <div class="flex items-center justify-between mb-2">
+          <div class="font-bold">積分管理</div>
+          <div class="text-sm">當前結餘：<span id="user-points-balance" class="font-black text-[#008060]">—</span> 分</div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <label class="text-sm block">
+            <div class="mb-1">加 / 減分數（減分用負數）</div>
+            <input id="user-points-delta" type="number" step="1" class="admin-input w-full" placeholder="例如 200 或 -50" />
+          </label>
+          <label class="text-sm block">
+            <div class="mb-1">原因（必寫，方便日後追溯）</div>
+            <input id="user-points-reason" class="admin-input w-full" placeholder="例如：投訴補償 / 線下活動" />
+          </label>
+        </div>
+        <div class="flex gap-2 mb-3">
+          <button id="user-points-apply" class="admin-btn" type="button">執行調整</button>
+          <button id="user-points-refresh" class="admin-btn-secondary" type="button">刷新流水</button>
+        </div>
+        <div class="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">最近積分流水</div>
+        <div class="max-h-48 overflow-auto rounded border border-gray-200">
+          <table class="admin-table text-xs">
+            <thead>
+              <tr><th>時間</th><th>分</th><th>類型</th><th>說明</th></tr>
+            </thead>
+            <tbody id="user-points-tbody">
+              <tr><td colspan="4" class="text-center text-gray-400 py-3">請先選擇用戶</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
