@@ -144,7 +144,7 @@
 
   <%- include('partials/footer') %>
 
-  <script id="mz-products" type="application/json"><%- JSON.stringify(rankingProducts || []) %></script>
+  <script id="mz-products" type="application/json"><%- JSON.stringify(Object.values([...(rankingProducts || []), ...(newProducts || [])].reduce((m, p) => { if (p && p.id != null) m[p.id] = p; return m; }, {}))) %></script>
   <script src="/js/cart-client.js"></script>
 
   <script>
