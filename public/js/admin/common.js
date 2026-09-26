@@ -68,9 +68,39 @@ function el(tag, attrs = {}, children = []) {
   return node;
 }
 
+// Segmented control：options=[{value,text}]，onChange(value)；回傳 {root, value, set, busy}
+function createSegmented(options, currentValue, onChange) {
+  const root = document.createElement('div');
+  root.className = 'admin-seg';
+  root.setAttribute('role', 'group');
+  const btns = [];
+  function set(value, quiet) {
+    btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === String(value))));
+    if (!quiet && typeof onChange === 'function') onChange(value);
+  }
+  (options || []).forEach((o) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'seg-btn';
+    b.dataset.value = o.value;
+    b.textContent = o.text;
+    b.setAttribute('aria-pressed', String(o.value === currentValue));
+    b.addEventListener('click', () => { if (!root.classList.contains('is-busy')) set(o.value); });
+    root.appendChild(b);
+    btns.push(b);
+  });
+  return {
+    root,
+    set,
+    get value() { const x = btns.find((b) => b.getAttribute('aria-pressed') === 'true'); return x ? x.dataset.value : null; },
+    busy(on) { root.classList.toggle('is-busy', !!on); },
+  };
+}
+
 window.AdminCommon = {
   $,
   el,
+  createSegmented,
   adminEscapeHtml,
   adminRenderJson,
   adminApiGet,

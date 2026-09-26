@@ -1,14 +1,12 @@
 (async function () {
-  const { $, el, adminApiRequest } = window.AdminCommon;
+  const { $, el, adminApiRequest, createSegmented } = window.AdminCommon;
 
   const els = {
     start: $('#rp-start'),
     end: $('#rp-end'),
     group: $('#rp-group'),
     groupWrap: $('#rp-group-wrap'),
-    last7: $('#rp-last-7'),
-    last30: $('#rp-last-30'),
-    last90: $('#rp-last-90'),
+    rangeSeg: $('#rp-range-seg'),
     refresh: $('#rp-refresh'),
     exportBtn: $('#rp-export'),
     error: $('#rp-error'),
@@ -513,9 +511,15 @@
     });
   });
 
-  if (els.last7) els.last7.addEventListener('click', () => { setRangeLastDays(7); loadActiveTab(); });
-  if (els.last30) els.last30.addEventListener('click', () => { setRangeLastDays(30); loadActiveTab(); });
-  if (els.last90) els.last90.addEventListener('click', () => { setRangeLastDays(90); loadActiveTab(); });
+  if (els.rangeSeg) {
+    const seg = createSegmented([
+      { value: '7', text: '最近 7 日' },
+      { value: '30', text: '最近 30 日' },
+      { value: '90', text: '最近 90 日' },
+    ], '30', (v) => { setRangeLastDays(Number(v)); loadActiveTab(); });
+    els.rangeSeg.appendChild(seg.root);
+    setRangeLastDays(30); // 預設 30 日
+  }
   if (els.refresh) els.refresh.addEventListener('click', () => loadActiveTab());
   if (els.exportBtn) els.exportBtn.addEventListener('click', () => exportOrdersCsv());
 

@@ -1,5 +1,5 @@
 (async function () {
-  const { $, el, adminApiRequest } = window.AdminCommon;
+  const { $, el, adminApiRequest, createSegmented } = window.AdminCommon;
 
   const els = {
     q: $('#orders-q'),
@@ -633,7 +633,19 @@
     els.bulkShipany.addEventListener('click', () => bulkGenerateShipanyLabels().catch((e) => setError(e.message)));
   }
 
+  // 將狀態 <select> 升級做 Segmented control；隱藏 select 保留同步 value，其他代碼照用
+  function upgradeStatusFilter() {
+    const opts = Array.from(els.status.options).map((o) => ({ value: o.value, text: o.textContent }));
+    const seg = createSegmented(opts, els.status.value, (v) => {
+      els.status.value = v;
+      els.status.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    els.status.classList.add('hidden');
+    els.status.parentNode.insertBefore(seg.root, els.status.nextSibling);
+  }
+
   try {
+    upgradeStatusFilter();
     await loadOrders();
   } catch (e) {
     setError(e && e.message ? e.message : String(e));
