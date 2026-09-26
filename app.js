@@ -648,11 +648,14 @@ app.use(async (req, res, next) => {
   } catch (_) {
     res.locals.pointsCfg = null;
   }
-  res.locals.pointsForDisplay = (price) => {
+  // 傳入嘅 product.price 係 storefront 港幣「仙 cents」（DB HKD 元 × 100）；
+  // 賺分要以 HKD 元計，先 /100 先除以賺分率。
+  res.locals.pointsForDisplay = (priceCents) => {
     const cfg = res.locals.pointsCfg;
     if (!cfg || !cfg.enabled) return 0;
-    const denom = Number(cfg.earnHkd) || 100;
-    return Math.floor((Number(price) || 0) / denom);
+    const denom = Number(cfg.earnHkd) || 1;
+    const hkd = (Number(priceCents) || 0) / 100;
+    return Math.floor(hkd / denom);
   };
   // Header 分組下拉/autocomplete 嘅安全預設，避免其他頁面冇傳變數時 render 爆
   res.locals.selectedCategorySlug = 'all';
