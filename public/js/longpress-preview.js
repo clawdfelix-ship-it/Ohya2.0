@@ -98,7 +98,7 @@
 
     var html = '' +
       '<div class="flex flex-col items-center gap-3">' +
-        (imgSrc ? '<img src="' + escAttr(imgSrc) + '" alt="" class="h-44 w-44 rounded-2xl object-contain p-1" />' : '') +
+        (imgSrc ? '<div class="flex h-72 w-full items-center justify-center rounded-2xl bg-ink-850 p-3"><img src="' + escAttr(imgSrc) + '" alt="" class="max-h-full max-w-full object-contain" /></div>' : '') +
         '<div class="w-full text-center">' +
           '<div class="text-xs text-gray-500">' + escAttr(cat && cat !== priceEl ? cat.textContent.trim() : '') + '</div>' +
           '<div class="mt-1 text-base font-bold text-white line-clamp-2">' + escAttr(nameText) + '</div>' +
@@ -115,8 +115,8 @@
     var sheet = BottomSheet.open({
       title: '快速預覽',
       content: html,
-      detents: ['half'],
-      startDetent: 'half',
+      detents: ['full'],
+      startDetent: 'full',
       spring: true,
     });
 
