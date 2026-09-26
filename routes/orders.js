@@ -290,26 +290,30 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
     try {
       const userId = req.session.userId;
       const { id } = req.params;
-
-      // Check order exists and belongs to user
-      const orderCheck = await pool.query('SELECT * FROM orders WHERE id = $1 AND user_id = $2', [id, userId]);
-      if (orderCheck.rows.length === 0) {
-        return res.status(404).json({ error: '訂單不存在' });
-      }
-
-      const order = orderCheck.rows[0];
-      if (!['pending', 'paid'].includes(order.status)) {
-        return res.status(400).json({ error: '此訂單無法取消' });
-      }
-
-      // Start transaction to restore stock
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
+        const orderCheck = await client.query(
+          'SELECT * FROM orders WHERE id = $1 AND user_id = $2 FOR UPDATE',
+          [id, userId]
+        );
+        if (orderCheck.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: '訂單不存在' });
+        }
 
-        // 預購模式：取消訂單不退還庫存
-        // Update order status
-        await client.query('UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2', ['cancelled', id]);
+        const order = orderCheck.rows[0];
+        if (!['pending', 'paid'].includes(order.status)) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: '此訂單無法取消' });
+        }
+
+        const svc = createOrderService(client);
+        const pointsService = require('../lib/pointsService');
+
+        // 預購模式：取消訂單不退還庫存，但要退回落單時已兌換扣走嘅積分。
+        await svc.cancelOrder(id, { note: '會員自行取消訂單', processedBy: userId });
+        await pointsService.revokeOrderPoints(client, order);
 
         await client.query('COMMIT');
         res.json({ success: true });
