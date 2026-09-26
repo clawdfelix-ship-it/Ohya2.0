@@ -46,6 +46,36 @@
     cancelled: 'admin-badge badge-cancelled',
   };
 
+  // ---- Timeline（同 lib/orderTimeline.js 一致，前端可由 order 物件即算）----
+  function buildOrderTimeline(order) {
+    const status = String(order.status || '');
+    const payment = String(order.payment_status || 'pending');
+    const isCancelled = status === 'cancelled';
+    const paidDone = !!order.paid_at || payment === 'paid';
+    const shippedDone = !!order.shipped_at || ['shipped','shipping','delivered','completed'].includes(status);
+    const deliveredDone = !!order.delivered_at || ['delivered','completed'].includes(status);
+
+    const steps = [
+      { label: '已下單', st: 'done', time: fmtTime(order.created_at) },
+      { label: '已付款', st: paidDone ? 'done' : 'pending', time: paidDone ? (fmtTime(order.paid_at) || '已確認收款') : '等待付款 / 核實' },
+      { label: '已出貨', st: shippedDone ? (deliveredDone ? 'done' : 'current') : 'pending', time: shippedDone ? (fmtTime(order.shipped_at) || '配送中') : '未出貨' },
+      { label: '已送達', st: deliveredDone ? 'done' : (shippedDone ? 'current' : 'pending'), time: deliveredDone ? (fmtTime(order.delivered_at) || '已完成') : (shippedDone ? '等待送達' : '未送達') },
+    ];
+    if (isCancelled) steps.forEach((s, i) => { s.st = 'cancelled'; s.time = i === 0 ? fmtTime(order.created_at) : '訂單已取消'; });
+
+    const ul = el('ul', { class: 'admin-timeline' }, steps.map((s) =>
+      el('li', { class: 'tl-item ' + s.st }, [
+        el('span', { class: 'tl-dot' }),
+        el('div', { class: 'tl-label', text: s.label }),
+        el('div', { class: 'tl-time', text: s.time || '' }),
+      ])
+    ));
+    return el('div', { class: 'space-y-2' }, [
+      el('div', { class: 'font-bold text-sm', text: '訂單進度' + (isCancelled ? '（已取消）' : '') }),
+      ul,
+    ]);
+  }
+
   function fmtTime(iso) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -512,9 +542,14 @@
       } catch(e){ setError(e.message||String(e)); rejectConfirm.disabled=false; }
     };
 
+    const timelineBox = el('div', { class: 'rounded-lg border border-gray-200 bg-gray-50/60 p-3' }, [
+      buildOrderTimeline(order),
+    ]);
+
     els.detail.textContent = '';
     els.detail.appendChild(el('div', { class: 'space-y-2' }, [
       el('div', { class: 'font-bold', text: `訂單 #${order.id}` }),
+      timelineBox,
       el('div', { text: `客戶：${order.username || ''} ${order.contact ? '(' + order.contact + ')' : ''}` }),
       el('div', { text: `金額：${money(order.total_amount)}` }),
       el('div', { text: `狀態：${statusLabel[order.status] || order.status}` }),

@@ -212,6 +212,82 @@
 .badge-inactive  { background: #f1f2f3; color: #6d7175; border-color: #dfe3e8; }
 .badge-danger    { background: var(--ad-danger-bg); color: #a8250b; border-color: #f5b9ad; }
 
+/* ---------- Switch（列表即時狀態切換）---------- */
+.admin-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  background: #c7ccd2;
+  transition: background 0.18s ease;
+  vertical-align: middle;
+}
+.admin-switch .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  transition: transform 0.18s ease;
+}
+.admin-switch[aria-checked="true"] { background: var(--ad-primary); }
+.admin-switch[aria-checked="true"] .knob { transform: translateX(16px); }
+.admin-switch.is-busy { opacity: 0.55; pointer-events: none; }
+.admin-switch:focus-visible {
+  outline: 2px solid var(--ad-primary);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-switch, .admin-switch .knob { transition: none; }
+}
+
+/* ---------- Timeline（訂單狀態時間軸）---------- */
+.admin-timeline { list-style: none; margin: 0; padding: 0; }
+.admin-timeline .tl-item {
+  position: relative;
+  padding: 0 0 1.1rem 1.6rem;
+  border-left: 2px solid #e3e6ea;
+  margin-left: 7px;
+}
+.admin-timeline .tl-item:last-child { padding-bottom: 0; border-left-color: transparent; }
+.admin-timeline .tl-dot {
+  position: absolute;
+  left: -8px;
+  top: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #c7ccd2;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #d6dade;
+}
+.admin-timeline .tl-label { font-weight: 600; font-size: 0.85rem; color: #1f2329; }
+.admin-timeline .tl-time { font-size: 0.75rem; color: #8a9099; margin-top: 1px; }
+.admin-timeline .tl-item.done .tl-dot { background: var(--ad-primary); box-shadow: 0 0 0 1px #9fd8c5; }
+.admin-timeline .tl-item.done .tl-label { color: var(--ad-primary-active); }
+.admin-timeline .tl-item.current .tl-dot {
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--ad-primary);
+  animation: tl-pulse 1.6s ease-in-out infinite;
+}
+.admin-timeline .tl-item.current .tl-label { color: var(--ad-primary); }
+.admin-timeline .tl-item.cancelled .tl-dot { background: #b6bbc2; box-shadow: 0 0 0 1px #d6dade; }
+.admin-timeline .tl-item.cancelled .tl-label, .admin-timeline .tl-item.cancelled .tl-time { color: #9aa0a8; }
+@keyframes tl-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(0,128,96,0.9); }
+  50% { box-shadow: 0 0 0 5px rgba(0,128,96,0.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-timeline .tl-item.current .tl-dot { animation: none; }
+}
+
 /* ---------- Forms & buttons ---------- */
 .admin-input,
 .admin-table input.admin-input,

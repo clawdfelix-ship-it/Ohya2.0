@@ -658,6 +658,27 @@ module.exports = function(app, pool) {
     }
   });
 
+  // 輕量狀態切換（列表 Switch 用）：只改 status，唔掂其他欄
+  app.patch('/api/admin/products/:id/status', requirePermission('catalog:write'), async (req, res) => {
+    try {
+      const status = String((req.body && req.body.status) || '');
+      if (!['active', 'inactive'].includes(status)) {
+        return res.status(400).json({ error: '無效狀態' });
+      }
+      const result = await pool.query(
+        'UPDATE products SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id, status',
+        [status, req.params.id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: '商品不存在' });
+      }
+      res.json({ success: true, product: result.rows[0] });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
   app.put('/api/admin/products/:id', requirePermission('catalog:write'), async (req, res) => {
     try {
       const { id } = req.params;

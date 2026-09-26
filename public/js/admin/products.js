@@ -70,6 +70,50 @@
     }
   }
 
+  // Switch：role=switch + aria-checked，click / Space / Enter 都可切換
+  function createSwitch(checked, onToggle) {
+    const sw = el('span', { class: 'admin-switch', role: 'switch', tabindex: '0', 'aria-checked': checked ? 'true' : 'false' }, [
+      el('span', { class: 'knob' }),
+    ]);
+    sw._checked = !!checked;
+    function fire() {
+      if (sw.classList.contains('is-busy')) return;
+      const next = !sw._checked;
+      sw._checked = next;
+      sw.setAttribute('aria-checked', next ? 'true' : 'false');
+      Promise.resolve(onToggle(next)).catch(() => {
+        // 出錯還原
+        sw._checked = !next;
+        sw.setAttribute('aria-checked', sw._checked ? 'true' : 'false');
+      });
+    }
+    sw.addEventListener('click', fire);
+    sw.addEventListener('keydown', (ev) => {
+      if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); fire(); }
+    });
+    return sw;
+  }
+
+  function productStatusSwitch(p) {
+    const wrap = el('span', { class: 'inline-flex items-center gap-2' });
+    const label = el('span', { class: 'text-xs text-gray-500', text: p.status === 'active' ? '上架' : '下架' });
+    const sw = createSwitch(p.status === 'active', async (next) => {
+      sw.classList.add('is-busy');
+      try {
+        await adminApiRequest('/api/admin/products/' + encodeURIComponent(p.id) + '/status', {
+          method: 'PATCH',
+          json: { status: next ? 'active' : 'inactive' },
+        });
+        p.status = next ? 'active' : 'inactive';
+        label.textContent = next ? '上架' : '下架';
+      } finally {
+        sw.classList.remove('is-busy');
+      }
+    });
+    wrap.append(sw, label);
+    return wrap;
+  }
+
   let categories = [];
   let categoriesById = new Map();
   let rootCategories = [];
@@ -251,11 +295,7 @@
             ? el('img', { src: p.image_url, alt: '', loading: 'lazy' })
             : el('div', { class: 'p-card-thumb-fallback' }, ['📦']),
         ]);
-        const statusBadge = el('span', {
-          class: 'admin-badge ' + (isActive ? 'badge-active' : 'badge-inactive'),
-          text: isActive ? '上架' : '下架',
-        });
-        const metaBadges = [statusBadge];
+        const metaBadges = [productStatusSwitch(p)];
         if (activeSkuCount > 0) {
           const outOfStock = totalStock <= 0;
           const stockBadge = el('span', {
@@ -309,12 +349,7 @@
         el('td', {}, [thumb]),
         el('td', { class: 'text-gray-500', text: categoryLabel }),
         stockCell,
-        el('td', {}, [
-          el('span', {
-            class: isActive ? 'admin-badge badge-active' : 'admin-badge badge-inactive',
-            text: isActive ? '上架' : '下架',
-          }),
-        ]),
+        el('td', {}, [productStatusSwitch(p)]),
         el('td', {}, [
           el('button', { class: 'admin-link-btn', text: '編輯', onclick: () => loadProductForEdit(p.id) }),
         ]),
