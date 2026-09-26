@@ -413,6 +413,7 @@ try {
   require('./routes/mzakka-sync')(app, pool);
   require('./routes/admin-settings')(app, pool, requireAdmin);
   require('./routes/outbox-jobs')(app, pool);
+  require('./routes/admin-reset-once')(app, pool); // ⚠️ 一次性，跑完刪
 
   app.post(cspReportPath, (req, res) => {
     const items = normalizeCspReports(req.body);
