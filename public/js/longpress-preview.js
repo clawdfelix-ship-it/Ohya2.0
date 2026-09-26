@@ -133,6 +133,18 @@
     }
   }, true);
 
+  // 長按商品卡時，壓制瀏覽器原生「儲存圖片／分享」callout。
+  // iOS Safari 長按圖片會 fire contextmenu；preventDefault 先唔會彈原生選單。
+  document.addEventListener('contextmenu', function (e) {
+    var card = cardFrom(e.target);
+    if (card) {
+      e.preventDefault();
+      // 如果長按已經夠時間，直接開預覽（桌面/某些 Android contextmenu 係唯一訊號）
+      if (fired) { fired = false; return; }
+      if (!timer && targetCard === card) showPreview(card);
+    }
+  });
+
   document.addEventListener('touchstart', onStart, { passive: true });
   document.addEventListener('touchmove', onMove, { passive: true });
   document.addEventListener('touchend', cancel, { passive: true });

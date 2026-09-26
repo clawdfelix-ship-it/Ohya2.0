@@ -633,3 +633,18 @@
 @media (prefers-reduced-motion: reduce) {
   .mz-timeline-dot.is-current { animation: none; }
 }
+
+/* ==========================================================================
+   長按商品卡快速預覽：壓制 iOS 原生「儲存圖片」callout
+   -webkit-touch-callout:none 係 iOS 專用；user-select:none 防長按選文字。
+   只限商品卡，唔影響其他頁面嘅正常長按行為。
+   ========================================================================== */
+[data-focus-item],
+[data-focus-item] img {
+  -webkit-touch-callout: none;
+}
+[data-focus-item] {
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+}
