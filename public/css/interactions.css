@@ -509,21 +509,13 @@
 }
 
 /* ==========================================================================
-   跨頁共享元素轉場（商品卡圖 → 詳情主圖）
-   Cross-document View Transitions；唔支援嘅瀏覽器自當普通跳頁，零副作用。
-   兩頁圖片用 view-transition-name: pimg-<id> 配對。
+   跨頁共享元素轉場（商品卡圖 → 詳情主圖）— 通用 FLIP 版
+   舊版用跨文件 View Transitions，但手機 QQ／微信內置、iOS17、舊 Chrome 唔支援。
+   而家改用 public/js/product-transition.js（sessionStorage + WAAPI overlay），
+   所有瀏覽器都行；呢度唔再開原生 @view-transition，避免兩個動畫一齊觸發。
    ========================================================================== */
 @view-transition {
-  navigation: auto;
-}
-/* pimg-<id> 係動態名，CSS view-transition 唔支持 wildcard；
-   命名組用瀏覽器默認 morph（內置縮放+淡入），呢度只微調全局時序，唔硬寫名。 */
-::view-transition-group(*) {
-  animation-duration: 0.32s;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  @view-transition { navigation: none; }
+  navigation: none;
 }
 
 /* ==========================================================================

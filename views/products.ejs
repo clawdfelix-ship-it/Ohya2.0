@@ -120,7 +120,7 @@
                 <%# 預購模式：不追蹤庫存，不顯示缺貨/存貨徽章 %>
               </div>
               <% if (product.image) { %>
-                <img src="<%= product.image %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.03]" style="view-transition-name: pimg-<%= product.id %>">
+                <img src="<%= product.image %>" alt="" loading="lazy" decoding="async" class="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.03]">
               <% } else { %>
                 <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-6xl">📦</div>
               <% } %>

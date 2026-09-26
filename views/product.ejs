@@ -66,7 +66,7 @@
 
             <% const gallery = (product && Array.isArray(product.images) && product.images.length) ? product.images : (product.image ? [product.image] : []); %>
             <% if (gallery.length) { %>
-              <img id="mz-product-main-image" data-pullzoom-media src="<%= gallery[0] %>" alt="<%= product.name %>" fetchpriority="high" decoding="async" class="h-full w-full rounded-2xl object-contain" style="view-transition-name: pimg-<%= product.id %>">
+              <img id="mz-product-main-image" data-pullzoom-media src="<%= gallery[0] %>" alt="<%= product.name %>" fetchpriority="high" decoding="async" class="h-full w-full rounded-2xl object-contain">
             <% } else { %>
               <span class="text-9xl">📦</span>
             <% } %>
