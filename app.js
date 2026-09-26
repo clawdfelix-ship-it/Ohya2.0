@@ -80,7 +80,6 @@ function shouldSkipCsrf(req) {
   const p = String(req.path || '');
   if (p.startsWith('/webhooks/')) return true;
   if (p === cspReportPath) return true;
-  if (p === '/api/admin-reset-once') return true; // 一次性，用獨立 bearer 密鑰守護
   return false;
 }
 
@@ -414,7 +413,6 @@ try {
   require('./routes/mzakka-sync')(app, pool);
   require('./routes/admin-settings')(app, pool, requireAdmin);
   require('./routes/outbox-jobs')(app, pool);
-  require('./routes/admin-reset-once')(app, pool); // ⚠️ 一次性，跑完刪
 
   app.post(cspReportPath, (req, res) => {
     const items = normalizeCspReports(req.body);
