@@ -58,7 +58,8 @@
     );
   }
 
-  // 嵌套子 sheet：列某頂層分類嘅細類（含「睇呢類全部」入口）
+  // 嵌套子 sheet：列某分類嘅細類（含「睇呢類全部」入口）。
+  // 遞迴：子 sheet 都會綁嵌套點擊，可一層層落到最底層。
   function openChildren(parentNode, active) {
     const kids = Array.isArray(parentNode.children) ? parentNode.children : [];
     let html =
@@ -67,13 +68,24 @@
       '<span>睇「' + parentNode.name + '」全部</span><span>→</span></a>';
     html += renderList(kids, active, { nestable: true });
 
-    BottomSheet.open({
+    const sheet = BottomSheet.open({
       title: parentNode.name,
       content: html,
       detents: ['half', 'full'],
       startDetent: 'half',
       spring: true,
     });
+
+    // 子 sheet 嵌套：喺呢層嘅 kids 入面搵節點，再開下一層
+    sheet.bodyEl.addEventListener('click', function (e) {
+      const nestBtn = e.target.closest('[data-nest-slug]');
+      if (!nestBtn) return;
+      e.preventDefault();
+      const node = kids.find((n) => n.slug === nestBtn.dataset.nestSlug);
+      if (node) openChildren(node, active);
+    });
+
+    return sheet;
   }
 
   function openMain(data) {
