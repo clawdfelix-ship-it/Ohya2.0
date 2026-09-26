@@ -1,5 +1,5 @@
 (async function () {
-  const { $, el, adminApiRequest, createSegmented } = window.AdminCommon;
+  const { $, el, adminApiRequest, createSegmented, showSuccess } = window.AdminCommon;
 
   const els = {
     q: $('#orders-q'),
@@ -235,6 +235,8 @@
 
     await loadOrders({ clearSelection: true, keepBulkResult: true });
     setBulkButtonEnabled();
+    const okCount = results.filter(r => r.status === 'success').length;
+    if (okCount > 0) showSuccess(document.getElementById('orders-toolbar') || els.tbody.parentNode, `已生成 ${okCount} 張面單`, 2600);
   }
 
   async function loadOrders(options) {

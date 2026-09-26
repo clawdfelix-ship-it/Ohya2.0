@@ -1,5 +1,5 @@
 (async function () {
-  const { $, el, adminApiRequest } = window.AdminCommon;
+  const { $, el, adminApiRequest, showSuccess } = window.AdminCommon;
 
   const els = {
     search: $('#products-search'),
@@ -648,6 +648,7 @@
 
       await loadProducts();
       clearForm();
+      showSuccess(els.form.parentNode, id ? '商品已更新' : '商品已建立', 2400);
     } catch (e) {
       setError(e && e.message ? e.message : String(e));
     } finally {

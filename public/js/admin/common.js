@@ -97,10 +97,25 @@ function createSegmented(options, currentValue, onChange) {
   };
 }
 
+// 完成反饋（自繪對勾動畫）：showSuccess(container, label) 會插入並喺 ttlMs 後移除
+function showSuccess(container, label, ttlMs) {
+  if (!container) return null;
+  const node = document.createElement('span');
+  node.className = 'admin-success-pop';
+  node.setAttribute('role', 'status');
+  node.innerHTML = '<span class="ck-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ck-check" d="M5 12.5l4.2 4.2L19 7"/></svg></span><span class="ck-label"></span>';
+  node.querySelector('.ck-label').textContent = label || '完成';
+  container.appendChild(node);
+  const ttl = typeof ttlMs === 'number' ? ttlMs : 2200;
+  if (ttl > 0) setTimeout(() => { node.style.transition = 'opacity .2s ease'; node.style.opacity = '0'; setTimeout(() => node.remove(), 220); }, ttl);
+  return node;
+}
+
 window.AdminCommon = {
   $,
   el,
   createSegmented,
+  showSuccess,
   adminEscapeHtml,
   adminRenderJson,
   adminApiGet,

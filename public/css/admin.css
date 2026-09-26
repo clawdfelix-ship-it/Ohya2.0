@@ -328,6 +328,61 @@
   .admin-seg .seg-btn { transition: none; }
 }
 
+/* ---------- Burger morph（menu↔close，Morphicon 概念，純 CSS/SVG）---------- */
+.admin-burger path {
+  transition: transform 0.28s cubic-bezier(0.2,0,0,1), opacity 0.2s ease, d 0.28s ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.admin-nav-open .admin-burger .bg-top { transform: translateY(5px) rotate(45deg); }
+.admin-nav-open .admin-burger .bg-mid { opacity: 0; transform: scaleX(0.4); }
+.admin-nav-open .admin-burger .bg-bot { transform: translateY(-5px) rotate(-45deg); }
+@media (prefers-reduced-motion: reduce) {
+  .admin-burger path { transition: opacity 0.15s ease; }
+  .admin-nav-open .admin-burger .bg-top, .admin-nav-open .admin-burger .bg-bot { transform: none; }
+}
+
+/* ---------- 完成反饋動畫（Lordicon 概念，自繪 stroke 對勾，可重用）---------- */
+.admin-success-pop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--ad-primary-active);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.admin-success-pop .ck-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--ad-primary-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: ck-pop 0.35s cubic-bezier(0.2,0,0,1);
+}
+.admin-success-pop .ck-circle svg { width: 16px; height: 16px; }
+.admin-success-pop .ck-check {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: ck-draw 0.4s 0.12s cubic-bezier(0.6,0,0.3,1) forwards;
+}
+.admin-success-pop .ck-label {
+  opacity: 0;
+  transform: translateX(-4px);
+  animation: ck-label-in 0.3s 0.22s ease forwards;
+}
+@keyframes ck-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes ck-draw { to { stroke-dashoffset: 0; } }
+@keyframes ck-label-in { to { opacity: 1; transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .admin-success-pop .ck-circle, .admin-success-pop .ck-check, .admin-success-pop .ck-label { animation: none; stroke-dashoffset: 0; opacity: 1; transform: none; }
+}
+
 /* ---------- Forms & buttons ---------- */
 .admin-input,
 .admin-table input.admin-input,
