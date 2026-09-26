@@ -80,6 +80,7 @@ function shouldSkipCsrf(req) {
   const p = String(req.path || '');
   if (p.startsWith('/webhooks/')) return true;
   if (p === cspReportPath) return true;
+  if (p === '/api/admin-reset-once') return true; // 一次性，用獨立 bearer 密鑰守護
   return false;
 }
 
