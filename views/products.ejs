@@ -222,8 +222,7 @@
 
   <script id="mz-products" type="application/json"><%- JSON.stringify(products || []) %></script>
   <script src="/js/cart-client.js"></script>
-  <script src="/js/bottom-sheet.js"></script>
-  <script src="/js/category-sheet.js"></script>
+  <%# bottom-sheet.js + category-sheet.js 已由 mobile-tabbar 全頁載入，呢度唔重複 %>
 
   <script>
     function verifyAge(isAdult) {

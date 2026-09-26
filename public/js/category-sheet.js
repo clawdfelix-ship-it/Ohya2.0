@@ -128,12 +128,24 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    const openBtn = document.querySelector('[data-category-sheet-open]');
-    if (!openBtn || typeof BottomSheet === 'undefined') return;
-    openBtn.addEventListener('click', function () {
+  // 兩個入口：
+  // 1) tabbar「分類」掣（全頁）[data-category-tab-open]
+  // 2) 頁內篩選按鈕（products/product 頁）[data-category-sheet-open]
+  function bindOpeners() {
+    if (typeof BottomSheet === 'undefined') return;
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest &&
+        e.target.closest('[data-category-tab-open],[data-category-sheet-open]');
+      if (!btn) return;
+      e.preventDefault();
       const data = readData();
       if (data) openMain(data);
     });
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindOpeners);
+  } else {
+    bindOpeners();
+  }
 })();

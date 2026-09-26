@@ -1,6 +1,7 @@
 <%# 手機底部 Tab bar（mobile pattern）：首頁 / 分類 / 購物車 / 會員。
     lg 以上隱藏（header/sidebar 已 cover）。fixed bottom，需要時 JS 可加 body padding。
-    active 狀態由 path 判斷；badge 用 data-cart-badge，cart-client 會一齊更新。 %>
+    active 狀態由 path 判斷；badge 用 data-cart-badge，cart-client 會一齊更新。
+    「分類」直接開商品分類 BottomSheet（資料島全頁通用）。 %>
 <%
   const tabPath = String(typeof tabActivePath === 'string' ? tabActivePath : (typeof currentPath === 'string' ? currentPath : ''));
   const tabIs = function (key) {
@@ -20,10 +21,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></svg>
     <span>首頁</span>
   </a>
-  <a class="<%= tabCls('products') %>" href="/products?page=1">
+  <button type="button" class="<%= tabCls('products') %>" data-category-tab-open aria-haspopup="dialog">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
     <span>分類</span>
-  </a>
+  </button>
   <a class="<%= tabCls('cart') %>" href="/cart">
     <span class="mz-tabbar__badgewrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.6"/><circle cx="18" cy="20" r="1.6"/><path d="M2 3h3l2.4 12.4a1.5 1.5 0 0 0 1.5 1.2h8.7a1.5 1.5 0 0 0 1.5-1.2L22 7H6"/></svg>
@@ -43,3 +44,18 @@
     </a>
   <% } %>
 </nav>
+
+<%# 全頁通用嘅分類資料島：tabbar「分類」直接開 BottomSheet。
+   category-sheet.js 讀 [data-category-tree-json]（全頁得呢一個）。 %>
+<script type="application/json" data-category-tree-json>
+<%-
+  JSON.stringify({
+    tree: Array.isArray(categoriesTree) ? categoriesTree : [],
+    specials: Array.isArray(categorySpecials) ? categorySpecials : [],
+    active: typeof selectedCategorySlug === 'string' ? selectedCategorySlug : null,
+    allCount: (Array.isArray(categories) && categories[0] && categories[0].count) || 0,
+  })
+%>
+</script>
+<script src="/js/bottom-sheet.js"></script>
+<script src="/js/category-sheet.js"></script>
