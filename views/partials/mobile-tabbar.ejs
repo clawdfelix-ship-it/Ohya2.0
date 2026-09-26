@@ -46,7 +46,8 @@
 </nav>
 
 <%# 全頁通用嘅分類資料島：tabbar「分類」直接開 BottomSheet。
-   category-sheet.js 讀 [data-category-tree-json]（全頁得呢一個）。 %>
+   bottom-sheet.css + category-sheet.js 都要全頁載入。 %>
+<link rel="stylesheet" href="/css/bottom-sheet.css">
 <script type="application/json" data-category-tree-json>
 <%-
   JSON.stringify({
