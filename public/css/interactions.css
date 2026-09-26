@@ -525,3 +525,119 @@
 @media (prefers-reduced-motion: reduce) {
   @view-transition { navigation: none; }
 }
+
+/* ==========================================================================
+   邊框流光 Border Beam（pattern 04）
+   一道光沿卡邊環繞流動，循環播放。深色 ink 底配金光 beam 夾品牌。
+   - 兩條 mask layer 相互反向旋轉，圓角內部被遮罩只露邊。
+   - reduced-motion 時靜止，唔影響閱讀。
+   ========================================================================== */
+.mz-beam {
+  position: relative;
+  border-radius: inherit;
+  isolation: isolate;
+}
+.mz-beam::before,
+.mz-beam::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from calc(var(--mz-beam-angle, 0deg)),
+    transparent 0%,
+    rgba(200, 164, 93, 0) 55%,
+    rgba(232, 196, 132, 0.85) 70%,
+    rgba(200, 164, 93, 0) 85%,
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.85;
+}
+.mz-beam::before { animation: mzBeamSpin 3.4s linear infinite; }
+.mz-beam::after  { animation: mzBeamSpin 3.4s linear infinite reverse; opacity: 0.55; }
+@keyframes mzBeamSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .mz-beam::before,
+  .mz-beam::after { animation: none; opacity: 0.35; }
+}
+
+/* ==========================================================================
+   訂單狀態時間軸 Timeline
+   4 節點：已下單 → 已付款 → 已出貨 → 已送達；橫向（桌面）/縱向（手機）。
+   - 已完成節點實心金色，當前節點脈衝。
+   ========================================================================== */
+.mz-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mz-timeline-step {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 0.75rem;
+  align-items: flex-start;
+  position: relative;
+}
+.mz-timeline-dot {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #1f1f25;
+  border: 2px solid #3a3a44;
+  margin-top: 4px;
+  margin-left: 5px;
+  transition: background 0.3s, border-color 0.3s;
+}
+.mz-timeline-step:not(:last-child) .mz-timeline-dot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  bottom: -18px;
+  width: 2px;
+  margin-left: -1px;
+  background: #2d2d35;
+}
+.mz-timeline-step.is-done .mz-timeline-dot {
+  background: #c8a45d;
+  border-color: #e0c084;
+  box-shadow: 0 0 0 4px rgba(200,164,93,0.12);
+}
+.mz-timeline-step.is-done .mz-timeline-dot::after { background: rgba(200,164,93,0.55); }
+.mz-timeline-step.is-current .mz-timeline-dot {
+  background: #e0c084;
+  border-color: #f0d59e;
+  box-shadow: 0 0 0 4px rgba(232,196,132,0.18);
+}
+.mz-timeline-step.is-cancelled .mz-timeline-dot {
+  background: #4b1d27;
+  border-color: #7c152e;
+}
+.mz-timeline-meta {
+  min-width: 0;
+  padding-bottom: 1rem;
+}
+.mz-timeline-meta-title { font-size: 0.875rem; font-weight: 700; color: #ececed; }
+.mz-timeline-meta-time { font-size: 0.75rem; color: #8a8a93; margin-top: 2px; }
+.mz-timeline-meta.is-pending .mz-timeline-meta-title { color: #6b6b75; }
+.mz-timeline-meta.is-pending .mz-timeline-meta-time  { color: #4b4b54; }
+.mz-timeline-dot.is-current { animation: mzTimelinePulse 1.6s ease-in-out infinite; }
+@keyframes mzTimelinePulse {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%     { transform: scale(1.2);  opacity: 0.85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mz-timeline-dot.is-current { animation: none; }
+}

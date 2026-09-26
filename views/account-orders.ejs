@@ -76,6 +76,11 @@
                 <span class="rounded-full px-2 py-1 <%= shipBadge %>"><%= shipStatusLabels[o.status] || o.status || '待出貨' %></span>
               </div>
             </div>
+            <% if (o.timeline) { %>
+            <div class="border-b border-ink-700 pt-3 pb-3">
+              <%- include('partials/order-timeline', { timeline: o.timeline }) %>
+            </div>
+            <% } %>
             <div class="flex flex-wrap items-center justify-between gap-2 pt-3 text-sm">
               <div class="text-gray-400">
                 <%= o.item_qty || o.item_count || 0 %> 件商品

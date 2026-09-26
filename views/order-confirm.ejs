@@ -49,6 +49,16 @@
         </p>
       </div>
 
+      <% if (order && order.timeline) { %>
+      <div class="mb-6 rounded-2xl border border-ink-600 bg-ink-850 p-5 shadow-sm">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-base font-black text-white">訂單進度</h2>
+          <span class="rounded-full px-3 py-1 text-xs font-bold <%= order.timeline.isCancelled ? 'bg-ink-700 text-gray-500' : 'bg-gold/15 text-gold-light' %>"><%= order.timeline.summary %></span>
+        </div>
+        <%- include('partials/order-timeline', { timeline: order.timeline }) %>
+      </div>
+      <% } %>
+
       <!-- 付款指示 -->
       <div class="mb-6 rounded-2xl border border-ink-600 bg-ink-850 p-6 shadow-sm">
         <h2 class="text-lg font-black text-white mb-4 jpn-bracket inline-block">付款方法：<%= payLabel %></h2>

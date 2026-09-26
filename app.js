@@ -22,6 +22,7 @@ const { buildCategoryTree } = require('./utils/storefrontCategories');
 const { partitionHomeModules } = require('./utils/storefrontHomeModules');
 const { resolveStorefrontCategoryName } = require('./utils/categoryTranslations');
 const { getProductsOrderBy, normalizeProductsSort } = require('./lib/productsSort');
+const { buildTimeline, attachTimeline } = require('./lib/orderTimeline');
 const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch-mzakka-description');
 const { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
 const { normalizeCspReports } = require('./utils/security/cspReport');
@@ -1302,6 +1303,7 @@ app.use(async (req, res, next) => {
         WHERE oi.order_id = $1
         ORDER BY oi.id
       `, [id]);
+      attachTimeline(orderResult.rows);
       res.render('order-confirm', {
         title: '訂單確認 - OHYA2.0',
         user: { id: sessUser, isAdmin: req.session.isAdmin },
@@ -1446,7 +1448,7 @@ app.use(async (req, res, next) => {
         ORDER BY o.created_at DESC
         LIMIT $${params.length - 1} OFFSET $${params.length}
       `, params);
-
+      attachTimeline(result.rows);
       res.render('account-orders', {
         title: '我的訂單 - OHYA2.0',
         user: renderUser,
