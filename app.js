@@ -636,6 +636,24 @@ app.use(async (req, res, next) => {
   res.locals.homeModules = getFallbackHomeModules();
   // 手機 tabbar active 判斷
   res.locals.currentPath = req.path || '';
+
+  // 積分 config 全域注入（產品卡/詳情/會員/結帳都要用；失敗用預設唔好阻塞頁面）
+  try {
+    if (connectionString) {
+      const pointsService = require('./lib/pointsService');
+      res.locals.pointsCfg = await pointsService.loadConfig(pool);
+    } else {
+      res.locals.pointsCfg = null;
+    }
+  } catch (_) {
+    res.locals.pointsCfg = null;
+  }
+  res.locals.pointsForDisplay = (price) => {
+    const cfg = res.locals.pointsCfg;
+    if (!cfg || !cfg.enabled) return 0;
+    const denom = Number(cfg.earnHkd) || 100;
+    return Math.floor((Number(price) || 0) / denom);
+  };
   // Header 分組下拉/autocomplete 嘅安全預設，避免其他頁面冇傳變數時 render 爆
   res.locals.selectedCategorySlug = 'all';
   res.locals.q = '';

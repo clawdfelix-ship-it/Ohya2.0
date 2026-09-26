@@ -137,7 +137,7 @@
                 <% } %>
               </div>
               <div class="mb-3 text-xs">
-                <span class="font-bold text-gold">賺 <%= Math.floor(product.price / 100) %> 積分</span>
+                <span class="font-bold text-gold">賺 <%= pointsForDisplay(product.price) %> 積分</span>
               </div>
               <div class="mt-auto flex gap-2">
                 <a href="/product/<%= product.id %>" class="flex min-h-[44px] flex-1 items-center justify-center rounded-full bg-wine px-3 text-center text-xs font-bold text-white transition hover:bg-wine active:scale-[0.98]"><%= t('product.cta.details') %></a>
