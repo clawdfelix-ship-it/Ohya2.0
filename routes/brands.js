@@ -3,7 +3,9 @@
 // Product brand management
 // ===========================================
 
-module.exports = function(app, pool, requireAdmin) {
+const { requirePermission } = require('./middleware/auth');
+
+module.exports = function(app, pool) {
 
   // Public: Get all active brands
   app.get('/api/brands', async (req, res) => {
@@ -50,7 +52,7 @@ module.exports = function(app, pool, requireAdmin) {
   });
 
   // Admin: Get all brands
-  app.get('/api/admin/brands', requireAdmin, async (req, res) => {
+  app.get('/api/admin/brands', requirePermission('catalog:read'), async (req, res) => {
     try {
       const result = await pool.query(`
         SELECT b.*, COUNT(p.id) as product_count
@@ -67,7 +69,7 @@ module.exports = function(app, pool, requireAdmin) {
   });
 
   // Admin: Create brand
-  app.post('/api/admin/brands', requireAdmin, async (req, res) => {
+  app.post('/api/admin/brands', requirePermission('catalog:write'), async (req, res) => {
     try {
       const { name, slug, description, image_url, website, sort_order, is_active } = req.body;
 
@@ -88,7 +90,7 @@ module.exports = function(app, pool, requireAdmin) {
   });
 
   // Admin: Update brand
-  app.put('/api/admin/brands/:id', requireAdmin, async (req, res) => {
+  app.put('/api/admin/brands/:id', requirePermission('catalog:write'), async (req, res) => {
     try {
       const { id } = req.params;
       const { name, slug, description, image_url, website, sort_order, is_active } = req.body;
@@ -116,7 +118,7 @@ module.exports = function(app, pool, requireAdmin) {
   });
 
   // Admin: Delete brand
-  app.delete('/api/admin/brands/:id', requireAdmin, async (req, res) => {
+  app.delete('/api/admin/brands/:id', requirePermission('catalog:write'), async (req, res) => {
     try {
       const { id } = req.params;
       // Check if has products
