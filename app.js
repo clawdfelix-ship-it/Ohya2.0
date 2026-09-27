@@ -1280,16 +1280,10 @@ app.use(async (req, res, next) => {
         );
         warehouse = wr.rows[0] || null;
       } catch (e) { warehouse = null; }
-      const site = await getSiteSettings();
-      const messages = req.session && req.session.messages;
-      if (req.session) req.session.messages = null;
       res.render('info/contact', {
         title: '聯絡我們',
         activeInfoKey: 'contact',
-        site,
         warehouse,
-        contactForm: (req.session && req.session.contactForm) || {},
-        messages: messages || {},
       });
     } catch (err) { next(err); }
   });
