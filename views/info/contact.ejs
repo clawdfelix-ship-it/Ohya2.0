@@ -15,6 +15,20 @@
   </div>
 </div>
 
+<% if (warehouse && warehouse.address) { %>
+<div class="rounded-xl border border-ink-600 bg-ink-800 p-5">
+  <div class="text-sm font-bold text-gold">倉庫地址（<%= warehouse.name || '出貨倉庫' %>）</div>
+  <div class="mt-1 text-lg font-black text-gold-light"><%= warehouse.address %></div>
+  <% if (warehouse.contact_name || warehouse.contact_phone) { %>
+  <p class="mt-1 text-xs text-gray-400">
+    聯絡人：<%= warehouse.contact_name || '—' %>
+    <% if (warehouse.contact_phone) { %>｜電話：<%= warehouse.contact_phone %><% } %>
+  </p>
+  <% } %>
+  <p class="mt-1 text-xs text-gray-400">現場參觀、自取或退貨請先 WhatsApp 預約</p>
+</div>
+<% } %>
+
 <h2>公司資料</h2>
 <table>
   <tbody>

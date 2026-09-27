@@ -1266,6 +1266,34 @@ app.use(async (req, res, next) => {
     { route: '/terms', view: 'info/terms', title: '服務條款', key: '/terms' },
     { route: '/privacy', view: 'info/privacy', title: '私隱政策', key: '/privacy' },
   ];
+  // 聯絡我們：專屬路由，額外帶預設倉庫地址（通用 infoPages render 帶唔到）
+  app.get('/contact', async (req, res, next) => {
+    try {
+      let warehouse = null;
+      try {
+        const wr = await pool.query(
+          `SELECT name, address, contact_name, contact_phone
+             FROM inventory_warehouses
+            WHERE is_active = true
+            ORDER BY is_default DESC, id ASC
+            LIMIT 1`
+        );
+        warehouse = wr.rows[0] || null;
+      } catch (e) { warehouse = null; }
+      const site = await getSiteSettings();
+      const messages = req.session && req.session.messages;
+      if (req.session) req.session.messages = null;
+      res.render('info/contact', {
+        title: '聯絡我們',
+        activeInfoKey: 'contact',
+        site,
+        warehouse,
+        contactForm: (req.session && req.session.contactForm) || {},
+        messages: messages || {},
+      });
+    } catch (err) { next(err); }
+  });
+
   infoPages.forEach((page) => {
     app.get(page.route, (req, res) => {
       res.render(page.view, {
