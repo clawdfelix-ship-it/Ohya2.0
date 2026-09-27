@@ -1,10 +1,10 @@
 <%
 /*
   partials/shipping-calendar.ejs
-  出荷カレンダー：今月＋直近2ヶ月をサーバー側で描画。
-  日本の祝日/休業日（data/japan-holidays.json）と土日を「出荷停止」として表示。
+  出貨日曆：今月＋直近2ヶ月をサーバー側描画。
+  日本の祝日（wine）と香港の公眾假期（gold）、土日を「出荷停止」として表示。
   locals:
-    - holidaysMap: { 'YYYY-MM-DD': '休業名' } （route 側で渡す）
+    - holidaysMap: { 'YYYY-MM-DD': { type:'jp'|'hk'|'both', name } }
 */
 const hmap = (typeof holidaysMap === 'object' && holidaysMap) ? holidaysMap : {};
 const WEEKDAYS = ['日','一','二','三','四','五','六'];
@@ -18,9 +18,8 @@ const months = [];
 for (let off=0; off<3; off++) {
   const base = new Date(today.getFullYear(), today.getMonth()+off, 1);
   const y = base.getFullYear(), m = base.getMonth();
-  const firstWeekday = new Date(y,m,1).getDay(); // 0=日
+  const firstWeekday = new Date(y,m,1).getDay();
   const daysInMonth = new Date(y,m+1,0).getDate();
-  // 6週×7固定グリッドに埋める
   const cells = [];
   for (let i=0;i<firstWeekday;i++) cells.push(null);
   for (let d=1; d<=daysInMonth; d++) cells.push(d);
@@ -32,7 +31,7 @@ for (let off=0; off<3; off++) {
   <div class="mb-5 flex items-end justify-between gap-4">
     <div>
       <h2 class="mz-display text-xl font-black text-white">📅 出貨日曆</h2>
-      <p class="mt-1 text-sm text-gray-400">日本假期及週末暫停出貨，落單前可參考以下日子安排</p>
+      <p class="mt-1 text-sm text-gray-400">日本假期暫停入貨/補貨、香港假期暫停出貨，週末休息；落單前可參考以下日子</p>
     </div>
   </div>
 
@@ -52,13 +51,18 @@ for (let off=0; off<3; off++) {
                if(!d){ %><div class="aspect-square"></div><% } else {
                  const k = keyOf(mm.y,mm.m,d);
                  const dow = new Date(mm.y,mm.m,d).getDay();
-                 const hol = hmap[k] || null;
+                 const entry = hmap[k] || null;
                  const isToday = (new Date(mm.y,mm.m,d).getTime()===today.getTime());
                  const isWeekend = (dow===0||dow===6);
                  let cls='text-gray-300';
                  let title='';
-                 if(hol){ cls='bg-wine/25 text-wine-light font-black ring-1 ring-wine/50'; title=hol; }
-                 else if(isWeekend){ cls='text-wine-light'; title=(dow===0?'星期日':'星期六')+'唔出貨'; }
+                 if(entry){
+                   const ty=entry.type;
+                   if(ty==='both') cls='bg-gradient-to-br from-wine/30 to-gold/30 text-white font-black ring-1 ring-gold/60';
+                   else if(ty==='jp') cls='bg-wine/25 text-wine-light font-black ring-1 ring-wine/50';
+                   else cls='bg-gold/20 text-gold-light font-black ring-1 ring-gold/50';
+                   title=entry.name;
+                 } else if(isWeekend){ cls='text-wine-light'; title=(dow===0?'星期日':'星期六')+'休息'; }
                  if(isToday){ cls += ' ring-2 ring-gold'; }
           %>
             <div class="flex aspect-square items-center justify-center rounded-md <%= cls %>" <%= title?('title="'+title+'"'):'' %>>
@@ -71,9 +75,10 @@ for (let off=0; off<3; off++) {
   </div>
 
   <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-400">
-    <span class="inline-flex items-center gap-2"><span class="h-3 w-3 rounded bg-wine/40 ring-1 ring-wine/60"></span>日本假期／休業（唔出貨）</span>
-    <span class="inline-flex items-center gap-2"><span class="h-3 w-3 rounded text-wine-light">日六</span>週末唔出貨</span>
+    <span class="inline-flex items-center gap-2"><span class="h-3 w-3 rounded bg-wine/40 ring-1 ring-wine/60"></span>日本假期（暫停入貨）</span>
+    <span class="inline-flex items-center gap-2"><span class="h-3 w-3 rounded bg-gold/30 ring-1 ring-gold/60"></span>香港假期（暫停出貨）</span>
+    <span class="inline-flex items-center gap-2"><span class="h-3 w-3 rounded bg-gradient-to-br from-wine/40 to-gold/40"></span>兩地皆假期</span>
     <span class="inline-flex items-center gap-2"><span class="h-3 w-3 rounded ring-2 ring-gold"></span>今日</span>
-    <span class="text-gray-500">※ 假期前後訂單或有延誤，實際以 WhatsApp 通知為準</span>
+    <span class="w-full text-gray-500">※ 假期前後訂單或有延誤，實際以 WhatsApp 通知為準</span>
   </div>
 </section>
