@@ -183,6 +183,7 @@ app.use('/api/admin', (req, res, next) => {
   return adminWriteLimiter()(req, res, next);
 });
 app.use(express.json({
+  limit: '4mb',
   verify: (req, res, buf) => {
     req.rawBody = buf;
   },

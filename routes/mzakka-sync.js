@@ -84,8 +84,30 @@ module.exports = function registerMzakkaSyncRoutes(app, pool) {
     }
   }
 
+  // 純匯入端點：只做 upsert、唔爬網。畀本機長時間爬好嘅細批上傳，
+  // 避開 serverless 爬網 timeout。需要有效 sync secret。
+  async function handleInternalImport(req, res) {
+    if (!ensureInternalSyncAuthorized(req, res)) return;
+    if (!ensurePool(res)) return;
+    try {
+      const body = req.body || {};
+      const records = Array.isArray(body.records) ? body.records.filter(Boolean) : [];
+      const batchSize = Number(body.batchSize) > 0 ? Number(body.batchSize) : 100;
+      if (records.length === 0) {
+        return res.status(400).json({ ok: false, error: 'records array is required' });
+      }
+      const { importMzakkaRecords } = require('../scripts/import-mzakka-to-postgres');
+      const result = await importMzakkaRecords({ records, batchSize, pool });
+      return res.json({ ok: true, source: 'internal-import', received: records.length, result });
+    } catch (err) {
+      console.error('Mzakka import failed:', err);
+      return res.status(500).json({ ok: false, error: String((err && err.message) || err) });
+    }
+  }
+
   app.get('/api/internal/jobs/mzakka-sync', handleInternalSync);
   app.post('/api/internal/jobs/mzakka-sync', handleInternalSync);
+  app.post('/api/internal/jobs/mzakka-import', handleInternalImport);
   app.get('/api/internal/jobs/db-bootstrap', handleInternalBootstrap);
   app.post('/api/internal/jobs/db-bootstrap', handleInternalBootstrap);
 };
