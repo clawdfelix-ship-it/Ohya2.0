@@ -4,7 +4,9 @@ node_modules
 test
 docs
 migrations
-data
+data/*
+!data/mzakka-taxonomy.json
+!data/mzakka-item-leaf-map.json
 *.md
 *.sql
 node_modules/@img
