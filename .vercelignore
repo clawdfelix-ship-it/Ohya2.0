@@ -7,6 +7,7 @@ migrations
 data/*
 !data/mzakka-taxonomy.json
 !data/mzakka-item-leaf-map.json
+!data/japan-holidays.json
 *.md
 *.sql
 node_modules/@img

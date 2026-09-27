@@ -691,6 +691,12 @@ app.use(async (req, res, next) => {
 });
 
 
+  // 日本の祝日/休業日マップ（出荷カレンダー用）。1回だけ読み込む。
+  let holidaysMap = {};
+  try {
+    holidaysMap = require('./data/japan-holidays.json').holidays || {};
+  } catch (e) { holidaysMap = {}; }
+
   // 首頁 - 電商首頁
   app.get('/', async (req, res) => {
     try {
@@ -707,6 +713,7 @@ app.use(async (req, res, next) => {
           rankingProducts: [],
           newProducts: featuredProducts.slice(0, 20),
           hasSales: false,
+          holidaysMap,
         });
       }
 
@@ -789,6 +796,7 @@ app.use(async (req, res, next) => {
         rankingProducts: hasSales ? rankingProducts : [],
         newProducts,
         hasSales,
+        holidaysMap,
       });
     } catch (err) {
       console.error('Homepage error:', err);
@@ -800,6 +808,7 @@ app.use(async (req, res, next) => {
         rankingProducts: [],
         newProducts: getSampleProducts().slice(0, 20),
         hasSales: false,
+        holidaysMap,
       });
     }
   });
