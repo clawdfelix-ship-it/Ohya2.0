@@ -79,6 +79,7 @@ function shouldSkipCsrf(req) {
   if (m === 'HEAD' || m === 'OPTIONS') return true;
   const p = String(req.path || '');
   if (p.startsWith('/webhooks/')) return true;
+  if (p.startsWith('/api/internal/')) return true; // 內部 jobs 用 x-sync-secret 認證，唔使 CSRF token
   if (p === cspReportPath) return true;
   return false;
 }
