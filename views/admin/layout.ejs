@@ -142,7 +142,7 @@
     <div class="admin-shell">
       <div id="admin-nav-backdrop" class="admin-nav-backdrop"></div>
       <div class="admin-grid">
-        <aside id="admin-nav" class="admin-nav" aria-label="後台導航">
+        <nav id="admin-nav" class="admin-nav" aria-label="後台導航">
           <% groups.forEach(group => {
             const visible = group.items.filter(it => {
               if (it.adminOnly || group.adminOnly) return isSuperAdmin;
@@ -157,7 +157,7 @@
               </a>
             <% }); %>
           <% }); %>
-        </aside>
+        </nav>
         <main class="admin-main">
           <h1 class="admin-page-title"><%= title %></h1>
           <%- include(content) %>
