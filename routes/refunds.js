@@ -125,7 +125,17 @@ module.exports = function (app, pool) {
       if (o.rows.length === 0) return res.status(404).json({ error: '訂單不存在' });
       const order = o.rows[0];
 
-      const paymentStatus = computePaymentStatusAfterRefund({ orderTotal: order.total_amount, refundAmount: refund.amount });
+      const completedRefunds = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) AS refunded_total
+         FROM refunds
+         WHERE order_id = $1 AND status = 'completed' AND id <> $2`,
+        [refund.order_id, refund.id]
+      );
+      const refundedTotal = Number(completedRefunds.rows[0].refunded_total || 0) + Number(refund.amount || 0);
+      const paymentStatus = computePaymentStatusAfterRefund({
+        orderTotal: order.total_amount,
+        refundedAmount: refundedTotal
+      });
 
       await pool.query(
         `UPDATE refunds

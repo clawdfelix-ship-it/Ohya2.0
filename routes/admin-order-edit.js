@@ -94,10 +94,10 @@ module.exports = function (app, pool) {
         if (!Number.isInteger(orderId)) return res.json({ map: {} });
         const r = await pool.query(
           `SELECT oi.id AS item_id,
-                  COALESCE(SUM(offi.quantity),0) AS q
+                  COALESCE(SUM(CASE WHEN f.state<>'cancelled' THEN offi.quantity ELSE 0 END),0) AS q
            FROM order_items oi
            LEFT JOIN order_fulfillment_items offi ON offi.order_item_id = oi.id
-           LEFT JOIN order_fulfillments f ON f.id = offi.fulfillment_id AND f.state<>'cancelled'
+           LEFT JOIN order_fulfillments f ON f.id = offi.fulfillment_id
            WHERE oi.order_id=$1
            GROUP BY oi.id`,
           [orderId]
