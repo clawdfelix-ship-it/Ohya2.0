@@ -2,6 +2,29 @@ const https = require('node:https');
 const zlib = require('node:zlib');
 const { execFile } = require('node:child_process');
 
+// 自訂 keep-alive agent：長時間爬取時重用連線，但限制 socket 壽命，
+// 避免重用被伺服器單方面閂掉嘅閒置連線而觸發 socket hang up。
+const keepAliveAgent = new https.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 1000,
+  maxSockets: 6,
+  maxFreeSockets: 3,
+  scheduling: 'fifo',
+  timeout: 20000,
+});
+
+// 判定邊啲錯誤值得重試（瞬間網絡閃斷），而非永久性錯誤
+function isRetryableNetworkError(err) {
+  const msg = String((err && err.message) || err || '');
+  return /socket hang up|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|EPIPE|EADDRNOTAVAIL|EPROTO|timeout|network error/i.test(
+    msg
+  );
+}
+
+async function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
 const DEFAULT_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const DEFAULT_ACCEPT =
@@ -87,11 +110,13 @@ function fetchHtmlDirect(url) {
         hostname: u.hostname,
         path: u.pathname + u.search,
         method: 'GET',
+        agent: keepAliveAgent,
         headers: {
           'User-Agent': DEFAULT_USER_AGENT,
           'Accept-Encoding': 'gzip, deflate, br',
           Accept: DEFAULT_ACCEPT,
           'Accept-Language': DEFAULT_ACCEPT_LANGUAGE,
+          Connection: 'keep-alive',
         },
         timeout: 20000,
       },
@@ -150,13 +175,23 @@ function fetchHtmlViaCurl(url) {
   });
 }
 
-async function fetchHtml(url) {
-  try {
-    return await fetchHtmlDirect(url);
-  } catch (error) {
-    if (!hasProxyEnv()) throw error;
-    return fetchHtmlViaCurl(url);
+async function fetchHtml(url, { retries = 4, label = '' } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetchHtmlDirect(url);
+    } catch (error) {
+      lastErr = error;
+      // 只對瞬間網絡錯重試；其他錯（例如永久性）立即抛出
+      if (!isRetryableNetworkError(error) || attempt === retries) throw error;
+      const backoff = Math.min(8000, 600 * 2 ** attempt) + Math.floor(Math.random() * 400);
+      console.warn(
+        `[fetch] ${label || url} 第${attempt + 1}次失敗：${String(error.message || error)}，${backoff}ms 後重試`
+      );
+      await sleep(backoff);
+    }
   }
+  throw lastErr;
 }
 
 function extractDescriptionFromDetailHtml(html) {

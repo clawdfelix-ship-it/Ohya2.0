@@ -102,6 +102,7 @@ async function crawlMzakkaNewItems(options = {}) {
   const seenPages = [];
   let totalPages = null;
   let listItemsSeen = 0;
+  let skippedFailed = 0;
 
   for (let pageNumber = startPage; ; pageNumber++) {
     if (pages && pageNumber >= startPage + pages) break;
@@ -120,11 +121,19 @@ async function crawlMzakkaNewItems(options = {}) {
       if (!listItem.id || visitedIds.has(listItem.id) || seenIds.has(listItem.id)) continue;
 
       visitedIds.add(listItem.id);
-      const detailHtml = await fetchHtml(listItem.productUrl);
-      const detailItem = parseMzakkaDetailPage(detailHtml, {
-        productUrl: listItem.productUrl,
-        extractDescription: extractDescriptionFromDetailHtml,
-      });
+      let detailItem;
+      try {
+        const detailHtml = await fetchHtml(listItem.productUrl, { label: `item ${listItem.id}` });
+        detailItem = parseMzakkaDetailPage(detailHtml, {
+          productUrl: listItem.productUrl,
+          extractDescription: extractDescriptionFromDetailHtml,
+        });
+      } catch (detailErr) {
+        // 單一商品重試後仍失敗：記低並跳過，唔讓一個商品殺死成個 run
+        console.warn(`[crawl] 跳過商品 ${listItem.id}（持續失敗）：${String(detailErr.message || detailErr)}`);
+        skippedFailed++;
+        continue;
+      }
 
       if (!includeEnded && detailItem.isEnded) {
         continue;
@@ -145,6 +154,7 @@ async function crawlMzakkaNewItems(options = {}) {
     pageNumbers: seenPages,
     totalPages,
     listItemsSeen,
+    skippedFailed,
     records,
   };
 }
