@@ -544,12 +544,8 @@ async function loadStorefrontCategories() {
   // new/sale 為動態區塊，分別用最新匯入與折讓計算。
   const result = await pool.query(
     `WITH RECURSIVE direct AS (
-       SELECT ps.storefront_category_id AS cid, COUNT(*)::int n
-       FROM product_storefront ps
-       JOIN products p ON p.id = ps.product_id
-       WHERE p.status='active'
-         AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
-       GROUP BY 1
+       SELECT storefront_category_id AS cid, COUNT(*)::int n
+       FROM product_storefront GROUP BY 1
      ),
      descendants AS (
        SELECT c.id AS root_id, c.id AS cid
@@ -568,16 +564,13 @@ async function loadStorefrontCategories() {
      SELECT c.id, c.parent_id, c.slug, c.name, c.name_zh_hk,
        CASE c.slug
          WHEN 'storefront-new' THEN (
-           CASE WHEN to_regclass('public.new_arrival_rank') IS NOT NULL
-             THEN (SELECT COUNT(*)::int FROM new_arrival_rank)
-             ELSE (SELECT COUNT(*)::int FROM products p
-                   WHERE p.status='active'
-                     AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
-                     AND p.id >= COALESCE((SELECT id FROM products
-                       WHERE status='active'
-                         AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
-                       ORDER BY id DESC LIMIT 1 OFFSET 199), 0))
-           END)
+           SELECT COUNT(*)::int FROM products p
+           WHERE p.status='active'
+             AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
+             AND p.id >= COALESCE((SELECT id FROM products
+               WHERE status='active'
+                 AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
+               ORDER BY id DESC LIMIT 1 OFFSET 199), 0))
          WHEN 'storefront-sale' THEN (
            SELECT COUNT(*)::int FROM products p
            WHERE p.status='active'
@@ -926,19 +919,6 @@ app.use(async (req, res, next) => {
       let where = `p.status = 'active' AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'`;
       const params = [];
       let paramIndex = 1;
-      // ⚠️ rank 表係後加嘅，生產/舊 DB 可能未有。先查表/欄存在性，
-      // 唔存在就唔好 join，安全降級返基礎排序，唔可以成頁跌 fallback。
-      const existRows = await pool.query(
-        `SELECT
-           to_regclass('public.mzakka_category_rank') IS NOT NULL AS has_mz_rank,
-           to_regclass('public.new_arrival_rank')    IS NOT NULL AS has_new_rank,
-           EXISTS (SELECT 1 FROM information_schema.columns
-                   WHERE table_schema='public' AND table_name='storefront_category_map'
-                     AND column_name='mzakka_top_id') AS has_map_col`);
-      const RK = existRows.rows[0] || {};
-      const mzRankOk = RK.has_mz_rank === true && RK.has_map_col === true;
-      const newRankOk = RK.has_new_rank === true;
-
       if (categoryId) {
         // 門市三層：商品所屬門市分類落在選取分類的子樹內（含自身）
         where += ` AND EXISTS (
@@ -955,16 +935,12 @@ app.use(async (req, res, next) => {
         paramIndex++;
       }
       if (dynamicSection === 'new') {
-        if (newRankOk) {
-          // 成員以 mzakka 新商品 rank 表為準；排序下面 join new_arrival_rank。
-          where += ` AND EXISTS (SELECT 1 FROM new_arrival_rank narw WHERE narw.product_id = p.id)`;
-        } else {
-          // 降級：最新匯入 200 件（舊行為，唔依賴 rank 表）
-          where += ` AND p.id >= COALESCE((SELECT id FROM products
-                       WHERE status='active'
-                         AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
-                       ORDER BY id DESC LIMIT 1 OFFSET 199), 0)`;
-        }
+        // 新到推介：最新匯入嘅 200 件（id 反映匯入次序，同 count SQL 一致）
+        where += ` AND p.id >= COALESCE((
+                     SELECT id FROM products
+                     WHERE status='active'
+                       AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
+                     ORDER BY id DESC LIMIT 1 OFFSET 199), 0)`;
       } else if (dynamicSection === 'sale') {
         // 真正抵買：相對建議零售價折讓 ≥30%
         where += ` AND p.original_price IS NOT NULL AND p.original_price > p.price
@@ -995,33 +971,29 @@ app.use(async (req, res, next) => {
       const totalPages = Math.max(1, Math.ceil(total / perPage));
 
       // 默認「推薦/標準」排序：跟返 mzakka 線上「當前分類」內排名。
-      // mzakka 喺每一層都有排名。一個 storefront 分類可對多個 mzakka 頂類
-      //（如配件雜貨），所以用聚合子查詢：商品喺任一對應頗類嘅最佳（最細）rank。
-      const useMzakkaRank = sort === 'recommend' && categoryId && mzRankOk;
-      const useNewRank = sort === 'recommend' && dynamicSection === 'new' && newRankOk;
-      const rankJoin = useMzakkaRank
-        ? `LEFT JOIN (
-             SELECT r.product_id, MIN(r.rank) AS mr
-             FROM mzakka_category_rank r
-             WHERE r.category_id IN (
-               SELECT m.mzakka_top_id FROM storefront_category_map m
-               WHERE m.storefront_category_id = $${paramIndex}
-             )
-             GROUP BY r.product_id
-           ) mzrank ON mzrank.product_id = p.id`
-        : (useNewRank
-          ? `LEFT JOIN new_arrival_rank nar ON nar.product_id = p.id`
-          : '');
-      if (useMzakkaRank) { params.push(categoryId); paramIndex++; }
-      let orderBy;
-      if (useMzakkaRank) {
-        orderBy = 'mzrank.mr NULLS LAST, p.id DESC';
-      } else if (useNewRank) {
-        // 跟 mzakka 新商品節點 1789 嘅真實次序；未有 rank（極舊/未對到）墊底
-        orderBy = 'nar.rank NULLS LAST, p.id DESC';
-      } else {
-        orderBy = getProductsOrderBy(sort);
+      // mzakka 喺每一層都有排名，所以搵選取 storefront 分類對應嘅 mzakka
+      // 分類 id，再 join 該分類嘅 rank。冇對應（特別專區/無連接）用 id 補。
+      let mzakkaRankCatId = null;
+      if (categoryId) {
+        const mapRes = await pool.query(
+          `SELECT m.mzakka_category_id
+           FROM storefront_category_map m
+           WHERE m.storefront_category_id = $1
+           LIMIT 1`,
+          [categoryId]
+        );
+        if (mapRes.rows[0]) mzakkaRankCatId = Number(mapRes.rows[0].mzakka_category_id);
       }
+      const useMzakkaRank = sort === 'recommend' && mzakkaRankCatId;
+      const rankJoin = useMzakkaRank
+        ? `LEFT JOIN mzakka_category_rank mzrank
+             ON mzrank.product_id = p.id
+            AND mzrank.category_id = $${paramIndex}`
+        : '';
+      if (useMzakkaRank) { params.push(mzakkaRankCatId); paramIndex++; }
+      const orderBy = useMzakkaRank
+        ? 'mzrank.rank NULLS LAST, p.id DESC'
+        : getProductsOrderBy(sort);
 
       const listResult = await pool.query(
         `SELECT p.id,
