@@ -471,6 +471,18 @@ module.exports = function (app, pool) {
           return res.status(400).json({ error: '請揀要分單嘅商品' });
         }
 
+        const aggregatedSplitItems = Array.from(
+          splitItems.reduce((acc, s) => {
+            const oiId = parseInt(s.order_item_id, 10);
+            const qty = parseInt(s.quantity, 10);
+            if (!Number.isInteger(oiId) || !Number.isInteger(qty) || qty < 1) {
+              throw Object.assign(new Error('分單項目唔正確'), { code: 'BAD_SPLIT' });
+            }
+            acc.set(oiId, (acc.get(oiId) || 0) + qty);
+            return acc;
+          }, new Map()).entries()
+        ).map(([order_item_id, quantity]) => ({ order_item_id, quantity }));
+
         await client.query('BEGIN');
 
         const or = await client.query('SELECT * FROM orders WHERE id=$1', [orderId]);
@@ -483,12 +495,9 @@ module.exports = function (app, pool) {
         // 驗證每項：數量要 <= 可分數量（原數量 - 已出貨）
         const parsed = [];
         let splitSubtotal = 0;
-        for (const s of splitItems) {
-          const oiId = parseInt(s.order_item_id, 10);
-          const qty = parseInt(s.quantity, 10);
-          if (!Number.isInteger(oiId) || !Number.isInteger(qty) || qty < 1) {
-            throw Object.assign(new Error('分單項目唔正確'), { code: 'BAD_SPLIT' });
-          }
+        for (const s of aggregatedSplitItems) {
+          const oiId = s.order_item_id;
+          const qty = s.quantity;
           const ir = await client.query(
             'SELECT * FROM order_items WHERE id=$1 AND order_id=$2',
             [oiId, orderId]

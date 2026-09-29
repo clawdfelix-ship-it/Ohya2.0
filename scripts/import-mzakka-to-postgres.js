@@ -153,7 +153,7 @@ async function runImport({ items, pool, batchSize = 200 }) {
              short_description_zh_hk = EXCLUDED.short_description_zh_hk,
              price = EXCLUDED.price,
              original_price = EXCLUDED.original_price,
-             category_id = EXCLUDED.category_id,
+             category_id = COALESCE(EXCLUDED.category_id, products.category_id),
              image_url = EXCLUDED.image_url,
              gallery_images = EXCLUDED.gallery_images,
              source = EXCLUDED.source,
@@ -193,11 +193,11 @@ async function runImport({ items, pool, batchSize = 200 }) {
         const s = toSkuUpsertInput(item, productId);
         await client.query(
           `INSERT INTO product_skus (product_id, sku, attributes, stock, is_active)
-           VALUES ($1, $2, $3::json, $4, $5)
+           VALUES ($1, $2, $3::json, COALESCE($4, 0), $5)
            ON CONFLICT (sku) DO UPDATE SET
              product_id = EXCLUDED.product_id,
              attributes = EXCLUDED.attributes,
-             stock = EXCLUDED.stock,
+             stock = COALESCE($4, product_skus.stock),
              is_active = EXCLUDED.is_active,
              updated_at = NOW()
            RETURNING id`,

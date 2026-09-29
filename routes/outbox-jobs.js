@@ -1,6 +1,6 @@
 // Internal cron endpoint that flushes the email outbox via Zoho SMTP.
-// Registered in vercel.json crons. Auth via CRON_SECRET (header/bearer) or
-// Vercel's automatic `x-vercel-cron` header on its own scheduled calls.
+// Registered in vercel.json crons. Auth requires a shared secret provided
+// either via x-sync-secret or Authorization: Bearer <secret>.
 'use strict';
 
 module.exports = function registerOutboxRoutes(app, pool) {
@@ -15,9 +15,6 @@ module.exports = function registerOutboxRoutes(app, pool) {
   }
 
   function isAuthorized(req) {
-    // Vercel-invoked cron requests carry this header.
-    if (String(req.get('x-vercel-cron') || '') === '1') return true;
-
     const secrets = getExpectedSecrets();
     if (secrets.length === 0) return false;
 

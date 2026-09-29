@@ -66,6 +66,13 @@ test('mzakkaImport: maps sku row', () => {
   assert.equal(out.sku, '00T096');
   assert.equal(out.product_id, 77);
   assert.deepEqual(out.attributes, {});
+  assert.equal(out.stock, null);
+});
+
+test('mzakkaImport: keeps numeric stock when source provides one', () => {
+  const { toSkuUpsertInput } = require('../utils/mzakkaImport');
+  const out = toSkuUpsertInput({ id: '00T096', stock: 12 }, 77);
+  assert.equal(out.stock, 12);
 });
 
 test('mzakkaImport: builds media rows and product sections rows', () => {
@@ -114,4 +121,56 @@ test('import script: can dry-run parse first line without DATABASE_URL', async (
   assert.equal(result.linesRead, 1);
   assert.ok(result.sample);
   fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('import script preserves existing category and stock when source omits them', async () => {
+  const { importMzakkaRecords } = require('../scripts/import-mzakka-to-postgres');
+  const queries = [];
+
+  const client = {
+    async query(sql, params) {
+      const text = String(sql).replace(/\s+/g, ' ').trim();
+      queries.push({ sql: text, params });
+      if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') return { rows: [] };
+      if (text.startsWith('INSERT INTO products')) return { rows: [{ id: 88 }] };
+      if (text === 'DELETE FROM mzakka_product_media WHERE product_id = $1') return { rows: [] };
+      if (text === 'DELETE FROM mzakka_product_sections WHERE product_id = $1') return { rows: [] };
+      if (text.startsWith('INSERT INTO product_skus')) return { rows: [{ id: 99 }] };
+      throw new Error(`Unexpected client SQL: ${text}`);
+    },
+    release() {},
+  };
+
+  const pool = {
+    async query(sql) {
+      const text = String(sql).replace(/\s+/g, ' ').trim();
+      queries.push({ sql: text, params: [] });
+      if (text.startsWith('SELECT id, source_key FROM categories')) return { rows: [] };
+      throw new Error(`Unexpected pool SQL: ${text}`);
+    },
+    async connect() {
+      return client;
+    },
+  };
+
+  await importMzakkaRecords({
+    records: [{
+      id: 'UNKNOWN-1',
+      name: '測試商品',
+      category: 'mystery category',
+      priceYen: 1000,
+      images: [],
+    }],
+    pool,
+    batchSize: 1,
+  });
+
+  const productUpsert = queries.find((entry) => entry.sql.startsWith('INSERT INTO products'));
+  const skuUpsert = queries.find((entry) => entry.sql.startsWith('INSERT INTO product_skus'));
+
+  assert.ok(productUpsert);
+  assert.match(productUpsert.sql, /category_id = COALESCE\(EXCLUDED\.category_id, products\.category_id\)/);
+  assert.ok(skuUpsert);
+  assert.match(skuUpsert.sql, /stock = COALESCE\(\$4, product_skus\.stock\)/);
+  assert.equal(skuUpsert.params[3], null);
 });

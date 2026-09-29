@@ -97,11 +97,12 @@ function toProductUpsertInput(item, categoryId) {
 }
 
 function toSkuUpsertInput(item, productId) {
+  const parsedStock = Number(item && item.stock);
   return {
     product_id: productId,
     sku: String(item.id || ''),
     attributes: {},
-    stock: 0,
+    stock: Number.isFinite(parsedStock) ? parsedStock : null,
     is_active: true,
   };
 }
