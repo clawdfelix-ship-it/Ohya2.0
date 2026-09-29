@@ -935,12 +935,9 @@ app.use(async (req, res, next) => {
         paramIndex++;
       }
       if (dynamicSection === 'new') {
-        // 新到推介：最新匯入嘅 200 件（id 反映匯入次序，同 count SQL 一致）
-        where += ` AND p.id >= COALESCE((
-                     SELECT id FROM products
-                     WHERE status='active'
-                       AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
-                     ORDER BY id DESC LIMIT 1 OFFSET 199), 0)`;
+        // 成員以 mzakka 新商品 rank 表為準（取代舊「最新匯入 200 件」）；
+        // 排序下面 join new_arrival_rank。
+        where += ` AND EXISTS (SELECT 1 FROM new_arrival_rank narw WHERE narw.product_id = p.id)`;
       } else if (dynamicSection === 'sale') {
         // 真正抵買：相對建議零售價折讓 ≥30%
         where += ` AND p.original_price IS NOT NULL AND p.original_price > p.price
@@ -974,6 +971,7 @@ app.use(async (req, res, next) => {
       // mzakka 喺每一層都有排名。一個 storefront 分類可對多個 mzakka 頂類
       //（如配件雜貨），所以用聚合子查詢：商品喺任一對應頗類嘅最佳（最細）rank。
       const useMzakkaRank = sort === 'recommend' && categoryId;
+      const useNewRank = sort === 'recommend' && dynamicSection === 'new';
       const rankJoin = useMzakkaRank
         ? `LEFT JOIN (
              SELECT r.product_id, MIN(r.rank) AS mr
@@ -984,11 +982,19 @@ app.use(async (req, res, next) => {
              )
              GROUP BY r.product_id
            ) mzrank ON mzrank.product_id = p.id`
-        : '';
+        : (useNewRank
+          ? `LEFT JOIN new_arrival_rank nar ON nar.product_id = p.id`
+          : '');
       if (useMzakkaRank) { params.push(categoryId); paramIndex++; }
-      const orderBy = useMzakkaRank
-        ? 'mzrank.mr NULLS LAST, p.id DESC'
-        : getProductsOrderBy(sort);
+      let orderBy;
+      if (useMzakkaRank) {
+        orderBy = 'mzrank.mr NULLS LAST, p.id DESC';
+      } else if (useNewRank) {
+        // 跟 mzakka 新商品節點 1789 嘅真實次序；未有 rank（極舊/未對到）墊底
+        orderBy = 'nar.rank NULLS LAST, p.id DESC';
+      } else {
+        orderBy = getProductsOrderBy(sort);
+      }
 
       const listResult = await pool.query(
         `SELECT p.id,
