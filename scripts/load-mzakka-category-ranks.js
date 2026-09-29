@@ -21,9 +21,11 @@ const ROOT = path.join(__dirname, '..');
 const APPLY = process.argv.includes('--apply');
 const dbUrl = (process.env.DATABASE_URL || '').trim() ||
   fs.readFileSync('/tmp/.ohya_db_url', 'utf8').trim();
+// 本機 Postgres 多數唔行 SSL：連線串冇 sslmode=require 就唔開
+const useSsl = /sslmode=(require|verify-ca|verify-full)/i.test(dbUrl);
 
 (async () => {
-  const pool = new Pool({ connectionString: dbUrl, ssl: { rejectUnauthorized: false }, max: 2 });
+  const pool = new Pool({ connectionString: dbUrl, ssl: useSsl ? { rejectUnauthorized: false } : false, max: 2 });
   const q = (s, p = []) => pool.query(s, p);
 
   const data = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'mzakka-category-ranks.json'), 'utf8'));

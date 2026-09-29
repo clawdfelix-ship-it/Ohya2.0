@@ -971,28 +971,23 @@ app.use(async (req, res, next) => {
       const totalPages = Math.max(1, Math.ceil(total / perPage));
 
       // 默認「推薦/標準」排序：跟返 mzakka 線上「當前分類」內排名。
-      // mzakka 喺每一層都有排名，所以搵選取 storefront 分類對應嘅 mzakka
-      // 分類 id，再 join 該分類嘅 rank。冇對應（特別專區/無連接）用 id 補。
-      let mzakkaRankCatId = null;
-      if (categoryId) {
-        const mapRes = await pool.query(
-          `SELECT m.mzakka_category_id
-           FROM storefront_category_map m
-           WHERE m.storefront_category_id = $1
-           LIMIT 1`,
-          [categoryId]
-        );
-        if (mapRes.rows[0]) mzakkaRankCatId = Number(mapRes.rows[0].mzakka_category_id);
-      }
-      const useMzakkaRank = sort === 'recommend' && mzakkaRankCatId;
+      // mzakka 喺每一層都有排名。一個 storefront 分類可對多個 mzakka 頂類
+      //（如配件雜貨），所以用聚合子查詢：商品喺任一對應頗類嘅最佳（最細）rank。
+      const useMzakkaRank = sort === 'recommend' && categoryId;
       const rankJoin = useMzakkaRank
-        ? `LEFT JOIN mzakka_category_rank mzrank
-             ON mzrank.product_id = p.id
-            AND mzrank.category_id = $${paramIndex}`
+        ? `LEFT JOIN (
+             SELECT r.product_id, MIN(r.rank) AS mr
+             FROM mzakka_category_rank r
+             WHERE r.category_id IN (
+               SELECT m.mzakka_top_id FROM storefront_category_map m
+               WHERE m.storefront_category_id = $${paramIndex}
+             )
+             GROUP BY r.product_id
+           ) mzrank ON mzrank.product_id = p.id`
         : '';
-      if (useMzakkaRank) { params.push(mzakkaRankCatId); paramIndex++; }
+      if (useMzakkaRank) { params.push(categoryId); paramIndex++; }
       const orderBy = useMzakkaRank
-        ? 'mzrank.rank NULLS LAST, p.id DESC'
+        ? 'mzrank.mr NULLS LAST, p.id DESC'
         : getProductsOrderBy(sort);
 
       const listResult = await pool.query(
