@@ -55,7 +55,18 @@ function cellState(mm,d){
     cls='text-gray-600';
   }
   if(isToday) cls+=' ring-2 ring-gold';
-  return {cls,title,isWeekend,isToday};
+  return {cls,title,isWeekend,isToday, name: entry ? entry.name : '', type: entry ? entry.type : ''};
+}
+
+// 某個月嘅假期清單（畀下面文字列表用）
+function monthHolidays(mm){
+  const out=[];
+  for(let d=1;d<=new Date(mm.y,mm.m+1,0).getDate();d++){
+    const k=keyOf(mm.y,mm.m,d);
+    const e=hmap[k];
+    if(e) out.push({d, name:e.name, type:e.type});
+  }
+  return out;
 }
 %>
 <section id="shipping-calendar" class="relative mb-6 rounded-3xl border border-ink-600 bg-ink-850 p-6 shadow-card">
@@ -87,6 +98,21 @@ function cellState(mm,d){
               <div class="flex aspect-square items-center justify-center rounded-lg <%= s.cls %> transition" <%= s.title?('title="'+s.title+'"'):'' %>><%= d %></div>
             <% } }) %>
         </div>
+        <%# 假期名：色點 + 日期 + 名稱，手機都睇到 %>
+        <% const holis=monthHolidays(mm); %>
+        <% if(holis.length){ %>
+          <ul class="mt-4 space-y-1.5 border-t border-ink-700 pt-3 text-[11px]">
+            <% holis.forEach(function(h){ %>
+              <li class="flex items-start gap-2">
+                <span class="mt-0.5 h-2 w-2 shrink-0 rounded-full <%= h.type==='both' ? 'bg-gradient-to-br from-wine to-gold' : (h.type==='jp' ? 'bg-wine' : 'bg-gold') %>"></span>
+                <span class="shrink-0 font-black text-gray-300"><%= pad(h.d) %>日</span>
+                <span class="text-gray-400"><%= h.name %></span>
+              </li>
+            <% }) %>
+          </ul>
+        <% } else { %>
+          <p class="mt-4 border-t border-ink-700 pt-3 text-[11px] text-gray-600">本月無假期</p>
+        <% } %>
       </div>
     <% }) %>
   </div>
