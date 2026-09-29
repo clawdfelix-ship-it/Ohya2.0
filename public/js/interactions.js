@@ -87,6 +87,102 @@
     );
   }
 
+  /* ---- 08 FLY-TO-CART (叨叨 #8) -------------------------------------------
+   * 由商品卡圖片整一個圓形縮略圖，沿拋物線弧線飛入購物車圖標，
+   * 到達時隱入並彈跳目標。用 WAAPI 動態算起訖點，桌面/手機、唔同卡位都啱。
+   * sourceEl 可以係加車掣或卡片；會自動搵卡片同佢嘅主圖。
+   */
+  function cartTarget() {
+    var explicit = document.querySelector('[data-cart-fly-target]');
+    if (explicit) return explicit;
+    // 手機：tabbar 購物車 badge 的包裹層
+    var mobileBadge = document.querySelector('.mz-tabbar [data-cart-badge]');
+    if (mobileBadge) {
+      return mobileBadge.closest('.mz-tabbar__badgewrap') || mobileBadge;
+    }
+    // 桌面 header badge
+    var head = document.getElementById('cart-count');
+    if (head) return head.closest('a,button') || head;
+    return null;
+  }
+
+  function flyToCart(sourceEl) {
+    if (reduceMotion || !sourceEl) return;
+    var target = cartTarget();
+    if (!target) return;
+
+    var card = sourceEl.closest ? (sourceEl.closest('[data-focus-item]') || sourceEl) : sourceEl;
+    var img = card.querySelector ? card.querySelector('img') : null;
+
+    var sRect = (img || card).getBoundingClientRect();
+    var tRect = target.getBoundingClientRect();
+    if (sRect.width < 4 || sRect.height < 4) return;
+
+    var sx = sRect.left + sRect.width / 2;
+    var sy = sRect.top + sRect.height / 2;
+    var tx = tRect.left + tRect.width / 2;
+    var ty = tRect.top + tRect.height / 2;
+
+    // 弧線控制點：中點向上提，距離愈遠拱得愈高
+    var dist = Math.hypot(tx - sx, ty - sy);
+    var cx = (sx + tx) / 2;
+    var cy = (sy + ty) / 2 - Math.min(180, dist * 0.35);
+
+    var startSize = Math.max(40, Math.min(sRect.width, sRect.height) * 0.85);
+    var endSize = 22;
+
+    // 圓形縮略圖（外層圓框 + 內層圖片 cover）
+    var fly = document.createElement('div');
+    fly.className = 'fluid-fly';
+    fly.style.width = fly.style.height = startSize + 'px';
+    fly.style.left = sx + 'px';
+    fly.style.top = sy + 'px';
+    if (img && img.currentSrc) {
+      fly.style.backgroundImage = 'url(' + img.currentSrc + ')';
+    }
+    document.body.appendChild(fly);
+
+    var STEPS = 26;
+    var frames = [];
+    for (var i = 0; i <= STEPS; i++) {
+      var p = i / STEPS;
+      var omt = 1 - p;
+      // 二次貝塞爾
+      var px = omt * omt * sx + 2 * omt * p * cx + p * p * tx;
+      var py = omt * omt * sy + 2 * omt * p * cy + p * p * ty;
+      var scale = (1 - p) + (endSize / startSize) * p;
+      frames.push({
+        transform:
+          'translate(-50%,-50%) translate(' + (px - sx) + 'px,' + (py - sy) + 'px) scale(' + scale + ')',
+        opacity: p > 0.85 ? 1 - (p - 0.85) / 0.15 : 1,
+        offset: p,
+      });
+    }
+
+    var anim = fly.animate(frames, {
+      duration: 680,
+      easing: 'cubic-bezier(0.5, 0, 0.85, 0.35)', // 向目標加速
+      fill: 'forwards',
+    });
+
+    anim.onfinish = function () {
+      fly.remove();
+      bounceTarget(target);
+    };
+    anim.oncancel = function () { fly.remove(); };
+  }
+
+  function bounceTarget(target) {
+    if (!target) return;
+    target.classList.remove('fluid-cart-bounce');
+    void target.offsetWidth;
+    target.classList.add('fluid-cart-bounce');
+    target.addEventListener('animationend', function h() {
+      target.classList.remove('fluid-cart-bounce');
+      target.removeEventListener('animationend', h);
+    });
+  }
+
   /* ---- 07 COUNT badge pop ------------------------------------------------- */
   function popBadge() {
     var badge = document.getElementById('cart-count');
@@ -164,6 +260,7 @@
   /* ---- public hooks for cart-client --------------------------------------- */
   window.MZFluid = {
     burstFrom: burstFrom,
+    flyToCart: flyToCart,
     popBadge: popBadge,
     checkSvg: checkSvg,
     reduceMotion: reduceMotion,

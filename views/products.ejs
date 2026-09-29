@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link rel="stylesheet" href="/css/interactions.css">
+  <link rel="stylesheet" href="/css/range-slider.css">
   <%# bottom-sheet.css / bottom-sheet.js / category-sheet.js 已由 mobile-tabbar 全頁載入，呢度唔重複 %>
   <%- include('partials/theme-head') %>
   <meta name="csrf-token" content="<%= csrfToken || '' %>">
@@ -55,14 +56,30 @@
     <%# Facet 篩選：價格區間 + 現貨 %>
     <form class="mb-6 rounded-2xl border border-ink-600 bg-ink-850 p-4 shadow-sm" data-facet-form>
       <div class="flex flex-wrap items-end gap-4">
-        <div class="flex items-end gap-2">
+        <div class="flex flex-col gap-3">
           <label class="text-xs font-bold text-gray-400" for="facet-min">價格（HK$）
             <span class="mt-1 flex items-center gap-2">
               <input id="facet-min" name="min_price" type="number" min="0" inputmode="numeric" value="<%= minPrice != null ? minPrice : '' %>" placeholder="最低" class="w-24 rounded-full border border-ink-500 bg-ink-800 px-3 py-2 text-sm text-gray-200 focus:border-gold focus:outline-none">
               <span class="text-gray-500">–</span>
-              <input name="max_price" type="number" min="0" inputmode="numeric" value="<%= maxPrice != null ? maxPrice : '' %>" placeholder="最高" class="w-24 rounded-full border border-ink-500 bg-ink-800 px-3 py-2 text-sm text-gray-200 focus:border-gold focus:outline-none">
+              <input id="facet-max" name="max_price" type="number" min="0" inputmode="numeric" value="<%= maxPrice != null ? maxPrice : '' %>" placeholder="最高" class="w-24 rounded-full border border-ink-500 bg-ink-800 px-3 py-2 text-sm text-gray-200 focus:border-gold focus:outline-none">
             </span>
           </label>
+          <%# 叨叨 #2：雙滑桿價格區間。按住變粗、填充跟手、拖過端點橡皮筋拉伸。 %>
+          <div class="mz-range" data-price-range
+               data-bound-min="<%= priceBounds.min %>"
+               data-bound-max="<%= priceBounds.max %>"
+               data-init-min="<%= minPrice != null ? minPrice : priceBounds.min %>"
+               data-init-max="<%= maxPrice != null ? maxPrice : priceBounds.max %>">
+            <div class="mz-range__track">
+              <div class="mz-range__fill"></div>
+              <div class="mz-range__thumb mz-range__thumb--lo" data-range-thumb="lo" role="slider" tabindex="0" aria-label="最低價格" aria-valuemin="<%= priceBounds.min %>" aria-valuemax="<%= priceBounds.max %>"></div>
+              <div class="mz-range__thumb mz-range__thumb--hi" data-range-thumb="hi" role="slider" tabindex="0" aria-label="最高價格" aria-valuemin="<%= priceBounds.min %>" aria-valuemax="<%= priceBounds.max %>"></div>
+            </div>
+            <div class="mz-range__ends text-[10px] text-gray-500">
+              <span>HK$<%= priceBounds.min %></span>
+              <span>HK$<%= priceBounds.max %>+</span>
+            </div>
+          </div>
         </div>
         <label class="flex items-center gap-2 pb-2 text-sm text-gray-300">
           <input type="checkbox" name="in_stock" value="1" <%= inStockOnly ? 'checked' : '' %> class="h-4 w-4 accent-wine">
@@ -222,6 +239,7 @@
 
   <script id="mz-products" type="application/json"><%- JSON.stringify(products || []) %></script>
   <script src="/js/cart-client.js"></script>
+  <script src="/js/range-slider.js"></script>
   <%# bottom-sheet.js + category-sheet.js 已由 mobile-tabbar 全頁載入，呢度唔重複 %>
 
   <script>

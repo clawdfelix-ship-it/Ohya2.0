@@ -115,6 +115,29 @@
   100% { transform: scale(1); }
 }
 
+/* 08 FLY-TO-CART — 圓形縮略圖沿弧線飛入購物車 -------------------------- */
+.fluid-fly {
+  position: fixed;
+  z-index: 10000;
+  border-radius: 50%;
+  background-color: #fff;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.fluid-cart-bounce {
+  animation: fluid-cart-bounce 0.5s var(--fluid-spring);
+}
+@keyframes fluid-cart-bounce {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.35); }
+  60%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
 /* 10 MORPH — hamburger three lines fold into an X, one continuous element -- */
 .mz-burger { transition: transform 0.28s var(--fluid-spring); }
 .mz-burger__line {
@@ -166,8 +189,10 @@
   .fluid-burst-particle { display: none !important; animation: none !important; }
   .fluid-burst-pop,
   .fluid-badge-pop,
+  .fluid-cart-bounce,
   .fluid-check--in .fluid-check__circle,
   .fluid-check--in .fluid-check__tick { animation: none !important; }
+  .fluid-fly { display: none !important; }
   .fluid-check__circle,
   .fluid-check__tick { stroke-dashoffset: 0 !important; }
   #mz-mobile-menu-panel.mz-drawer .mz-drawer-surface { transform: none; }

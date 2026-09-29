@@ -873,6 +873,7 @@ app.use(async (req, res, next) => {
           minPrice: minPrice > 0 ? minPrice : null,
           maxPrice,
           inStockOnly,
+          priceBounds: { min: 0, max: 10000 },
         });
       }
 
@@ -1023,6 +1024,19 @@ app.use(async (req, res, next) => {
         mapDbProductToStorefrontProduct(r, { toProxyUrl: app.locals.toProxyUrl })
       );
 
+      // 價格滑桿上下限：用 active 商品 p95（去掉幾十萬離群值），取齊頭 500
+      let priceBounds = { min: 0, max: 10000 };
+      try {
+        const pb = await pool.query(
+          `SELECT COALESCE(MIN(price),0)::float AS lo,
+                  COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY price),
+                           MAX(price), 0)::float AS hi
+             FROM products WHERE status='active'`
+        );
+        const hi = Math.ceil((Number(pb.rows[0].hi) || 0) / 500) * 500;
+        priceBounds = { min: 0, max: Math.max(500, hi) };
+      } catch (_) {}
+
       res.render('products', {
         title: '商品列表 - OHYA2.0',
         products,
@@ -1040,6 +1054,7 @@ app.use(async (req, res, next) => {
         minPrice: minPrice > 0 ? minPrice : null,
         maxPrice,
         inStockOnly,
+        priceBounds,
       });
     } catch (err) {
       console.error('Products page error:', err);
@@ -1060,6 +1075,7 @@ app.use(async (req, res, next) => {
         minPrice: null,
         maxPrice: null,
         inStockOnly: false,
+        priceBounds: { min: 0, max: 10000 },
       });
     }
   });

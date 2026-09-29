@@ -64,44 +64,35 @@ function cellState(mm,d){
     <p class="mt-1 text-sm text-gray-400">日本假期暫停入貨、香港假期暫停出貨，週末休息</p>
   </div>
 
-  <!-- 右上角：下個月迷你曆（同主卡右緣對齊） -->
-  <div class="absolute right-6 top-6 hidden w-40 rounded-2xl border border-ink-700 bg-ink-900 p-2.5 shadow-card lg:block">
-    <div class="mb-2 text-center text-[11px] font-black text-gold-light"><%= next.y %>年 <%= MONTH_LABELS[next.m] %></div>
-    <div class="grid grid-cols-7 gap-0.5 text-center text-[8px] font-bold text-gray-500">
-      <% WEEKDAYS.forEach((w,i)=>{ %><div class="<%= (i===0||i===6)?'text-wine-light':'' %>"><%= w %></div><% }) %>
-    </div>
-    <div class="mt-0.5 grid grid-cols-7 gap-0.5 text-center text-[9px]">
-      <% next.cells.forEach(d=>{
-           if(!d){ %><div></div><% } else {
-             const s=cellState(next,d);
-             // 迷你版：去 ring，保留底色/字色含義
-             let mini=s.cls.replace(/ring-[^ ]+/g,'').replace(/font-black/g,'');
-        %>
-          <div class="flex h-4 items-center justify-center rounded <%= mini %>" <%= s.title?('title="'+s.title+'"'):'' %>><%= d %></div>
-        <% } }) %>
-    </div>
+  <%# 桌面（lg）：今、下兩個月等大並排；手機：只顯示今個月（下個月 lg 以上先見）。 %>
+  <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+    <% [
+         { mm: cur, wrap: '' },
+         { mm: next, wrap: 'hidden lg:block' },
+       ].forEach(function(item){
+         const mm = item.mm;
+    %>
+      <div class="rounded-2xl border border-ink-700 bg-ink-900 p-5 sm:p-6 <%= item.wrap %>">
+        <div class="mb-4 text-center text-base font-black text-gold-light"><%= mm.y %>年 <%= MONTH_LABELS[mm.m] %></div>
+        <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-gray-500">
+          <% WEEKDAYS.forEach((w,i)=>{ %>
+            <div class="<%= (i===0)?'text-wine-light':(i===6?'text-sky-400':'') %>"><%= w %></div>
+          <% }) %>
+        </div>
+        <div class="mt-1.5 grid grid-cols-7 gap-1.5 text-center text-sm">
+          <% mm.cells.forEach(d=>{
+               if(!d){ %><div class="aspect-square"></div><% } else {
+                 const s=cellState(mm,d);
+            %>
+              <div class="flex aspect-square items-center justify-center rounded-lg <%= s.cls %> transition" <%= s.title?('title="'+s.title+'"'):'' %>><%= d %></div>
+            <% } }) %>
+        </div>
+      </div>
+    <% }) %>
   </div>
 
-  <!-- 中間：今個月大曆 -->
-  <div class="mx-auto max-w-md rounded-2xl border border-ink-700 bg-ink-900 p-5 sm:p-6">
-    <div class="mb-4 text-center text-base font-black text-gold-light"><%= cur.y %>年 <%= MONTH_LABELS[cur.m] %></div>
-    <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-gray-500">
-      <% WEEKDAYS.forEach((w,i)=>{ %>
-        <div class="<%= (i===0)?'text-wine-light':(i===6?'text-sky-400':'') %>"><%= w %></div>
-      <% }) %>
-    </div>
-    <div class="mt-1.5 grid grid-cols-7 gap-1.5 text-center text-sm">
-      <% cur.cells.forEach(d=>{
-           if(!d){ %><div class="aspect-square"></div><% } else {
-             const s=cellState(cur,d);
-        %>
-          <div class="flex aspect-square items-center justify-center rounded-lg <%= s.cls %> transition" <%= s.title?('title="'+s.title+'"'):'' %>><%= d %></div>
-        <% } }) %>
-    </div>
-  </div>
-
-  <!-- 圖例：貼近主曆，圓點同文字置中對齊 -->
-  <div class="mx-auto mt-5 flex max-w-md flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-gray-400">
+  <!-- 圖例：全寬置中 -->
+  <div class="mx-auto mt-5 flex max-w-2xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-gray-400">
     <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-wine ring-1 ring-wine/60"></span>日本假期・暫停入貨</span>
     <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-gold ring-1 ring-gold/60"></span>香港假期・暫停出貨</span>
     <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-wine to-gold"></span>兩地皆假期</span>

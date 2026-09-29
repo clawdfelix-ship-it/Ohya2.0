@@ -294,7 +294,11 @@
       add(product, qty)
         .then(function () {
           toast('已加入購物車！', 'success');
-          if (window.MZFluid) window.MZFluid.burstFrom(btn); // 04 BURST
+          // 叨叨 #8：商品圖縮成圓形沿弧線飛入購物車；掣自身同時 burst
+          if (window.MZFluid) {
+            window.MZFluid.flyToCart(btn);
+            window.MZFluid.burstFrom(btn);
+          }
           btn.classList.remove('is-morphing');
           btn.classList.add('is-added');
           setTimeout(resetBtn, 1100);
