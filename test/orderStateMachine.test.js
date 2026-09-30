@@ -89,4 +89,7 @@ test('fromLegacyRow: 映射現有 DB 值', () => {
 
   assert.deepEqual(sm.fromLegacyRow({ status: 'pending', payment_status: 'proof_pending' }),
     { cancelled: false, payment: 'proof_pending', fulfillment: 'unfulfilled', state: 'pending' });
+
+  assert.deepEqual(sm.fromLegacyRow({ status: 'pending', payment_status: 'partial_refunded' }),
+    { cancelled: false, payment: 'partially_refunded', fulfillment: 'unfulfilled', state: 'paid' });
 });

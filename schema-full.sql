@@ -537,6 +537,7 @@ CREATE TABLE IF NOT EXISTS refunds (
   amount DECIMAL(10,2) NOT NULL,
   type VARCHAR(20) NOT NULL,
   status VARCHAR(20) NOT NULL,
+  payment_transaction_id VARCHAR(100),
   refund_transaction_id VARCHAR(100),
   processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   processed_at TIMESTAMP WITH TIME ZONE,

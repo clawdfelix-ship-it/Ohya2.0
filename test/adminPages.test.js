@@ -53,8 +53,26 @@ test('adminBootstrap: createFirstAdmin inserts admin user with bcrypt hash', asy
 
 test('adminPages: setupEnabled blocks when admin exists', async () => {
   const adminPages = require('../routes/adminPages');
-  const out = await adminPages.setupEnabled({ hasAdmin: async () => true });
-  assert.equal(out, false);
+  const prev = process.env.ADMIN_SETUP_TOKEN;
+  process.env.ADMIN_SETUP_TOKEN = 'bootstrap-secret';
+  try {
+    const out = await adminPages.setupEnabled({ hasAdmin: async () => true });
+    assert.equal(out, false);
+  } finally {
+    process.env.ADMIN_SETUP_TOKEN = prev;
+  }
+});
+
+test('adminPages: setupEnabled requires deployment setup token', async () => {
+  const adminPages = require('../routes/adminPages');
+  const prev = process.env.ADMIN_SETUP_TOKEN;
+  delete process.env.ADMIN_SETUP_TOKEN;
+  try {
+    const out = await adminPages.setupEnabled({ hasAdmin: async () => false });
+    assert.equal(out, false);
+  } finally {
+    process.env.ADMIN_SETUP_TOKEN = prev;
+  }
 });
 
 test('adminPages: isAdminSession requires admin or permissioned backoffice session', () => {
@@ -74,6 +92,101 @@ test('adminPages: requireAdminPage redirects to /admin/login when not admin', as
   const res = { redirect: (u) => (redirected = u) };
   await mw(req, res, () => {});
   assert.equal(redirected, '/admin/login');
+});
+
+test('adminPages: setup page stays hidden without valid setup token', async () => {
+  const adminPages = require('../routes/adminPages');
+  const app = createRouteCapturingApp();
+  const prev = process.env.ADMIN_SETUP_TOKEN;
+  process.env.ADMIN_SETUP_TOKEN = 'bootstrap-secret';
+  const pool = {
+    query: async (sql) => {
+      if (/SELECT EXISTS/.test(sql)) return { rows: [{ exists: false }] };
+      throw new Error(`Unexpected SQL: ${sql}`);
+    }
+  };
+
+  try {
+    adminPages(app, pool);
+    const route = findRoute(app.routes, 'GET', '/admin/setup');
+    let statusCode = null;
+    let body = null;
+    const req = { query: {} };
+    const res = {
+      status(code) {
+        statusCode = code;
+        return this;
+      },
+      send(payload) {
+        body = payload;
+        return this;
+      },
+      render() {
+        throw new Error('Unexpected render');
+      }
+    };
+
+    await route.handlers[0](req, res);
+
+    assert.equal(statusCode, 404);
+    assert.equal(body, 'Not Found');
+  } finally {
+    process.env.ADMIN_SETUP_TOKEN = prev;
+  }
+});
+
+test('adminPages: setup POST rejects when deployment token is missing', async () => {
+  const adminPages = require('../routes/adminPages');
+  const app = createRouteCapturingApp();
+  const prev = process.env.ADMIN_SETUP_TOKEN;
+  process.env.ADMIN_SETUP_TOKEN = 'bootstrap-secret';
+  let insertAttempted = false;
+  const pool = {
+    query: async (sql) => {
+      if (/SELECT EXISTS/.test(sql)) return { rows: [{ exists: false }] };
+      if (/INSERT INTO users/.test(sql)) {
+        insertAttempted = true;
+        return { rows: [{ id: 1, username: 'admin', is_admin: true }] };
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    }
+  };
+
+  try {
+    adminPages(app, pool);
+    const route = findRoute(app.routes, 'POST', '/admin/setup');
+    let statusCode = null;
+    let body = null;
+    const req = {
+      body: { username: 'admin', password: 'secret123' },
+      session: {
+        regenerate() {
+          throw new Error('Unexpected regenerate');
+        }
+      }
+    };
+    const res = {
+      status(code) {
+        statusCode = code;
+        return this;
+      },
+      send(payload) {
+        body = payload;
+        return this;
+      },
+      redirect() {
+        throw new Error('Unexpected redirect');
+      }
+    };
+
+    await route.handlers[0](req, res);
+
+    assert.equal(statusCode, 404);
+    assert.equal(body, 'Not Found');
+    assert.equal(insertAttempted, false);
+  } finally {
+    process.env.ADMIN_SETUP_TOKEN = prev;
+  }
 });
 
 test('adminPages: admin login does not persist backoffice session for users without permissions', async () => {

@@ -8,6 +8,13 @@ test('computePaymentStatusAfterRefund: full refund', () => {
 
 test('computePaymentStatusAfterRefund: partial refund', () => {
   const { computePaymentStatusAfterRefund } = require('../utils/refundsLogic');
-  assert.equal(computePaymentStatusAfterRefund({ orderTotal: 100, refundAmount: 10 }), 'partial_refunded');
+  assert.equal(computePaymentStatusAfterRefund({ orderTotal: 100, refundAmount: 10 }), 'partially_refunded');
 });
 
+test('computePaymentStatusAfterRefund: uses accumulated refunded total', () => {
+  const { computePaymentStatusAfterRefund } = require('../utils/refundsLogic');
+  assert.equal(
+    computePaymentStatusAfterRefund({ orderTotal: 100, refundAmount: 10, refundedTotal: 100 }),
+    'refunded'
+  );
+});

@@ -11,6 +11,16 @@ async function regenerateSession(req) {
   });
 }
 
+function getAdminSetupToken() {
+  return String(process.env.ADMIN_SETUP_TOKEN || '').trim();
+}
+
+function hasValidAdminSetupToken(candidate) {
+  const expected = getAdminSetupToken();
+  if (!expected) return false;
+  return String(candidate || '') === expected;
+}
+
 function hasBackofficeAccess(session) {
   if (!session || !session.userId) return false;
   if (session.isAdmin) return true;
@@ -67,18 +77,20 @@ function requireAdminPage(requiredPermission) {
 
 async function setupEnabled({ hasAdmin: hasAdminFn }) {
   const exists = await hasAdminFn();
-  return !exists;
+  return !exists && Boolean(getAdminSetupToken());
 }
 
 function register(app, pool) {
   app.get('/admin/setup', async (req, res) => {
     if (!pool) return res.status(500).send('Database not configured');
+    if (!hasValidAdminSetupToken(req.query && req.query.token)) return res.status(404).send('Not Found');
     if (await hasAdmin(pool)) return res.status(404).send('Not Found');
-    res.render('admin/setup', { title: '後台初始化' });
+    res.render('admin/setup', { title: '後台初始化', setupToken: String(req.query.token) });
   });
 
   app.post('/admin/setup', async (req, res) => {
     if (!pool) return res.status(500).send('Database not configured');
+    if (!hasValidAdminSetupToken(req.body && req.body.setup_token)) return res.status(404).send('Not Found');
     if (await hasAdmin(pool)) return res.status(404).send('Not Found');
     const { username, password, contact } = req.body || {};
     if (!username || !password || String(password).length < 6) {
@@ -255,5 +267,7 @@ register.requireAdminPage = requireAdminPage;
 register.setupEnabled = setupEnabled;
 register.hasBackofficeAccess = hasBackofficeAccess;
 register.regenerateSession = regenerateSession;
+register.getAdminSetupToken = getAdminSetupToken;
+register.hasValidAdminSetupToken = hasValidAdminSetupToken;
 
 module.exports = register;
