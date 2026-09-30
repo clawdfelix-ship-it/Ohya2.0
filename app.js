@@ -1284,6 +1284,7 @@ app.use(async (req, res, next) => {
 
   // 顧客服務 / 資訊頁（送貨、付款、退換、FAQ、批發、聯絡、條款、私隱等）
   const infoPages = [
+    { route: '/about', view: 'info/about', title: '關於 OHYA2.0', key: '/about' },
     { route: '/help', view: 'info/help', title: '顧客須知', key: '/help' },
     { route: '/shipping', view: 'info/shipping', title: '送貨安排', key: '/shipping' },
     { route: '/payment', view: 'info/payment', title: '付款方式', key: '/payment' },
