@@ -60,6 +60,7 @@ test('marketing write endpoints are restricted to super-admin permission', () =>
   assert.match(s, /\/api\/admin\/flash-sales'\s*,\s*requirePermission\('\*'\)/);
   assert.match(s, /\/api\/admin\/affiliates'\s*,\s*requirePermission\('\*'\)/);
   assert.match(s, /\/api\/admin\/blog\/posts'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/abandoned-carts'\s*,\s*requirePermission\('\*'\)/);
 });
 
 test('shipping and payment write endpoints are restricted to super-admin permission', () => {
@@ -68,4 +69,12 @@ test('shipping and payment write endpoints are restricted to super-admin permiss
   assert.match(s, /\/api\/admin\/pickup-points'\s*,\s*requirePermission\('\*'\)/);
   assert.match(s, /\/api\/admin\/pickup-points\/bulk'\s*,\s*requirePermission\('\*'\)/);
   assert.match(s, /\/api\/admin\/payment-methods'\s*,\s*requirePermission\('\*'\)/);
+});
+
+test('admin settings endpoints are restricted to super-admin permission', () => {
+  const s = read('routes/admin-settings.js');
+  assert.match(s, /\/api\/admin\/settings\/exchange-rate'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/settings\/exchange-rate\/fetch'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/settings\/exchange-rate\/manual'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/settings\/points'\s*,\s*requirePermission\('\*'\)/);
 });

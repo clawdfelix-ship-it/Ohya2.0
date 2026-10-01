@@ -378,7 +378,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin: list abandoned carts that need reminder
-  app.get('/api/admin/abandoned-carts', requireAdmin, async (req, res) => {
+  app.get('/api/admin/abandoned-carts', requirePermission('*'), async (req, res) => {
     try {
       const result = await pool.query(`
         SELECT ac.*, u.email, u.phone, u.whatsapp

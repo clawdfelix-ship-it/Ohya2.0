@@ -8,6 +8,7 @@
  * 所有 source='mzakka' 商品（由 raw_payload.priceYen）。
  */
 const { getSetting, setSetting } = require('../utils/settings');
+const { requirePermission } = require('./middleware/auth');
 const {
   jpyToHkdRate,
   jpyToHkdRateSource,
@@ -24,7 +25,7 @@ function rateIsValid(v) {
 
 module.exports = function (app, pool, requireAdmin) {
   // 現行匯率狀態
-  app.get('/api/admin/settings/exchange-rate', requireAdmin, async (req, res) => {
+  app.get('/api/admin/settings/exchange-rate', requirePermission('*'), async (req, res) => {
     try {
       const stored = await getSetting(pool, RATE_KEY);
       const countRes = await pool.query(
@@ -92,7 +93,7 @@ module.exports = function (app, pool, requireAdmin) {
   }
 
   // 一鍵：拉線上最新匯率（規則：同現行生效值比，取較高者，唔會自動減價）
-  app.post('/api/admin/settings/exchange-rate/fetch', requireAdmin, async (req, res) => {
+  app.post('/api/admin/settings/exchange-rate/fetch', requirePermission('*'), async (req, res) => {
     try {
       const live = await fetchLiveJpyHkdRate();
       const fetched = Number(live.rate);
@@ -117,7 +118,7 @@ module.exports = function (app, pool, requireAdmin) {
   });
 
   // 手動設定（管理員明確輸入，如實採用，唔做較高者夾取）
-  app.post('/api/admin/settings/exchange-rate/manual', requireAdmin, async (req, res) => {
+  app.post('/api/admin/settings/exchange-rate/manual', requirePermission('*'), async (req, res) => {
     const rate = req.body && req.body.rate;
     return saveRate(req, res, rate);
   });
@@ -129,7 +130,7 @@ module.exports = function (app, pool, requireAdmin) {
   // =========================================================================
   const pointsService = require('../lib/pointsService');
 
-  app.get('/api/admin/settings/points', requireAdmin, async (req, res) => {
+  app.get('/api/admin/settings/points', requirePermission('*'), async (req, res) => {
     try {
       const cfg = await pointsService.loadConfig(pool);
       res.json(cfg);
@@ -139,7 +140,7 @@ module.exports = function (app, pool, requireAdmin) {
     }
   });
 
-  app.post('/api/admin/settings/points', requireAdmin, async (req, res) => {
+  app.post('/api/admin/settings/points', requirePermission('*'), async (req, res) => {
     try {
       const b = req.body || {};
       const adminId = req.session.userId;

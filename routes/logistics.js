@@ -885,7 +885,12 @@ module.exports = function(app, pool) {
 
       // Update order payment status
       await pool.query(
-        'UPDATE orders SET payment_status = $1, payment_transaction_id = $2, paid_at = NOW() WHERE id = $3',
+        `UPDATE orders
+         SET payment_status = $1,
+             status = CASE WHEN $1 = 'paid' AND status = 'pending' THEN 'paid' ELSE status END,
+             payment_transaction_id = $2,
+             paid_at = CASE WHEN $1 = 'paid' THEN NOW() ELSE paid_at END
+         WHERE id = $3`,
         [status === 'success' ? 'paid' : 'failed', transaction_id, order_id]
       );
 
@@ -920,7 +925,12 @@ module.exports = function(app, pool) {
       // AlipayHK: trade_status = TRADE_SUCCESS means paid
       if (trade_status === 'TRADE_SUCCESS') {
         await pool.query(
-          'UPDATE orders SET payment_status = $1, payment_transaction_id = $2, paid_at = NOW() WHERE order_number = $3',
+          `UPDATE orders
+           SET payment_status = $1,
+               status = CASE WHEN status = 'pending' THEN 'paid' ELSE status END,
+               payment_transaction_id = $2,
+               paid_at = NOW()
+           WHERE order_number = $3`,
           ['paid', trade_no, out_trade_no]
         );
 
@@ -960,7 +970,12 @@ module.exports = function(app, pool) {
 
       if (trade_state === 'SUCCESS') {
         await pool.query(
-          'UPDATE orders SET payment_status = $1, payment_transaction_id = $2, paid_at = NOW() WHERE order_number = $3',
+          `UPDATE orders
+           SET payment_status = $1,
+               status = CASE WHEN status = 'pending' THEN 'paid' ELSE status END,
+               payment_transaction_id = $2,
+               paid_at = NOW()
+           WHERE order_number = $3`,
           ['paid', transaction_id, out_trade_no]
         );
 

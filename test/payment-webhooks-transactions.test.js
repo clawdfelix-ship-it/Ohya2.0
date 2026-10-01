@@ -9,3 +9,7 @@ test('payment webhooks write payment_transactions (upsert)', () => {
   assert.match(content, /ON\s+CONFLICT\s*\(\s*payment_method_code\s*,\s*transaction_id\s*\)/i);
 });
 
+test('successful payment webhooks promote pending orders to paid status', () => {
+  const content = fs.readFileSync(path.join(__dirname, '..', 'routes', 'logistics.js'), 'utf8');
+  assert.match(content, /status\s*=\s*CASE WHEN .*status = 'pending'.*THEN 'paid'/s);
+});

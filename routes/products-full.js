@@ -1103,22 +1103,31 @@ module.exports = function(app, pool) {
       if (!Number.isInteger(delta) || delta === 0) return res.status(400).json({ error: 'delta 不正確' });
 
       const client = await pool.connect();
+      let inTransaction = false;
       try {
         await client.query('BEGIN');
+        inTransaction = true;
+        const rollbackAndRespond = async (status, payload) => {
+          if (inTransaction) {
+            await client.query('ROLLBACK');
+            inTransaction = false;
+          }
+          return res.status(status).json(payload);
+        };
 
         if (warehouseId) {
           const w = await client.query(
             'SELECT id FROM inventory_warehouses WHERE id = $1 AND is_active = true LIMIT 1',
             [warehouseId]
           );
-          if (w.rows.length === 0) return res.status(400).json({ error: '倉庫不存在或已停用' });
+          if (w.rows.length === 0) return rollbackAndRespond(400, { error: '倉庫不存在或已停用' });
         }
 
         if (!warehouseId) {
           const w = await client.query(
             'SELECT id FROM inventory_warehouses WHERE is_active = true ORDER BY is_default DESC, id ASC LIMIT 1'
           );
-          if (w.rows.length === 0) return res.status(500).json({ error: '未設定倉庫' });
+          if (w.rows.length === 0) return rollbackAndRespond(500, { error: '未設定倉庫' });
           warehouseId = w.rows[0].id;
         }
 
@@ -1138,7 +1147,7 @@ module.exports = function(app, pool) {
            FOR UPDATE OF ps, il`,
           [skuId, warehouseId]
         );
-        if (skuRow.rows.length === 0) return res.status(404).json({ error: 'SKU 不存在' });
+        if (skuRow.rows.length === 0) return rollbackAndRespond(404, { error: 'SKU 不存在' });
 
         const { previousStock: warehousePreviousStock, newStock: warehouseNewStock } = computeNewStock({
           previousStock: skuRow.rows[0].warehouse_stock,
@@ -1177,6 +1186,7 @@ module.exports = function(app, pool) {
         );
 
         await client.query('COMMIT');
+        inTransaction = false;
         return res.json({
           success: true,
           transaction: tx.rows[0],
@@ -1188,7 +1198,9 @@ module.exports = function(app, pool) {
           }
         });
       } catch (e) {
-        await client.query('ROLLBACK');
+        try {
+          if (inTransaction) await client.query('ROLLBACK');
+        } catch (_) {}
         throw e;
       } finally {
         client.release();

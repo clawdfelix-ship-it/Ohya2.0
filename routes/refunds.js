@@ -117,39 +117,75 @@ module.exports = function (app, pool) {
       const { refund_transaction_id, payment_transaction_id, note } = req.body || {};
       if (!refund_transaction_id) return res.status(400).json({ error: 'refund_transaction_id 必填' });
 
-      const r = await pool.query(`SELECT * FROM refunds WHERE id=$1`, [id]);
-      if (r.rows.length === 0) return res.status(404).json({ error: '退款單不存在' });
-      const refund = r.rows[0];
+      const client = await pool.connect();
+      let inTransaction = false;
+      const rollbackAndRespond = async (status, payload) => {
+        if (inTransaction) {
+          await client.query('ROLLBACK');
+          inTransaction = false;
+        }
+        return res.status(status).json(payload);
+      };
 
-      const o = await pool.query(`SELECT id, total_amount FROM orders WHERE id=$1`, [refund.order_id]);
-      if (o.rows.length === 0) return res.status(404).json({ error: '訂單不存在' });
-      const order = o.rows[0];
+      try {
+        await client.query('BEGIN');
+        inTransaction = true;
 
-      const paymentStatus = computePaymentStatusAfterRefund({ orderTotal: order.total_amount, refundAmount: refund.amount });
+        const r = await client.query(`SELECT * FROM refunds WHERE id=$1`, [id]);
+        if (r.rows.length === 0) return rollbackAndRespond(404, { error: '退款單不存在' });
+        const refund = r.rows[0];
+        if (refund.status === 'completed') return rollbackAndRespond(400, { error: '退款單已完成' });
 
-      await pool.query(
-        `UPDATE refunds
-         SET status='completed', refund_transaction_id=$1, payment_transaction_id=$2,
-             processed_by=$3, processed_at=NOW(), note=COALESCE($4, note)
-         WHERE id=$5`,
-        [refund_transaction_id, payment_transaction_id || null, req.user.id, note || null, id]
-      );
+        const o = await client.query(`SELECT id, total_amount FROM orders WHERE id=$1 FOR UPDATE`, [refund.order_id]);
+        if (o.rows.length === 0) return rollbackAndRespond(404, { error: '訂單不存在' });
+        const order = o.rows[0];
 
-      await pool.query(
-        `UPDATE orders SET payment_status=$1, updated_at=NOW() WHERE id=$2`,
-        [paymentStatus, refund.order_id]
-      );
+        const totals = await client.query(
+          `SELECT COALESCE(SUM(amount), 0) AS total_refunded
+           FROM refunds
+           WHERE order_id = $1 AND status = 'completed'`,
+          [refund.order_id]
+        );
+        const totalRefundAmount = Number(totals.rows[0] && totals.rows[0].total_refunded) + Number(refund.amount);
+        const paymentStatus = computePaymentStatusAfterRefund({
+          orderTotal: order.total_amount,
+          refundAmount: refund.amount,
+          totalRefundAmount
+        });
 
-      await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, 'refund_completed', $2, $3)`,
-        [refund.order_id, `退款完成：${refund.amount}（憑證：${refund_transaction_id}）`, req.user.id]
-      );
+        await client.query(
+          `UPDATE refunds
+           SET status='completed', refund_transaction_id=$1, payment_transaction_id=$2,
+               processed_by=$3, processed_at=NOW(), note=COALESCE($4, note)
+           WHERE id=$5`,
+          [refund_transaction_id, payment_transaction_id || null, req.user.id, note || null, id]
+        );
 
-      res.json({ success: true });
+        await client.query(
+          `UPDATE orders SET payment_status=$1, updated_at=NOW() WHERE id=$2`,
+          [paymentStatus, refund.order_id]
+        );
+
+        await client.query(
+          `INSERT INTO order_status_histories (order_id, status, notes, created_by)
+           VALUES ($1, 'refund_completed', $2, $3)`,
+          [refund.order_id, `退款完成：${refund.amount}（憑證：${refund_transaction_id}）`, req.user.id]
+        );
+
+        await client.query('COMMIT');
+        inTransaction = false;
+        return res.json({ success: true });
+      } catch (err) {
+        try {
+          if (inTransaction) await client.query('ROLLBACK');
+        } catch (_) {}
+        throw err;
+      } finally {
+        client.release();
+      }
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      return res.status(500).json({ error: '服務器錯誤' });
     }
   });
 };
