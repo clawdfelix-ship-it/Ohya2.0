@@ -11,7 +11,21 @@
     error: $('#orders-error'),
     tbody: $('#orders-tbody'),
     detail: $('#order-detail'),
+    modal: $('#order-modal'),
+    modalClose: $('#order-modal-close'),
   };
+
+  function openModal() {
+    if (!els.modal) return;
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!msg) {
@@ -304,6 +318,7 @@
 
   async function openOrder(id) {
     setError('');
+    openModal();
     els.detail.textContent = '載入中…';
     const data = await adminApiRequest('/api/admin/orders/' + encodeURIComponent(id));
     const order = data.order;
@@ -599,17 +614,18 @@
       if (host) host.textContent = '編輯器載入失敗：' + (e.message || String(e));
     }
 
-    // 自動捲到訂單詳情頂部，唔使手動拉落底
-    try {
-      const detailCard = els.detail.closest('.admin-card') || els.detail;
-      detailCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } catch (e) {
-      els.detail.scrollIntoView();
-    }
+    // 彈窗已喺頂部，唔使再捲頁
 
     loadProof();
   }
 
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
   els.refresh.addEventListener('click', () => loadOrders().catch((e) => setError(e.message)));
   els.q.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') loadOrders().catch((e) => setError(e.message));

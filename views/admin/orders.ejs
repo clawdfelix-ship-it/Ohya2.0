@@ -19,32 +19,36 @@
     <button id="orders-bulk-shipany" class="admin-btn-secondary" type="button" disabled>批量生成 ShipAny 面單</button>
   </div>
 
-  <div class="admin-grid-2">
-    <div>
-      <div id="orders-error" class="admin-error hidden"></div>
-      <div id="orders-bulk-result" class="admin-card hidden"></div>
-      <div class="admin-card">
-        <table class="admin-table" id="orders-table">
-          <thead>
-            <tr>
-              <th><input id="orders-select-all" type="checkbox" /></th>
-              <th>訂單號</th>
-              <th>客戶</th>
-              <th>金額</th>
-              <th>狀態</th>
-              <th>建立時間</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="orders-tbody"></tbody>
-        </table>
-      </div>
+  <div>
+    <div id="orders-error" class="admin-error hidden"></div>
+    <div id="orders-bulk-result" class="admin-card hidden"></div>
+    <div class="admin-card">
+      <table class="admin-table" id="orders-table">
+        <thead>
+          <tr>
+            <th><input id="orders-select-all" type="checkbox" /></th>
+            <th>訂單號</th>
+            <th>客戶</th>
+            <th>金額</th>
+            <th>狀態</th>
+            <th>建立時間</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="orders-tbody"></tbody>
+      </table>
     </div>
-    <div>
-      <div class="admin-card">
-        <div class="font-bold mb-2">訂單詳情</div>
-        <div id="order-detail" class="text-sm text-gray-700">請喺左邊揀一張訂單</div>
-        <div class="text-xs text-gray-500 mt-2">ShipAny</div>
+  </div>
+
+  <!-- ============ 訂單詳情彈窗（一㩒打開即喺眼前） ============ -->
+  <div id="order-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+    <div class="w-full max-w-3xl max-h-[90vh] overflow-auto rounded-xl bg-white shadow-2xl">
+      <div class="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
+        <div class="font-bold text-lg">訂單詳情</div>
+        <button id="order-modal-close" type="button" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-4">
+        <div id="order-detail" class="text-sm text-gray-700">請喺列表揀一張訂單</div>
       </div>
     </div>
   </div>
