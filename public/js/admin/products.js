@@ -38,7 +38,24 @@
     skuAdjustCancel: $('#sku-adjust-cancel'),
     reset: $('#product-reset'),
     save: $('#product-save'),
+
+    modal: $('#product-modal'),
+    modalClose: $('#product-modal-close'),
+    modalTitle: $('#product-modal-title'),
   };
+
+  function openModal(isNew) {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = isNew ? '新增商品' : '商品編輯';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!msg) {
@@ -531,6 +548,7 @@
     try {
       const data = await adminApiRequest('/api/admin/products/' + encodeURIComponent(id));
       fillForm(data.product, data.skus || []);
+      openModal(false);
     } catch (e) {
       setError(e && e.message ? e.message : String(e));
     }
@@ -664,6 +682,8 @@
           attributes: s.attributes || {},
           price: s.price === '' ? null : (s.price ?? null),
           cost_price: s.cost_price === '' ? null : (s.cost_price ?? null),
+          cost_price_jpy: s.cost_price_jpy === '' ? null : (s.cost_price_jpy ?? null),
+          wholesale_price_hkd: s.wholesale_price_hkd === '' ? null : (s.wholesale_price_hkd ?? null),
           original_price: s.original_price === '' ? null : (s.original_price ?? null),
           stock: s.stock ?? 0,
           weight: s.weight ?? null,
@@ -681,6 +701,7 @@
 
       await loadProducts();
       clearForm();
+      closeModal();
       showSuccess(els.form.parentNode, id ? '商品已更新' : '商品已建立', 2400);
     } catch (e) {
       setError(e && e.message ? e.message : String(e));
@@ -694,13 +715,20 @@
   if (els.sync) {
     els.sync.addEventListener('click', () => syncMzakkaProducts());
   }
-  els.newBtn.addEventListener('click', () => clearForm());
+  els.newBtn.addEventListener('click', () => { clearForm(); openModal(true); });
   els.search.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') loadProducts().catch((e) => setError(e.message));
   });
   els.categoryFilter.addEventListener('change', () => loadProducts().catch((e) => setError(e.message)));
   els.parentCategory.addEventListener('change', () => {
     rebuildChildOptions(parentCombo ? parentCombo.value() : els.parentCategory.value, null);
+  });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
   });
   if (els.skuAdjustCancel) {
     els.skuAdjustCancel.addEventListener('click', () => closeSkuAdjustModal());
