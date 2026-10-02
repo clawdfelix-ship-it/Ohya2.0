@@ -49,14 +49,22 @@
     </table>
   </div>
 
-  <div class="admin-card space-y-2">
-    <div class="font-bold">採購單詳情 / 收貨入庫</div>
-    <div class="text-sm text-gray-700">按 item 收貨</div>
-    <div id="po-detail" class="text-sm text-gray-700">請先喺上面揀一張採購單</div>
-    <div class="flex gap-2">
-      <button id="po-manual-toggle" class="admin-btn-secondary" type="button">手動輸入（進階）</button>
+  <!-- ============ 採購單詳情 / 收貨入庫彈窗 ============ -->
+  <div id="po-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+    <div class="w-full max-w-3xl max-h-[90vh] overflow-auto rounded-xl bg-white shadow-2xl">
+      <div class="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
+        <div class="font-bold text-lg">採購單詳情 / 收貨入庫</div>
+        <button id="po-modal-close" type="button" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-4 space-y-2">
+        <div class="text-sm text-gray-700">按 item 收貨</div>
+        <div id="po-detail" class="text-sm text-gray-700">請先喺上面揀一張採購單</div>
+        <div class="flex gap-2">
+          <button id="po-manual-toggle" class="admin-btn-secondary" type="button">手動輸入（進階）</button>
+        </div>
+        <div id="po-manual-box" class="hidden"></div>
+      </div>
     </div>
-    <div id="po-manual-box" class="hidden"></div>
   </div>
 
   <script src="/js/admin/common.js"></script>

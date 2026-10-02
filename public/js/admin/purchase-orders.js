@@ -17,7 +17,21 @@
     detail: $('#po-detail'),
     manualToggle: $('#po-manual-toggle'),
     manualBox: $('#po-manual-box'),
+    modal: $('#po-modal'),
+    modalClose: $('#po-modal-close'),
   };
+
+  function openModal() {
+    if (!els.modal) return;
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -545,11 +559,19 @@
   async function openPurchaseOrder(id) {
     setError('');
     currentPoId = id;
+    openModal();
     if (els.detail) els.detail.textContent = '載入中…';
     const data = await adminApiRequest('/api/admin/purchase-orders/' + encodeURIComponent(String(id)));
     renderPoDetail(data.purchase_order, data.items || []);
   }
 
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
   if (els.create) els.create.addEventListener('click', () => createPurchaseOrder().catch((e) => setError(e.message)));
   if (els.manualToggle && els.manualBox) {
     els.manualToggle.addEventListener('click', () => {

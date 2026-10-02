@@ -7,7 +7,21 @@
     error: $('#returns-error'),
     tbody: $('#returns-tbody'),
     detail: $('#return-detail'),
+    modal: $('#return-modal'),
+    modalClose: $('#return-modal-close'),
   };
+
+  function openModal() {
+    if (!els.modal) return;
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!msg) {
@@ -32,7 +46,7 @@
   async function loadList() {
     setError('');
     els.tbody.textContent = '';
-    els.detail.textContent = '請喺左邊揀一張售後單';
+    els.detail.textContent = '請喺列表揀一張售後單';
     const params = new URLSearchParams();
     if (els.status.value) params.set('status', els.status.value);
     const data = await adminApiRequest('/api/admin/returns?' + params.toString());
@@ -51,6 +65,7 @@
 
   async function openDetail(id) {
     setError('');
+    openModal();
     els.detail.textContent = '載入中…';
     const data = await adminApiRequest('/api/admin/returns/' + encodeURIComponent(id));
     const rr = data.return_request;
@@ -117,6 +132,13 @@
     ]));
   }
 
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
   els.refresh.addEventListener('click', () => loadList().catch((e) => setError(e.message)));
   els.status.addEventListener('change', () => loadList().catch((e) => setError(e.message)));
 

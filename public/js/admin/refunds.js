@@ -8,7 +8,21 @@
     error: $('#refunds-error'),
     tbody: $('#refunds-tbody'),
     detail: $('#refund-detail'),
+    modal: $('#refund-modal'),
+    modalClose: $('#refund-modal-close'),
   };
+
+  function openModal() {
+    if (!els.modal) return;
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!msg) {
@@ -25,7 +39,7 @@
   async function loadList() {
     setError('');
     els.tbody.textContent = '';
-    els.detail.textContent = '請喺左邊揀一張退款單';
+    els.detail.textContent = '請喺列表揀一張退款單';
     const params = new URLSearchParams();
     if (els.status.value) params.set('status', els.status.value);
     const q = (els.q.value || '').trim();
@@ -44,6 +58,7 @@
   }
 
   async function openDetail(r) {
+    openModal();
     els.detail.textContent = '';
     const approveBtn = el('button', {
       class: 'admin-btn',
@@ -89,6 +104,13 @@
     ]));
   }
 
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
   els.refresh.addEventListener('click', () => loadList().catch((e) => setError(e.message)));
   els.status.addEventListener('change', () => loadList().catch((e) => setError(e.message)));
   els.q.addEventListener('keydown', (ev) => {
