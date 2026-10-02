@@ -1567,6 +1567,21 @@ app.use(async (req, res, next) => {
     }
   });
 
+// Express error-handling middleware (4-arg). Mounted AFTER all routes.
+// Logs every unhandled error with full stack so Vercel deployment
+// events pickup `stderr` lines and we can debug 500-on-prod issues.
+// (Previously routes only logged `console.error(err)` and Vercel's
+// runtime-logs API is locked to Pro plan — this gives us visibility
+// from build/deployment events at minimum.)
+app.use((err, req, res, next) => {
+  console.error('[error]', req.method, req.originalUrl || req.url, '→', err.stack || err);
+  if (res.headersSent) return next(err);
+  res.status(err.status || 500).json({
+    error: '服務器錯誤',
+    detail: err.message || String(err),
+  });
+});
+
 // Start server for local development
 if (require.main === module) {
   app.listen(port, () => {
