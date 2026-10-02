@@ -14,7 +14,23 @@
     reset: $('#brand-reset'),
     error: $('#brand-error'),
     tbody: $('#brand-tbody'),
+    create: $('#brand-create'),
+    modal: $('#brand-modal'),
+    modalClose: $('#brand-modal-close'),
+    modalTitle: $('#brand-modal-title'),
   };
+
+  function openModal(isNew) {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = isNew ? '新增品牌' : '編輯品牌';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -82,7 +98,7 @@
         class: 'admin-link-btn',
         type: 'button',
         text: '編輯',
-        onclick: () => fillForm(b),
+        onclick: () => { fillForm(b); openModal(false); },
       });
 
       const toggleBtn = el('button', {
@@ -179,6 +195,7 @@
       }
       clearForm();
       await loadBrands();
+      closeModal();
     } finally {
       if (els.save) els.save.disabled = false;
     }
@@ -186,6 +203,14 @@
 
   if (els.reset) els.reset.addEventListener('click', () => clearForm());
   if (els.save) els.save.addEventListener('click', () => saveBrand().catch((e) => setError(e.message)));
+  if (els.create) els.create.addEventListener('click', () => { clearForm(); openModal(true); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
 
   try {
     clearForm();

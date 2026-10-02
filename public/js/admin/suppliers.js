@@ -15,7 +15,23 @@
     reset: $('#sup-reset'),
     error: $('#sup-error'),
     tbody: $('#sup-tbody'),
+    create: $('#sup-create'),
+    modal: $('#sup-modal'),
+    modalClose: $('#sup-modal-close'),
+    modalTitle: $('#sup-modal-title'),
   };
+
+  function openModal(isNew) {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = isNew ? '新增供應商' : '編輯供應商';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -83,7 +99,7 @@
         class: 'admin-link-btn',
         type: 'button',
         text: '編輯',
-        onclick: () => fillForm(s),
+        onclick: () => { fillForm(s); openModal(false); },
       });
 
       const toggleBtn = el('button', {
@@ -140,10 +156,19 @@
     }
     clearForm();
     await loadSuppliers();
+    closeModal();
   }
 
   if (els.reset) els.reset.addEventListener('click', () => clearForm());
   if (els.save) els.save.addEventListener('click', () => saveSupplier().catch((e) => setError(e.message)));
+  if (els.create) els.create.addEventListener('click', () => { clearForm(); openModal(true); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
 
   try {
     clearForm();
@@ -152,4 +177,3 @@
     setError(e && e.message ? e.message : String(e));
   }
 })();
-

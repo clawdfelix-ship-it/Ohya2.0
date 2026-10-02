@@ -13,9 +13,25 @@
     save: $('#ut-save'),
     reset: $('#ut-reset'),
     refresh: $('#ut-refresh'),
+    create: $('#ut-create'),
     error: $('#ut-error'),
     tbody: $('#ut-tbody'),
+    modal: $('#ut-modal'),
+    modalClose: $('#ut-modal-close'),
+    modalTitle: $('#ut-modal-title'),
   };
+
+  function openModal() {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = '新增用戶標籤';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -96,12 +112,21 @@
     await adminApiRequest('/api/admin/user-tags', { method: 'POST', json: payload });
     clearForm();
     await loadTags();
+    closeModal();
   }
 
   if (els.save) els.save.addEventListener('click', () => saveTag().catch((e) => setError(e.message)));
   if (els.reset) els.reset.addEventListener('click', () => clearForm());
+  if (els.create) els.create.addEventListener('click', () => { clearForm(); openModal(); });
   if (els.refresh) els.refresh.addEventListener('click', () => {
     loadTags().catch((e) => setError(e && e.message ? e.message : String(e)));
+  });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
   });
 
   try {

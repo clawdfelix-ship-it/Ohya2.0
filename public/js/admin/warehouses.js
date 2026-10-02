@@ -8,10 +8,27 @@
     contactPhone: $('#wh-contact-phone'),
     isDefault: $('#wh-is-default'),
     create: $('#wh-create'),
+    save: $('#wh-save'),
+    reset: $('#wh-reset'),
     refresh: $('#wh-refresh'),
     error: $('#wh-error'),
     tbody: $('#wh-tbody'),
+    modal: $('#wh-modal'),
+    modalClose: $('#wh-modal-close'),
+    modalTitle: $('#wh-modal-title'),
   };
+
+  function openModal() {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = '新增倉庫';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -113,10 +130,20 @@
     await adminApiRequest('/api/admin/warehouses', { method: 'POST', json: payload });
     clearForm();
     await loadWarehouses();
+    closeModal();
   }
 
   if (els.refresh) els.refresh.addEventListener('click', () => loadWarehouses().catch((e) => setError(e.message)));
-  if (els.create) els.create.addEventListener('click', () => createWarehouse().catch((e) => setError(e.message)));
+  if (els.create) els.create.addEventListener('click', () => { clearForm(); openModal(); });
+  if (els.save) els.save.addEventListener('click', () => createWarehouse().catch((e) => setError(e.message)));
+  if (els.reset) els.reset.addEventListener('click', () => clearForm());
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
 
   try {
     await loadWarehouses();
@@ -124,4 +151,3 @@
     setError(e && e.message ? e.message : String(e));
   }
 })();
-
