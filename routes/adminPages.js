@@ -160,6 +160,10 @@ function register(app, pool) {
     res.render('admin/layout', { title: '低庫存', active: 'low-stock', content: 'low-stock' });
   });
 
+  app.get('/admin/wholesale-match', requireAdminPage('catalog:read'), (req, res) => {
+    res.render('admin/layout', { title: '批發比對覆核', active: 'wholesale-match', content: 'wholesale-match' });
+  });
+
   app.get('/admin/warehouses', requireAdminPage('inventory:write'), (req, res) => {
     res.render('admin/layout', { title: '倉庫', active: 'warehouses', content: 'warehouses' });
   });

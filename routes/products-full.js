@@ -1411,4 +1411,92 @@ module.exports = function(app, pool) {
     }
   });
 
+  // ===== JAN 比對待覆核佇列（Japan wholesale） =====
+  // match_status='unverified'：相似度 0.50–0.70，要人手確認。
+  app.get('/api/admin/wholesale-match/unverified', requirePermission('catalog:read'), async (req, res) => {
+    try {
+      const page = Math.max(1, parseInt(req.query.page) || 1);
+      const pageSize = Math.min(100, parseInt(req.query.page_size) || 50);
+      const offset = (page - 1) * pageSize;
+      const search = (req.query.search || '').trim();
+
+      let where = "ps.match_status = 'unverified'";
+      const params = [];
+      if (search) {
+        params.push('%' + search + '%');
+        where += ` AND (COALESCE(p.name_zh_hk, p.name) ILIKE $${params.length}
+                     OR ps.match_source_jan ILIKE $${params.length}
+                     OR ps.sku ILIKE $${params.length})`;
+      }
+
+      const countRes = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM product_skus ps
+         JOIN products p ON p.id = ps.product_id WHERE ${where}`,
+        params
+      );
+      const total = countRes.rows[0].total;
+
+      const rowsRes = await pool.query(
+        `SELECT ps.id AS sku_id, ps.product_id, ps.sku, ps.barcode,
+                ps.match_source_jan, ps.match_sim, ps.match_matched_at,
+                ps.cost_price_jpy, ps.wholesale_price_hkd,
+                COALESCE(p.name_zh_hk, p.name) AS product_name,
+                p.slug AS product_slug, p.image_url
+         FROM product_skus ps
+         JOIN products p ON p.id = ps.product_id
+         WHERE ${where}
+         ORDER BY ps.match_sim DESC, ps.id
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, pageSize, offset]
+      );
+
+      res.json({
+        items: rowsRes.rows,
+        pagination: { page, page_size: pageSize, total, total_pages: Math.ceil(total / pageSize) },
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
+  // 確認：比對正確 → match_status='auto'（視作已驗）
+  app.post('/api/admin/wholesale-match/:skuId/confirm', requirePermission('catalog:write'), async (req, res) => {
+    try {
+      const skuId = parseInt(req.params.skuId);
+      if (!Number.isFinite(skuId)) return res.status(400).json({ error: '無效 SKU id' });
+      const r = await pool.query(
+        `UPDATE product_skus SET match_status = 'auto', updated_at = NOW()
+         WHERE id = $1 AND match_status = 'unverified' RETURNING id`,
+        [skuId]
+      );
+      if (r.rows.length === 0) return res.status(404).json({ error: '找不到該待覆核項目' });
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
+  // 駁回：比對錯誤 → match_status='rejected'，清走入貨/批發價（避免錯價流出）
+  app.post('/api/admin/wholesale-match/:skuId/reject', requirePermission('catalog:write'), async (req, res) => {
+    try {
+      const skuId = parseInt(req.params.skuId);
+      if (!Number.isFinite(skuId)) return res.status(400).json({ error: '無效 SKU id' });
+      const r = await pool.query(
+        `UPDATE product_skus
+            SET match_status = 'rejected',
+                cost_price_jpy = NULL, wholesale_price_hkd = NULL,
+                updated_at = NOW()
+         WHERE id = $1 AND match_status = 'unverified' RETURNING id`,
+        [skuId]
+      );
+      if (r.rows.length === 0) return res.status(404).json({ error: '找不到該待覆核項目' });
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
 };
