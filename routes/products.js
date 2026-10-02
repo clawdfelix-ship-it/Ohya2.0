@@ -68,9 +68,15 @@ module.exports = function(app, pool, requireAdmin) {
   });
 
   // Get single product
-  app.get('/api/products/:id', async (req, res) => {
+  app.get('/api/products/:id', async (req, res, next) => {
     try {
       const { id } = req.params;
+      // Only handle numeric ids here. Non-numeric values like 'featured'
+      // belong to specific routes registered in products-full.js
+      // (/api/products/featured, /api/products/:slug). Without this guard
+      // Express matches this generic :id first (it is registered earlier)
+      // and Postgres throws 22P02 invalid input syntax for integer.
+      if (!/^\d+$/.test(id)) return next();
       const result = await pool.query(`
         SELECT p.*, p.name_zh_hk as name, p.description_zh_hk as description, c.name_zh_hk as category_name
         FROM products p

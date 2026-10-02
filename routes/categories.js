@@ -64,9 +64,14 @@ module.exports = function(app, pool, requireAdmin) {
   });
 
   // Get single category
-  app.get('/api/categories/:id', async (req, res) => {
+  app.get('/api/categories/:id', async (req, res, next) => {
     try {
       const { id } = req.params;
+      // Numeric ids only. Non-numeric values (e.g. 'tree') are specific
+      // routes registered later in products-full.js. Generic :id is
+      // registered earlier so it would otherwise swallow them and make
+      // Postgres throw 22P02 invalid input syntax for integer.
+      if (!/^\d+$/.test(id)) return next();
       const result = await pool.query('SELECT * FROM categories WHERE id = $1', [id]);
       if (result.rows.length === 0) {
         return res.status(404).json({ error: '分類不存在' });
