@@ -44,3 +44,8 @@ tmp/mzakka-tax-cache/
 tmp/*.json
 tmp/*.jsonl
 tmp/*.log
+
+# Session artifacts (2026-10-02): local backups, state, tmp working files
+*.bak.*
+state/
+tmp/
