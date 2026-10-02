@@ -340,7 +340,7 @@ module.exports = function(app, pool) {
 
       const result = await pool.query(`
         SELECT u.id, u.username, u.email, u.phone, u.whatsapp, u.first_name, u.last_name,
-               u.is_active, u.is_blacklisted, u.is_admin, u.points, u.total_spent, u.total_orders,
+               u.is_active, u.is_blacklisted, u.is_admin, u.is_b2b, u.points, u.total_spent, u.total_orders,
                u.member_level_id, u.created_at, u.last_login_at, ml.name as member_level_name,
                (SELECT ap.role_id FROM admin_permissions ap WHERE ap.user_id = u.id ORDER BY ap.id DESC LIMIT 1) as role_id,
                (SELECT ar.name FROM admin_permissions ap JOIN admin_roles ar ON ar.id = ap.role_id WHERE ap.user_id = u.id ORDER BY ap.id DESC LIMIT 1) as role_name
@@ -438,14 +438,14 @@ module.exports = function(app, pool) {
   app.put('/api/admin/users/:id', requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const { email, phone, whatsapp, first_name, last_name, is_active, is_blacklisted, is_admin, member_level_id, role_id } = req.body;
+      const { email, phone, whatsapp, first_name, last_name, is_active, is_blacklisted, is_admin, is_b2b, member_level_id, role_id } = req.body;
 
       await pool.query(`
         UPDATE users
         SET email = $1, phone = $2, whatsapp = $3, first_name = $4, last_name = $5,
-            is_active = $6, is_blacklisted = $7, is_admin = $8, member_level_id = $9, updated_at = NOW()
-        WHERE id = $10
-      `, [email, phone, whatsapp, first_name, last_name, is_active, is_blacklisted, is_admin, member_level_id || null, id]);
+            is_active = $6, is_blacklisted = $7, is_admin = $8, is_b2b = $9, member_level_id = $10, updated_at = NOW()
+        WHERE id = $11
+      `, [email, phone, whatsapp, first_name, last_name, is_active, is_blacklisted, is_admin, is_b2b || false, member_level_id || null, id]);
 
       if (role_id !== undefined) {
         const roleIdNum = role_id ? Number(role_id) : null;

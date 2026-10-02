@@ -16,6 +16,7 @@ function setSessionUser(req, user) {
   req.session.userId = user.id;
   req.session.username = user.username;
   req.session.isAdmin = user.is_admin;
+  req.session.isB2b = user.is_b2b || false;
   req.session.isBackoffice = false;
   delete req.session.adminPermissions;
   req.session.contact = user.contact || null;
@@ -28,6 +29,7 @@ function serializeUser(user) {
     username: user.username,
     email: user.email || null,
     isAdmin: user.is_admin,
+    isB2b: user.is_b2b || false,
     contact: user.contact || null,
   };
 }
@@ -82,7 +84,7 @@ async function loginUser(pool, bcrypt, payload) {
   }
 
   const result = await pool.query(
-    `SELECT id, username, email, password_hash, is_admin, contact
+    `SELECT id, username, email, password_hash, is_admin, is_b2b, contact
      FROM users
      WHERE username = $1 OR LOWER(email) = LOWER($1)
      LIMIT 1`,

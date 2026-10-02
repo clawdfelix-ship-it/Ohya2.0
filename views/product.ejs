@@ -118,6 +118,21 @@
               <span class="text-gold font-bold">可獲積分：<%= pointsForDisplay(product.price) %>pt</span>
               <span class="text-gray-500 ml-2">（1 倍）</span>
             </div>
+<% if (typeof showWholesale !== 'undefined' && showWholesale && product.wholesale && product.wholesale.min_w != null) { %>
+  <% const w = product.wholesale;
+     const fmtW = (v) => 'HK$' + Number(v).toFixed(2);
+     const wsRange = Number(w.min_w) !== Number(w.max_w) ? fmtW(w.min_w) + '–' + Number(w.max_w).toFixed(2) : fmtW(w.min_w); %>
+  <div class="mt-4 rounded-xl border border-amber-300/40 bg-amber-50 px-4 py-3">
+    <div class="flex items-center gap-2">
+      <span class="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-700">批發價</span>
+      <span class="text-xl font-black text-amber-700 tabular-nums"><%= wsRange %></span>
+    </div>
+    <% if (w.min_jpy != null) { %>
+      <% const jyRange = Number(w.min_jpy) !== Number(w.max_jpy) ? Number(w.min_jpy).toFixed(0) + '–' + Number(w.max_jpy).toFixed(0) : Number(w.min_jpy).toFixed(0); %>
+      <div class="mt-1 text-xs text-amber-600/80">日本入貨價：¥<%= jyRange %></div>
+    <% } %>
+  </div>
+<% } %>
           </div>
           
           <!-- 供貨方式（不追蹤庫存，全站預購） -->

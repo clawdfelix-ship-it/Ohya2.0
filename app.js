@@ -642,7 +642,7 @@ async function loadStorefrontHomeModules() {
 }
 
 app.use(async (req, res, next) => {
-  res.locals.user = req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null;
+  res.locals.user = req.session && req.session.userId ? { id: req.session.userId, isAdmin: !!req.session.isAdmin, isB2b: !!req.session.isB2b } : null;
   res.locals.formatPrice = formatPrice;
   res.locals.homeModules = getFallbackHomeModules();
   // 手機 tabbar active 判斷
@@ -1260,12 +1260,29 @@ app.use(async (req, res, next) => {
         mapDbProductToStorefrontProduct(r, { toProxyUrl: app.locals.toProxyUrl })
       );
 
+      // B2B / 職員：撈該產品嘅批發價範圍（HKD）同日元成本範圍，傳入畫面。
+      // 身份來自 session（login 時由 users.is_b2b / is_admin 寫入）。
+      const _seeWholesale = !!(req.session && (req.session.isAdmin || req.session.isB2b));
+      if (_seeWholesale) {
+        const wsRes = await pool.query(
+          `SELECT MIN(wholesale_price_hkd) AS min_w,
+                  MAX(wholesale_price_hkd) AS max_w,
+                  MIN(cost_price_jpy)      AS min_jpy,
+                  MAX(cost_price_jpy)      AS max_jpy
+           FROM product_skus
+           WHERE product_id = $1 AND is_active = true AND wholesale_price_hkd IS NOT NULL`,
+          [id]
+        );
+        product.wholesale = wsRes.rows[0] || null;
+      }
+
       res.render('product', {
         title: product.name + ' - OHYA2.0',
         product,
         relatedProducts,
         user: res.locals.user,
         formatPrice,
+        showWholesale: _seeWholesale,
         selectedCategorySlug: product.categorySlug || null,
       });
     } catch (err) {
@@ -1273,7 +1290,7 @@ app.use(async (req, res, next) => {
       res.redirect('/products');
     }
   });
-  
+
   // 登入頁
   app.get('/login', (req, res) => {
     res.render('login', {

@@ -21,6 +21,7 @@
             <th>電話</th>
             <th>狀態</th>
             <th>管理員</th>
+            <th>B2B</th>
             <th>角色</th>
             <th></th>
           </tr>
@@ -67,6 +68,13 @@
         <label class="text-sm block">
           <div class="mb-1">管理員</div>
           <select id="user-admin" class="admin-input w-full">
+            <option value="false">否</option>
+            <option value="true">是</option>
+          </select>
+        </label>
+        <label class="text-sm block">
+          <div class="mb-1">B2B 批發客戶</div>
+          <select id="user-b2b" class="admin-input w-full">
             <option value="false">否</option>
             <option value="true">是</option>
           </select>

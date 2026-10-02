@@ -249,19 +249,15 @@ module.exports = function(app, pool) {
 
       const product = productResult.rows[0];
 
-      // Get SKUs (public: hide cost_price; only show wholesale_price_hkd if user is B2B-eligible)
-      // Cost (HKD) is staff-only and lives on /api/admin/products/:id — never exposed here, even to B2B.
-      // B2B-eligible: any user with role b2b/wholesale OR staff (admin/manager/staff/super_admin)
-      // Permissions take precedence: req.user.permissions may include 'wholesale:read' or 'catalog:read'
-      const STAFF_ROLES = new Set(['admin', 'super_admin', 'manager', 'staff', 'editor']);
-      const B2B_ROLES = new Set(['b2b', 'wholesale', 'wholesaler']);
-      const _user = req.user || {};
-      const _role = (_user.role || '').toLowerCase();
-      const _perms = new Set(_user.permissions || []);
-      const _isStaff = STAFF_ROLES.has(_role);
-      const _isB2BByRole = B2B_ROLES.has(_role);
-      const _isB2BByPerm = _perms.has('wholesale:read') || _perms.has('catalog:read');
-      const _canSeeWholesale = _isB2BByRole || _isStaff || _isB2BByPerm;
+      // Get SKUs. Wholesale visibility is driven by the real session
+      // (set at login from users.is_b2b / users.is_admin), not by an
+      // assumed role field — users has no role column.
+      //   staff   = session.isAdmin
+      //   b2b     = session.isB2b
+      // Cost (HKD) stays staff-only and is never exposed here, even to B2B.
+      const _isStaff = !!(req.session && req.session.isAdmin);
+      const _isB2B = !!(req.session && req.session.isB2b);
+      const _canSeeWholesale = _isStaff || _isB2B;
 
       // Public: retail price + stock + barcode (so customers can scan for their own purchase).
       // NO cost, NO wholesale price — both are B2B/internal sensitive.

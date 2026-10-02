@@ -17,6 +17,7 @@
     active: $('#user-active'),
     blacklisted: $('#user-blacklisted'),
     admin: $('#user-admin'),
+    b2b: $('#user-b2b'),
     role: $('#user-role'),
     passwordWrap: $('#user-password-wrap'),
     password: $('#user-password'),
@@ -81,6 +82,7 @@
     els.active.value = String(u && u.is_active !== undefined ? !!u.is_active : true);
     els.blacklisted.value = String(u && u.is_blacklisted !== undefined ? !!u.is_blacklisted : false);
     els.admin.value = String(u && u.is_admin !== undefined ? !!u.is_admin : false);
+    if (els.b2b) els.b2b.value = String(u && u.is_b2b !== undefined ? !!u.is_b2b : false);
     if (els.role) els.role.value = u && u.role_id ? String(u.role_id) : '';
     els.password.value = '';
     els.passwordWrap.style.display = isNew ? '' : 'none';
@@ -94,7 +96,7 @@
   }
 
   function clearForm() {
-    fillForm({ id: '', username: '', email: '', phone: '', whatsapp: '', is_active: true, is_blacklisted: false, is_admin: false });
+    fillForm({ id: '', username: '', email: '', phone: '', whatsapp: '', is_active: true, is_blacklisted: false, is_admin: false, is_b2b: false });
   }
 
   // ===================== 積分管理 =====================
@@ -198,6 +200,7 @@
         el('td', { text: u.phone || '' }),
         el('td', { text: status }),
         el('td', { text: u.is_admin ? '是' : '否' }),
+        el('td', { text: u.is_b2b ? '是' : '否' }),
         el('td', { text: u.role_name || '' }),
         el('td', {}, [
           el('button', { class: 'admin-link-btn', text: '編輯', onclick: () => fillForm(u) }),
@@ -225,6 +228,7 @@
             is_active: els.active.value === 'true',
             is_blacklisted: els.blacklisted.value === 'true',
             is_admin: els.admin.value === 'true',
+            is_b2b: els.b2b && els.b2b.value === 'true',
             member_level_id: null,
             role_id: els.role && els.role.value ? Number(els.role.value) : null,
           },
