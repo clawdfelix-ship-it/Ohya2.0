@@ -249,9 +249,28 @@ module.exports = function(app, pool) {
 
       const product = productResult.rows[0];
 
-      // Get SKUs
+      // Get SKUs (public: hide cost_price; only show wholesale_price_hkd if user is B2B-eligible)
+      // Cost (HKD) is staff-only and lives on /api/admin/products/:id — never exposed here, even to B2B.
+      // B2B-eligible: any user with role b2b/wholesale OR staff (admin/manager/staff/super_admin)
+      // Permissions take precedence: req.user.permissions may include 'wholesale:read' or 'catalog:read'
+      const STAFF_ROLES = new Set(['admin', 'super_admin', 'manager', 'staff', 'editor']);
+      const B2B_ROLES = new Set(['b2b', 'wholesale', 'wholesaler']);
+      const _user = req.user || {};
+      const _role = (_user.role || '').toLowerCase();
+      const _perms = new Set(_user.permissions || []);
+      const _isStaff = STAFF_ROLES.has(_role);
+      const _isB2BByRole = B2B_ROLES.has(_role);
+      const _isB2BByPerm = _perms.has('wholesale:read') || _perms.has('catalog:read');
+      const _canSeeWholesale = _isB2BByRole || _isStaff || _isB2BByPerm;
+
+      // Public: retail price + stock + barcode (so customers can scan for their own purchase).
+      // NO cost, NO wholesale price — both are B2B/internal sensitive.
+      const publicSkuCols = `id, product_id, sku, barcode, attributes, price, original_price, stock, weight, weight_unit, is_active, created_at, updated_at`;
+      // B2B-eligible: adds JPY cost + HKD wholesale price (cost_price HKD is staff-only, not exposed here).
+      const b2bSkuCols = `${publicSkuCols}, cost_price_jpy, wholesale_price_hkd`;
+      const skuCols = _canSeeWholesale ? b2bSkuCols : publicSkuCols;
       const skusResult = await pool.query(`
-        SELECT * FROM product_skus WHERE product_id = $1 AND is_active = true ORDER BY id
+        SELECT ${skuCols} FROM product_skus WHERE product_id = $1 AND is_active = true ORDER BY id
       `, [product.id]);
 
       // Get related products
@@ -394,12 +413,15 @@ module.exports = function(app, pool) {
     }
   });
 
-  // Export products to CSV
+  // Export products to CSV (now includes wholesale + match columns)
   app.get('/api/admin/products/export/csv', requirePermission('catalog:read'), async (req, res) => {
     try {
       const result = await pool.query(`
         SELECT
           p.id, p.name, p.slug, p.price, p.original_price, p.cost_price,
+          MIN(ps.wholesale_price_hkd) AS wholesale_price_hkd,
+          MIN(ps.cost_price_jpy)     AS cost_price_jpy,
+          BOOL_OR(ps.match_status = 'unverified') AS has_unverified_match,
           SUM(ps.stock) as stock,
           c.name as category_name,
           b.name as brand_name,
@@ -412,7 +434,7 @@ module.exports = function(app, pool) {
         ORDER BY p.created_at DESC
       `);
 
-      let csv = 'ID,Name,Slug,Cost Price,Price,Original Price,Total Stock,Category,Brand,Status,Created At\n';
+      let csv = 'ID,Name,Slug,Cost Price (HKD),Cost Price (JPY),Wholesale Price (HKD),Retail Price,Original Price,Total Stock,Has Unverified Match,Category,Brand,Status,Created At\n';
       result.rows.forEach(row => {
         const escape = (val) => {
           if (val === null) return '';
@@ -423,8 +445,10 @@ module.exports = function(app, pool) {
           return str;
         };
         csv += Object.values([
-          row.id, row.name, row.slug, row.cost_price, row.price, row.original_price,
-          row.stock, row.category_name, row.brand_name, row.status, row.created_at
+          row.id, row.name, row.slug, row.cost_price, row.cost_price_jpy, row.wholesale_price_hkd,
+          row.price, row.original_price,
+          row.stock, row.has_unverified_match ? 'YES' : '',
+          row.category_name, row.brand_name, row.status, row.created_at
         ]).map(escape).join(',') + '\n';
       });
 
@@ -481,7 +505,17 @@ module.exports = function(app, pool) {
           b.name as brand_name,
           c.name as category_name,
           COALESCE(SUM(CASE WHEN ps.is_active = true THEN ps.stock ELSE 0 END), 0) as total_stock,
-          COALESCE(COUNT(ps.id) FILTER (WHERE ps.is_active = true), 0) as active_sku_count
+          COALESCE(COUNT(ps.id) FILTER (WHERE ps.is_active = true), 0) as active_sku_count,
+          -- Wholesale pricing rollup from SKUs (Japan import)
+          MIN(ps.wholesale_price_hkd) AS min_wholesale_price_hkd,
+          MAX(ps.wholesale_price_hkd) AS max_wholesale_price_hkd,
+          MIN(ps.cost_price) AS min_cost_price,
+          MAX(ps.cost_price) AS max_cost_price,
+          MIN(ps.cost_price_jpy) AS min_cost_price_jpy,
+          MAX(ps.cost_price_jpy) AS max_cost_price_jpy,
+          -- Match status rollup: if any SKU is 'unverified' the whole product needs review
+          BOOL_OR(ps.match_status = 'unverified') AS has_unverified_match,
+          COUNT(ps.id) FILTER (WHERE ps.match_status IS NOT NULL) AS matched_sku_count
         FROM products p
         LEFT JOIN product_skus ps ON p.id = ps.product_id
         LEFT JOIN brands b ON p.brand_id = b.id
@@ -519,7 +553,11 @@ module.exports = function(app, pool) {
       const product = productResult.rows[0];
 
       const skusResult = await pool.query(`
-        SELECT * FROM product_skus WHERE product_id = $1 ORDER BY id
+        SELECT id, product_id, sku, barcode, attributes, price, cost_price, cost_price_jpy,
+               wholesale_price_hkd, original_price, stock, weight, weight_unit, is_active,
+               match_status, match_sim, match_source_jan, match_matched_at,
+               created_at, updated_at
+        FROM product_skus WHERE product_id = $1 ORDER BY id
       `, [id]);
 
       // product_tags / related_products 表可能未喺該環境建立（migration 缺失），
