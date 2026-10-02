@@ -654,8 +654,8 @@ module.exports = function(app, pool) {
         if (skus && skus.length > 0) {
           for (const sku of skus) {
             await client.query(`
-              INSERT INTO product_skus (product_id, sku, barcode, attributes, price, cost_price, original_price, stock, weight, weight_unit, is_active)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+              INSERT INTO product_skus (product_id, sku, barcode, attributes, price, cost_price, cost_price_jpy, wholesale_price_hkd, original_price, stock, weight, weight_unit, is_active)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             `, [
               productId,
               sku.sku || null,
@@ -663,6 +663,8 @@ module.exports = function(app, pool) {
               JSON.stringify(sku.attributes || {}),
               sku.price || null,
               sku.cost_price || null,
+              sku.cost_price_jpy || null,
+              sku.wholesale_price_hkd || null,
               sku.original_price || null,
               sku.stock || 0,
               sku.weight || null,
@@ -806,18 +808,22 @@ module.exports = function(app, pool) {
                      attributes = $3,
                      price = $4,
                      cost_price = $5,
-                     original_price = $6,
-                     weight = $7,
-                     weight_unit = $8,
-                     is_active = $9,
+                     cost_price_jpy = $6,
+                     wholesale_price_hkd = $7,
+                     original_price = $8,
+                     weight = $9,
+                     weight_unit = $10,
+                     is_active = $11,
                      updated_at = NOW()
-                 WHERE id = $10 AND product_id = $11`,
+                 WHERE id = $12 AND product_id = $13`,
                 [
                   sku.sku || null,
                   sku.barcode || null,
                   JSON.stringify(sku.attributes || {}),
                   sku.price || null,
                   sku.cost_price || null,
+                  sku.cost_price_jpy || null,
+                  sku.wholesale_price_hkd || null,
                   sku.original_price || null,
                   sku.weight || null,
                   sku.weight_unit || 'g',
@@ -829,8 +835,8 @@ module.exports = function(app, pool) {
             } else {
               await client.query(
                 `INSERT INTO product_skus
-                  (product_id, sku, barcode, attributes, price, cost_price, original_price, stock, weight, weight_unit, is_active)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                  (product_id, sku, barcode, attributes, price, cost_price, cost_price_jpy, wholesale_price_hkd, original_price, stock, weight, weight_unit, is_active)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
                 [
                   id,
                   sku.sku || null,
@@ -838,6 +844,8 @@ module.exports = function(app, pool) {
                   JSON.stringify(sku.attributes || {}),
                   sku.price || null,
                   sku.cost_price || null,
+                  sku.cost_price_jpy || null,
+                  sku.wholesale_price_hkd || null,
                   sku.original_price || null,
                   sku.stock || 0,
                   sku.weight || null,

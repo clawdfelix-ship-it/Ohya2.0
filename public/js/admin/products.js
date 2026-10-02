@@ -344,10 +344,24 @@
         }),
       ]);
 
+      // ---- 成本 / 批發 /零售三欄（Japan import rollup）----
+      const fmtRange = (lo, hi, prefix) => {
+        if (lo == null && hi == null) return '—';
+        const f = (v) => prefix + Number(v).toFixed(2);
+        if (lo != null && hi != null && Number(lo) !== Number(hi)) return f(lo) + '–' + Number(hi).toFixed(2);
+        return f(lo != null ? lo : hi);
+      };
+      const price3 = el('td', { class: 'whitespace-nowrap text-xs leading-5 tabular-nums' }, [
+        el('div', { class: 'text-gray-400', text: '成本 ' + fmtRange(p.min_cost_price, p.max_cost_price, 'HK$') }),
+        el('div', { class: 'text-amber-700', text: '批發 ' + fmtRange(p.min_wholesale_price_hkd, p.max_wholesale_price_hkd, 'HK$') }),
+        el('div', { class: 'text-gray-900', text: '零售 ' + (price > 0 ? 'HK$' + price.toFixed(2) : '未定價') }),
+      ]);
+
       const tr = el('tr', {}, [
         el('td', { class: 'text-gray-400 tabular-nums', text: String(p.id) }),
         el('td', {}, [thumb]),
         el('td', { class: 'text-gray-500', text: categoryLabel }),
+        price3,
         stockCell,
         el('td', {}, [productStatusSwitch(p)]),
         el('td', {}, [
@@ -451,6 +465,20 @@
         value: sku.price ?? '',
         oninput: (e) => { sku.price = e.target.value === '' ? null : Number(e.target.value); }
       });
+      const jpyCostInput = el('input', {
+        class: 'admin-input w-full',
+        type: 'number',
+        step: '0.01',
+        value: sku.cost_price_jpy ?? '',
+        oninput: (e) => { sku.cost_price_jpy = e.target.value === '' ? null : Number(e.target.value); }
+      });
+      const wholesaleInput = el('input', {
+        class: 'admin-input w-full',
+        type: 'number',
+        step: '0.01',
+        value: sku.wholesale_price_hkd ?? '',
+        oninput: (e) => { sku.wholesale_price_hkd = e.target.value === '' ? null : Number(e.target.value); }
+      });
 
       const activeCheckbox = el('input', {
         type: 'checkbox',
@@ -487,6 +515,8 @@
         el('td', {}, [skuInput]),
         el('td', {}, [barcodeInput]),
         el('td', {}, [costInput]),
+        el('td', {}, [jpyCostInput]),
+        el('td', {}, [wholesaleInput]),
         el('td', {}, [priceInput]),
         el('td', { text: sku.id ? String(sku.stock ?? 0) : '—' }),
         el('td', {}, [activeCheckbox]),
@@ -539,6 +569,9 @@
           attributes: s.attributes || {},
           price: s.price,
           cost_price: s.cost_price,
+          cost_price_jpy: s.cost_price_jpy,
+          wholesale_price_hkd: s.wholesale_price_hkd,
+          match_status: s.match_status,
           original_price: s.original_price,
           stock: s.stock,
           weight: s.weight,
