@@ -36,7 +36,7 @@ module.exports = function(app, pool) {
       res.json({ brands: result.rows });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -49,7 +49,7 @@ module.exports = function(app, pool) {
       res.json({ brands: result.rows });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -68,7 +68,7 @@ module.exports = function(app, pool) {
       if (err.code === '23505') { // unique violation
         return res.status(400).json({ error: 'Slug 已經存在' });
       }
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -89,7 +89,7 @@ module.exports = function(app, pool) {
       res.json({ success: true, brand: result.rows[0] });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -101,7 +101,7 @@ module.exports = function(app, pool) {
       res.json({ success: true });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -115,7 +115,7 @@ module.exports = function(app, pool) {
       res.json({ tags: result.rows });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -207,7 +207,7 @@ module.exports = function(app, pool) {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -227,7 +227,7 @@ module.exports = function(app, pool) {
       res.json({ products: result.rows });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -281,7 +281,7 @@ module.exports = function(app, pool) {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -306,7 +306,7 @@ module.exports = function(app, pool) {
       res.json({ products: result.rows, threshold });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -335,7 +335,7 @@ module.exports = function(app, pool) {
       return res.json({ threshold, skus: result.rows });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: '服務器錯誤' });
+      return res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -390,7 +390,7 @@ module.exports = function(app, pool) {
       return res.send(csv);
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: '服務器錯誤' });
+      return res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -433,7 +433,7 @@ module.exports = function(app, pool) {
       res.send(csv);
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -501,7 +501,7 @@ module.exports = function(app, pool) {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -556,7 +556,7 @@ module.exports = function(app, pool) {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -654,7 +654,7 @@ module.exports = function(app, pool) {
       if (err.code === '23505') {
         return res.status(400).json({ error: 'Slug 已經存在' });
       }
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -675,7 +675,7 @@ module.exports = function(app, pool) {
       res.json({ success: true, product: result.rows[0] });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -840,7 +840,7 @@ module.exports = function(app, pool) {
       }
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -858,7 +858,7 @@ module.exports = function(app, pool) {
       res.json({ success: true });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -889,7 +889,7 @@ module.exports = function(app, pool) {
       res.json({ success: true, message: '評價已提交，等待審核' });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -907,7 +907,7 @@ module.exports = function(app, pool) {
       res.json({ reviews: result.rows });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -938,7 +938,7 @@ module.exports = function(app, pool) {
       res.json({ success: true });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -1020,7 +1020,7 @@ module.exports = function(app, pool) {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -1052,7 +1052,7 @@ module.exports = function(app, pool) {
       return res.json({ skus: result.rows });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: '服務器錯誤' });
+      return res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -1088,7 +1088,7 @@ module.exports = function(app, pool) {
       return res.json({ sku: skuRow.rows[0], levels: levels.rows });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: '服務器錯誤' });
+      return res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -1212,7 +1212,7 @@ module.exports = function(app, pool) {
       res.json({ warehouses: result.rows });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -1256,7 +1256,7 @@ module.exports = function(app, pool) {
       }
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -1302,7 +1302,7 @@ module.exports = function(app, pool) {
       return res.json({ success: true, warehouse: r.rows[0] });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: '服務器錯誤' });
+      return res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -1330,7 +1330,7 @@ module.exports = function(app, pool) {
       }
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: '服務器錯誤' });
+      return res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
@@ -1365,7 +1365,7 @@ module.exports = function(app, pool) {
       res.json({ tree: roots, all: categories });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: '服務器錯誤' });
+      res.status(500).json({ error: '服務器錯誤', detail: err.message });
     }
   });
 
