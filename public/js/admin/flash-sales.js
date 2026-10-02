@@ -12,7 +12,23 @@
     reset: $('#fs-reset'),
     error: $('#fs-error'),
     tbody: $('#fs-tbody'),
+    create: $('#fs-create'),
+    modal: $('#fs-modal'),
+    modalClose: $('#fs-modal-close'),
+    modalTitle: $('#fs-modal-title'),
   };
+
+  function openModal() {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = '新增閃購活動';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -197,12 +213,21 @@
       },
     });
     clearForm();
+    closeModal();
     await loadFlashSales();
   }
 
   if (els.addRow) els.addRow.addEventListener('click', () => addProductRow());
   if (els.reset) els.reset.addEventListener('click', () => clearForm());
   if (els.save) els.save.addEventListener('click', () => saveFlashSale().catch((e) => setError(e.message)));
+  if (els.create) els.create.addEventListener('click', () => { clearForm(); openModal(); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
 
   try {
     clearForm();

@@ -22,9 +22,25 @@
     error: $('#cp-error'),
     tbody: $('#cp-tbody'),
     pagination: $('#cp-pagination'),
+    create: $('#coupon-create'),
+    modal: $('#coupon-modal'),
+    modalClose: $('#coupon-modal-close'),
+    modalTitle: $('#coupon-modal-title'),
   };
 
   let currentPage = 1;
+
+  function openModal(isNew) {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = isNew ? '新增優惠券' : '編輯優惠券';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -192,7 +208,7 @@
           class: 'admin-link-btn',
           type: 'button',
           text: '編輯',
-          onclick: () => fillForm(c),
+          onclick: () => { fillForm(c); openModal(false); },
         });
 
         const delBtn = el('button', {
@@ -268,6 +284,7 @@
       await adminApiRequest('/api/admin/coupons', { method: 'POST', json: Object.assign({}, base, createOnly) });
     }
     clearForm();
+    closeModal();
     await loadCoupons();
   }
 
@@ -276,6 +293,14 @@
   if (els.filter) els.filter.addEventListener('change', () => {
     currentPage = 1;
     loadCoupons().catch((e) => setError(e.message));
+  });
+  if (els.create) els.create.addEventListener('click', () => { clearForm(); openModal(true); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
   });
 
   try {

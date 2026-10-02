@@ -11,7 +11,23 @@
     filter: $('#af-filter'),
     error: $('#af-error'),
     tbody: $('#af-tbody'),
+    create: $('#af-create'),
+    modal: $('#af-modal'),
+    modalClose: $('#af-modal-close'),
+    modalTitle: $('#af-modal-title'),
   };
+
+  function openModal() {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = '新增聯盟會員（KOL）';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -101,6 +117,7 @@
       json: { user_id, code, commission_rate, status },
     });
     clearForm();
+    closeModal();
     await loadAffiliates();
   }
 
@@ -108,6 +125,14 @@
   if (els.save) els.save.addEventListener('click', () => saveAffiliate().catch((e) => setError(e.message)));
   if (els.filter) els.filter.addEventListener('change', () => {
     loadAffiliates().catch((e) => setError(e.message));
+  });
+  if (els.create) els.create.addEventListener('click', () => { clearForm(); openModal(); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
   });
 
   try {
