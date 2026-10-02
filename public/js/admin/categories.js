@@ -16,7 +16,22 @@
     status: $('#category-status'),
     reset: $('#category-reset'),
     save: $('#category-save'),
+    modal: $('#categories-modal'),
+    modalClose: $('#categories-modal-close'),
+    modalTitle: $('#categories-modal-title'),
   };
+
+  function openModal(isNew) {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = isNew ? '新增分類' : '編輯分類';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!msg) {
@@ -99,6 +114,7 @@
   function startNewChild(parent) {
     clearForm();
     els.parent.value = String(parent.id);
+    openModal(true);
     els.name.focus();
   }
 
@@ -140,7 +156,7 @@
       el('span', { text: ' ' })
     );
     actions.push(
-      el('button', { class: 'admin-link-btn', text: '編輯', onclick: () => fillForm(c) }),
+      el('button', { class: 'admin-link-btn', text: '編輯', onclick: () => { fillForm(c); openModal(false); } }),
       el('span', { text: ' ' }),
       el('button', {
         class: 'admin-link-btn',
@@ -224,6 +240,7 @@
       }
       await loadCategories();
       clearForm();
+      closeModal();
     } catch (e) {
       setError(e && e.message ? e.message : String(e));
     } finally {
@@ -233,7 +250,14 @@
 
   els.reset.addEventListener('click', () => clearForm());
   els.refresh.addEventListener('click', () => loadCategories().catch((e) => setError(e.message)));
-  els.newBtn.addEventListener('click', () => clearForm());
+  els.newBtn.addEventListener('click', () => { clearForm(); openModal(true); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
 
   try {
     await loadCategories();

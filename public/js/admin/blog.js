@@ -33,9 +33,25 @@
     error: $('#bl-error'),
     tbody: $('#bl-tbody'),
     pagination: $('#bl-pagination'),
+    newBtn: $('#blog-create'),
+    modal: $('#blog-modal'),
+    modalClose: $('#blog-modal-close'),
+    modalTitle: $('#blog-modal-title'),
   };
 
   let currentPage = 1;
+
+  function openModal(isNew) {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = isNew ? '新增網誌文章' : '編輯網誌文章';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -158,7 +174,7 @@
       setError('草稿／封存文章嘅後端列表冇提供內文，且冇管理員單篇端點可用；' +
         '直接儲存會以目前表單內容覆蓋原有內文。');
     }
-    if (els.title) els.title.scrollIntoView({ block: 'start' });
+    openModal(false);
   }
 
   async function deletePost(row) {
@@ -252,8 +268,17 @@
     clearForm();
     currentPage = 1;
     await loadPosts();
+    closeModal();
   }
 
+  if (els.newBtn) els.newBtn.addEventListener('click', () => { clearForm(); openModal(true); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
   if (els.reset) els.reset.addEventListener('click', () => clearForm());
   if (els.save) els.save.addEventListener('click', () => savePost().catch((e) => setError(e.message)));
   if (els.refresh) els.refresh.addEventListener('click', () => {
