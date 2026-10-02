@@ -190,6 +190,15 @@ app.use(express.json({
   },
 }));
 app.use(express.urlencoded({ extended: true }));
+
+// DIAGNOSTIC: log every request to stderr so Vercel build/deploy events
+// capture routing details. Helps debug 500-on-prod where runtime logs
+// are Pro-plan gated. Remove after root cause is found.
+app.use((req, res, next) => {
+  console.error('[req]', req.method, 'path=', req.path, 'url=', req.url, 'orig=', req.originalUrl, 'baseUrl=', req.baseUrl);
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use((req, res, next) => {
   res.locals.t = createTranslator({ locale: 'zh-HK', dict: dictZhHK });
