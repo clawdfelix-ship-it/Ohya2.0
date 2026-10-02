@@ -1499,4 +1499,37 @@ module.exports = function(app, pool) {
     }
   });
 
+  // 批量：{ sku_ids: number[], action: 'confirm' | 'reject' }
+  app.post('/api/admin/wholesale-match/bulk', requirePermission('catalog:write'), async (req, res) => {
+    try {
+      const ids = Array.isArray(req.body.sku_ids) ? req.body.sku_ids : [];
+      const action = req.body.action === 'reject' ? 'reject' : 'confirm';
+      const cleanIds = [...new Set(ids.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+      if (cleanIds.length === 0) return res.status(400).json({ error: '未選擇任何項目' });
+      if (cleanIds.length > 500) return res.status(400).json({ error: '每次最多 500 項' });
+
+      let updated;
+      if (action === 'confirm') {
+        const r = await pool.query(
+          `UPDATE product_skus SET match_status = 'auto', updated_at = NOW()
+           WHERE id = ANY($1::int[]) AND match_status = 'unverified' RETURNING id`,
+          [cleanIds]
+        );
+        updated = r.rows.length;
+      } else {
+        const r = await pool.query(
+          `UPDATE product_skus SET match_status = 'rejected',
+               cost_price_jpy = NULL, wholesale_price_hkd = NULL, updated_at = NOW()
+           WHERE id = ANY($1::int[]) AND match_status = 'unverified' RETURNING id`,
+          [cleanIds]
+        );
+        updated = r.rows.length;
+      }
+      res.json({ success: true, updated });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
 };

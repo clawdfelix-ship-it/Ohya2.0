@@ -12,11 +12,17 @@
     日本批發 JAN 自動比對相似度 50–70%，須逐項確認。確認後視為已驗；駁回會清走入貨價及批發價，避免錯價流出。
   </div>
 
+  <div class="flex flex-wrap gap-2 items-end">
+    <button id="wm-bulk-confirm" class="admin-btn" type="button">批量確認</button>
+    <button id="wm-bulk-reject" class="admin-btn-secondary text-red-600" type="button">批量駁回</button>
+  </div>
+
   <div class="admin-card">
     <div class="overflow-auto">
       <table class="admin-table">
         <thead>
           <tr>
+            <th><input id="wm-select-all" type="checkbox" /></th>
             <th>商品</th>
             <th>SKU</th>
             <th>現條碼</th>
