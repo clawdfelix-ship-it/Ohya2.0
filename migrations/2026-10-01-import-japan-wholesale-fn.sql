@@ -100,6 +100,7 @@ BEGIN
       updated_at = NOW()
     FROM sku_targets st
     WHERE ps.id = st.sku_id
+      AND (ps.match_status IS NULL OR ps.match_status IN ('auto', 'unverified'))
     RETURNING ps.id
   )
   SELECT COUNT(*) INTO v_affected FROM upd;

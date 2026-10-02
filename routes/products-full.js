@@ -1460,13 +1460,13 @@ module.exports = function(app, pool) {
     }
   });
 
-  // 確認：比對正確 → match_status='auto'（視作已驗）
+  // 確認：比對正確 → match_status='manual'（人工已驗；避免被後續導入覆蓋）
   app.post('/api/admin/wholesale-match/:skuId/confirm', requirePermission('catalog:write'), async (req, res) => {
     try {
       const skuId = parseInt(req.params.skuId);
       if (!Number.isFinite(skuId)) return res.status(400).json({ error: '無效 SKU id' });
       const r = await pool.query(
-        `UPDATE product_skus SET match_status = 'auto', updated_at = NOW()
+        `UPDATE product_skus SET match_status = 'manual', updated_at = NOW()
          WHERE id = $1 AND match_status = 'unverified' RETURNING id`,
         [skuId]
       );
@@ -1511,7 +1511,7 @@ module.exports = function(app, pool) {
       let updated;
       if (action === 'confirm') {
         const r = await pool.query(
-          `UPDATE product_skus SET match_status = 'auto', updated_at = NOW()
+          `UPDATE product_skus SET match_status = 'manual', updated_at = NOW()
            WHERE id = ANY($1::int[]) AND match_status = 'unverified' RETURNING id`,
           [cleanIds]
         );

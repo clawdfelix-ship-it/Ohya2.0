@@ -215,6 +215,7 @@ async function main() {
           match_matched_at = NOW(),
           updated_at = NOW()
         WHERE id = (SELECT id FROM product_skus WHERE product_id = $7 ORDER BY id LIMIT 1)
+          AND (match_status IS NULL OR match_status IN ('auto', 'unverified'))
       `, [
         r.cost_hkd,
         r.cost_jpy,
