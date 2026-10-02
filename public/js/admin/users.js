@@ -37,7 +37,20 @@
     pointsApply: $('#user-points-apply'),
     pointsRefresh: $('#user-points-refresh'),
     pointsTbody: $('#user-points-tbody'),
+    modal: $('#user-modal'),
+    modalClose: $('#user-modal-close'),
   };
+
+  function openModal() {
+    if (!els.modal) return;
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!msg) {
@@ -203,7 +216,7 @@
         el('td', { text: u.is_b2b ? '是' : '否' }),
         el('td', { text: u.role_name || '' }),
         el('td', {}, [
-          el('button', { class: 'admin-link-btn', text: '編輯', onclick: () => fillForm(u) }),
+          el('button', { class: 'admin-link-btn', text: '編輯', onclick: () => { fillForm(u); openModal(); } }),
         ]),
       ]);
       els.tbody.appendChild(tr);
@@ -255,6 +268,7 @@
 
       await loadUsers();
       clearForm();
+      closeModal();
     } catch (e) {
       setError(e && e.message ? e.message : String(e));
     } finally {
@@ -302,7 +316,14 @@
 
   els.reset.addEventListener('click', () => clearForm());
   els.refresh.addEventListener('click', () => loadUsers().catch((e) => setError(e.message)));
-  els.newBtn.addEventListener('click', () => clearForm());
+  els.newBtn.addEventListener('click', () => { clearForm(); openModal(); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
   els.search.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') loadUsers().catch((e) => setError(e.message));
   });
