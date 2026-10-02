@@ -1,7 +1,20 @@
 {
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 60
+  "version": 2,
+  "installCommand": "npm install --omit=dev",
+  "crons": [
+    {
+      "path": "/api/internal/jobs/mzakka-sync",
+      "schedule": "0 3 * * 1"
+    },
+    {
+      "path": "/api/internal/jobs/email-outbox",
+      "schedule": "*/5 * * * *"
     }
-  }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index.js"
+    }
+  ]
 }
