@@ -16,7 +16,23 @@
     reset: $('#pm-reset'),
     error: $('#pm-error'),
     tbody: $('#pm-tbody'),
+    create: $('#pm-create'),
+    modal: $('#pm-modal'),
+    modalClose: $('#pm-modal-close'),
+    modalTitle: $('#pm-modal-title'),
   };
+
+  function openModal(isNew) {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = isNew ? '新增支付方式' : '編輯支付方式';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -107,7 +123,7 @@
         class: 'admin-link-btn',
         type: 'button',
         text: '編輯',
-        onclick: () => fillForm(p),
+        onclick: () => { fillForm(p); openModal(false); },
       });
 
       const toggleBtn = el('button', {
@@ -180,10 +196,19 @@
     }
     clearForm();
     await loadMethods();
+    closeModal();
   }
 
   if (els.reset) els.reset.addEventListener('click', () => clearForm());
   if (els.save) els.save.addEventListener('click', () => saveMethod().catch((e) => setError(e.message)));
+  if (els.create) els.create.addEventListener('click', () => { clearForm(); openModal(true); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
 
   try {
     clearForm();

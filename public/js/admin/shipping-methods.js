@@ -15,7 +15,23 @@
     reset: $('#sm-reset'),
     error: $('#sm-error'),
     tbody: $('#sm-tbody'),
+    create: $('#sm-create'),
+    modal: $('#sm-modal'),
+    modalClose: $('#sm-modal-close'),
+    modalTitle: $('#sm-modal-title'),
   };
+
+  function openModal(isNew) {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = isNew ? '新增運送方式' : '編輯運送方式';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   function setError(msg) {
     if (!els.error) return;
@@ -118,7 +134,7 @@
         class: 'admin-link-btn',
         type: 'button',
         text: '編輯',
-        onclick: () => fillForm(m),
+        onclick: () => { fillForm(m); openModal(false); },
       });
 
       const toggleBtn = el('button', {
@@ -197,10 +213,19 @@
     }
     clearForm();
     await loadMethods();
+    closeModal();
   }
 
   if (els.reset) els.reset.addEventListener('click', () => clearForm());
   if (els.save) els.save.addEventListener('click', () => saveMethod().catch((e) => setError(e.message)));
+  if (els.create) els.create.addEventListener('click', () => { clearForm(); openModal(true); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
 
   try {
     clearForm();

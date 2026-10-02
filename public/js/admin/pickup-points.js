@@ -19,7 +19,23 @@
     pageInfo: $('#pp-page-info'),
     prev: $('#pp-prev'),
     next: $('#pp-next'),
+    create: $('#pp-create'),
+    modal: $('#pp-modal'),
+    modalClose: $('#pp-modal-close'),
+    modalTitle: $('#pp-modal-title'),
   };
+
+  function openModal(isNew) {
+    if (!els.modal) return;
+    if (els.modalTitle) els.modalTitle.textContent = isNew ? '新增提貨點' : '編輯提貨點';
+    els.modal.classList.remove('hidden');
+    els.modal.classList.add('flex');
+  }
+  function closeModal() {
+    if (!els.modal) return;
+    els.modal.classList.add('hidden');
+    els.modal.classList.remove('flex');
+  }
 
   const PAGE_SIZE = 50;
   let allDistricts = [];
@@ -129,7 +145,7 @@
         class: 'admin-link-btn',
         type: 'button',
         text: '編輯',
-        onclick: () => fillForm(p),
+        onclick: () => { fillForm(p); openModal(false); },
       });
 
       const deleteBtn = el('button', {
@@ -189,10 +205,19 @@
     clearForm();
     state.page = 1;
     await loadPickupPoints();
+    closeModal();
   }
 
   if (els.reset) els.reset.addEventListener('click', () => clearForm());
   if (els.save) els.save.addEventListener('click', () => savePoint().catch((e) => setError(e.message)));
+  if (els.create) els.create.addEventListener('click', () => { clearForm(); openModal(true); });
+  if (els.modalClose) els.modalClose.addEventListener('click', closeModal);
+  if (els.modal) els.modal.addEventListener('mousedown', (e) => {
+    if (e.target === els.modal) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
+  });
   if (els.search) els.search.addEventListener('click', () => { state.page = 1; loadPickupPoints().catch((e) => setError(e.message)); });
   if (els.filterProvider) els.filterProvider.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') { state.page = 1; loadPickupPoints().catch((e) => setError(e.message)); }
