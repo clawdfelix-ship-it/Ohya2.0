@@ -573,13 +573,18 @@ async function loadStorefrontCategories() {
      SELECT c.id, c.parent_id, c.slug, c.name, c.name_zh_hk,
        CASE c.slug
          WHEN 'storefront-new' THEN (
-           SELECT COUNT(*)::int FROM products p
+           -- 成員＝新商品排行榜全部（mzakka 1789 完整次序）
+           SELECT COUNT(*)::int FROM new_arrival_rank nar
+           JOIN products p ON p.id = nar.product_id
+           WHERE p.status='active'
+             AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%')
+         WHEN 'storefront-latest' THEN (
+           -- 真正最近上架：排行榜頭 200
+           SELECT COUNT(*)::int FROM new_arrival_rank nar
+           JOIN products p ON p.id = nar.product_id
            WHERE p.status='active'
              AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
-             AND p.id >= COALESCE((SELECT id FROM products
-               WHERE status='active'
-                 AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
-               ORDER BY id DESC LIMIT 1 OFFSET 199), 0))
+             AND nar.rank <= 200)
          WHEN 'storefront-sale' THEN (
            SELECT COUNT(*)::int FROM products p
            WHERE p.status='active'
@@ -601,15 +606,18 @@ async function loadStorefrontCategories() {
     slug: String(row.slug),
     name: resolveStorefrontCategoryName(row.name, row.name_zh_hk),
     count: Number(row.count || 0),
+    sortOrder: Number(row.sort_order || 0),
   }));
 
   // 新到推介 / 特價區屬橫切標籤（會同其他分類重叠），唔計入互斥分類樹，
   // 獨立做「特別專區」，避免頂層數字加總多過全店總數。
-  const SPECIAL_SLUGS = new Set(['storefront-new', 'storefront-sale']);
+  const SPECIAL_SLUGS = new Set(['storefront-new', 'storefront-latest', 'storefront-sale']);
   const mainRows = allRows.filter((r) => !SPECIAL_SLUGS.has(r.slug));
   const specials = allRows
     .filter((r) => SPECIAL_SLUGS.has(r.slug))
-    .map((r) => ({ id: r.id, slug: r.slug, name: r.name, count: r.count }));
+    .map((r) => ({ id: r.id, slug: r.slug, name: r.name, count: r.count }))
+    // 按專區自身 sort_order 排（最新上架→新到推介→特價區），唔跟 category id
+    .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
 
   return { ...buildCategoryTree(mainRows, { totalCount }), specials };
 }
@@ -898,7 +906,7 @@ app.use(async (req, res, next) => {
       const inStockOnly = req.query.in_stock === '1';
 
       let categoryId = null;
-      let dynamicSection = null;           // 'new' | 'sale' | null（動態專區）
+      let dynamicSection = null;           // 'new' | 'latest' | 'sale' | null（動態專區）
       let selectedCategory = '全部商品';
       let selectedCategorySlug = 'all';
 
@@ -906,6 +914,10 @@ app.use(async (req, res, next) => {
         dynamicSection = 'new';
         selectedCategory = '新到推介';
         selectedCategorySlug = 'storefront-new';
+      } else if (categoryFilter === 'storefront-latest') {
+        dynamicSection = 'latest';
+        selectedCategory = '最新上架';
+        selectedCategorySlug = 'storefront-latest';
       } else if (categoryFilter === 'storefront-sale') {
         dynamicSection = 'sale';
         selectedCategory = '特價區';
@@ -943,10 +955,10 @@ app.use(async (req, res, next) => {
         params.push(categoryId);
         paramIndex++;
       }
-      if (dynamicSection === 'new') {
-        // 成員以 mzakka 新商品 rank 表為準（取代舊「最新匯入 200 件」）；
-        // 排序下面 join new_arrival_rank。
-        where += ` AND EXISTS (SELECT 1 FROM new_arrival_rank narw WHERE narw.product_id = p.id)`;
+      if (dynamicSection === 'new' || dynamicSection === 'latest') {
+        // 成員以 mzakka 新商品 rank 表為準；
+        // 新到推介＝全榜，最新上架＝頭 200（排序下面 join new_arrival_rank）。
+        where += ` AND EXISTS (SELECT 1 FROM new_arrival_rank narw WHERE narw.product_id = p.id${dynamicSection === 'latest' ? ' AND narw.rank <= 200' : ''})`;
       } else if (dynamicSection === 'sale') {
         // 真正抵買：相對建議零售價折讓 ≥30%
         where += ` AND p.original_price IS NOT NULL AND p.original_price > p.price
@@ -980,7 +992,7 @@ app.use(async (req, res, next) => {
       // 一個 storefront 分類可對多個 mzakka 分類（如配件雜貨對 3 個），
       // 用聚合子查詢取商品喺任一對應分類嘅最佳（最細）rank。
       const useMzakkaRank = sort === 'recommend' && categoryId;
-      const useNewRank = sort === 'recommend' && dynamicSection === 'new';
+      const useNewRank = sort === 'recommend' && (dynamicSection === 'new' || dynamicSection === 'latest');
       const rankJoin = useMzakkaRank
         ? `LEFT JOIN (
              SELECT r.product_id, MIN(r.rank) AS mr
