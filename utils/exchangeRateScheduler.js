@@ -104,7 +104,11 @@ function startExchangeRateScheduler(pool) {
   function scheduleNext() {
     const at = nextFirstOfMonth(hour);
     const delay = Math.max(1000, at.getTime() - Date.now());
-    timer = setTimeout(tick, delay);
+    // setTimeout 上限係 32-bit int（約 24.8 日）；每月 delay 會超出被夾做 1ms。
+    // 超出就分段：先排到上限前，到時重新計算目標時刻。
+    const MAX_TIMER_MS = 2147483000;
+    const fireDelay = Math.min(delay, MAX_TIMER_MS);
+    timer = setTimeout(delay > MAX_TIMER_MS ? scheduleNext : tick, fireDelay);
     // unref：唔好因為呢個 timer 卡住进程退出
     if (typeof timer.unref === 'function') timer.unref();
   }

@@ -3,6 +3,22 @@
   "installCommand": "npm install --omit=dev",
   "crons": [
     {
+      "path": "/api/internal/jobs/daily-sync/refresh",
+      "schedule": "30 23 * * *"
+    },
+    {
+      "path": "/api/internal/jobs/daily-sync/process",
+      "schedule": "34 23 * * *"
+    },
+    {
+      "path": "/api/internal/jobs/daily-sync/process",
+      "schedule": "42 23 * * *"
+    },
+    {
+      "path": "/api/internal/jobs/daily-sync/process",
+      "schedule": "50 23 * * *"
+    },
+    {
       "path": "/api/internal/jobs/mzakka-sync",
       "schedule": "0 3 * * 1"
     },
