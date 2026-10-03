@@ -274,7 +274,7 @@
       if (!sel) return;
       sel.addEventListener('change', function () {
         const params = new URLSearchParams(window.location.search);
-        params.set('sort', String(sel.value || 'recommend'));
+        params.set('sort', String(sel.value || 'newest'));
         params.set('page', '1');
         const next = window.location.pathname + '?' + params.toString();
         window.location.href = next;
@@ -309,7 +309,7 @@
         ['newest', '最新上架'],
         ['popular', '人氣排序'],
       ];
-      const current = new URLSearchParams(window.location.search).get('sort') || 'recommend';
+      const current = new URLSearchParams(window.location.search).get('sort') || 'newest';
 
       function go(val) {
         const params = new URLSearchParams(window.location.search);

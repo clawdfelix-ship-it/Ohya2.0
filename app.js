@@ -825,6 +825,7 @@ app.use(async (req, res, next) => {
   // 商品列表頁
   app.get('/products', async (req, res) => {
     try {
+      const explicitSort = typeof req.query.sort === 'string' && req.query.sort.trim() !== '';
       const sort = normalizeProductsSort(req.query.sort);
       if (!connectionString) {
         const categoryFilter = typeof req.query.category === 'string' ? req.query.category : null;
@@ -984,7 +985,9 @@ app.use(async (req, res, next) => {
       // 一個 storefront 分類可對多個 mzakka 分類（如配件雜貨對 3 個），
       // 用聚合子查詢取商品喺任一對應分類嘅最佳（最細）rank。
       const useMzakkaRank = sort === 'recommend' && categoryId;
-      const useNewRank = sort === 'recommend' && (dynamicSection === 'new' || dynamicSection === 'latest');
+      // 排行榜專區：用戶顯式揀「推介」、或者冇顯式揀排序（行默認）時跟榜
+      const useNewRank = (sort === 'recommend' || !explicitSort) &&
+        (dynamicSection === 'new' || dynamicSection === 'latest');
       const rankJoin = useMzakkaRank
         ? `LEFT JOIN (
              SELECT r.product_id, MIN(r.rank) AS mr
