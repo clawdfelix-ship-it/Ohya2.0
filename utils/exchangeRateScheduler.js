@@ -17,7 +17,7 @@ const { getSetting, setSetting } = require('./settings');
 const { fetchLiveJpyHkdRate, recomputePrices, higherRate } = require('./reprice');
 const { setRuntimeRate, jpyToHkdRate } = require('./currency');
 
-const LAST_RUN_KEY = '***';
+const LAST_RUN_KEY = 'jpy_rate_last_auto_at';
 let timer = null;
 
 function hkParts(date) {
@@ -141,4 +141,5 @@ module.exports = {
   runMonthlyUpdate,
   nextFirstOfMonth,
   hkParts,
+  alreadyRanThisMonth,
 };
