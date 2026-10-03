@@ -75,12 +75,12 @@
 
         <%- include('partials/shipping-calendar') %>
 
-        <section class="mb-6 grid gap-6 <%= hasSales ? 'xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)]' : '' %>">
-          <% if (hasSales) { %>
+        <section class="mb-6 grid gap-6 <%= hasRanking ? 'xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)]' : '' %>">
+          <% if (hasRanking) { %>
           <section id="mzakka-ranking" class="overflow-hidden rounded-3xl border border-ink-600 bg-ink-850 shadow-card">
             <div class="border-b border-ink-600 px-5 py-4">
-              <h2 class="mz-display text-xl font-black text-white">人氣排行</h2>
-              <p class="mt-1 text-sm text-gray-400">根據真實銷量排名，近期最受歡迎嘅商品</p>
+              <h2 class="mz-display text-xl font-black text-white">新到推介</h2>
+              <p class="mt-1 text-sm text-gray-400">緊貼日本最新貨況，新商品排行榜</p>
             </div>
             <div class="divide-y divide-ink-700">
               <% (rankingProducts || []).slice(0, 6).forEach((p, idx) => { %>

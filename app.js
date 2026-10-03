@@ -729,7 +729,7 @@ app.use(async (req, res, next) => {
           homeModules,
           rankingProducts: [],
           newProducts: featuredProducts.slice(0, 20),
-          hasSales: false,
+          hasRanking: false,
           holidaysMap,
         });
       }
@@ -767,16 +767,9 @@ app.use(async (req, res, next) => {
 
       const newProducts = mapRowsToRankingProducts(listResult.rows, { toProxyUrl: app.locals.toProxyUrl });
 
-      // P4：人氣排行改用真銷量（排除取消單），唔夠數用最新上架補足
+      // 首頁「新到推介」：跟 mzakka 1789 排行榜頭 6 名（文檔次序）
       const rankingResult = await pool.query(
-        `WITH sold AS (
-           SELECT oi.product_id, SUM(oi.quantity)::bigint AS qty
-           FROM order_items oi
-           JOIN orders o ON o.id = oi.order_id
-           WHERE COALESCE(o.status, '') <> 'cancelled'
-           GROUP BY oi.product_id
-         )
-         SELECT p.id,
+        `SELECT p.id,
                 COALESCE(p.name_zh_hk, p.name) as name,
                 COALESCE(NULLIF(p.description_zh_hk, ''), NULLIF(p.description, '')) as description,
                 COALESCE(pc.name_zh_hk, pc.name, c.name_zh_hk, c.name) as category_name,
@@ -784,8 +777,8 @@ app.use(async (req, res, next) => {
                 CASE WHEN p.original_price IS NULL THEN NULL ELSE (p.original_price * 100)::int END as original_price_cents,
                 p.image_url,
                 COALESCE(s.total_stock, 0)::int as stock
-         FROM products p
-         LEFT JOIN sold ON sold.product_id = p.id
+         FROM new_arrival_rank nar
+         JOIN products p ON p.id = nar.product_id
          LEFT JOIN categories c ON p.category_id = c.id
          LEFT JOIN categories pc ON c.parent_id = pc.id
          LEFT JOIN (
@@ -796,23 +789,22 @@ app.use(async (req, res, next) => {
          ) s ON s.product_id = p.id
          WHERE p.status = 'active'
            AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
-         ORDER BY COALESCE(sold.qty, 0) DESC, p.created_at DESC
-         LIMIT 20`
+         ORDER BY nar.rank
+         LIMIT 6`
       );
 
-      let rankingProducts = mapRowsToRankingProducts(rankingResult.rows, { toProxyUrl: app.locals.toProxyUrl });
-      // 零銷量（全新店）唔好顯示假人氣——隱藏排行區，最新上架自己填滿
-      const salesExists = await pool.query(`SELECT EXISTS(SELECT 1 FROM order_items) AS has`);
-      const hasSales = !!(salesExists.rows[0] && salesExists.rows[0].has);
+      const rankingProducts = mapRowsToRankingProducts(rankingResult.rows, { toProxyUrl: app.locals.toProxyUrl });
+      // 排行榜有貨就顯示（唔再靠銷量；新店都有新到推介）
+      const hasRanking = rankingProducts.length > 0;
 
       res.render('index', {
         title: 'OHYA2.0 - 熱門男士護理網店',
         user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
         formatPrice,
         homeModules,
-        rankingProducts: hasSales ? rankingProducts : [],
+        rankingProducts,
         newProducts,
-        hasSales,
+        hasRanking,
         holidaysMap,
       });
     } catch (err) {
@@ -824,7 +816,7 @@ app.use(async (req, res, next) => {
         homeModules: getFallbackHomeModules(),
         rankingProducts: [],
         newProducts: getSampleProducts().slice(0, 20),
-        hasSales: false,
+        hasRanking: false,
         holidaysMap,
       });
     }
