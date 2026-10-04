@@ -33,6 +33,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
     const {nodeId}=resolveItemNode(item);
     const categoryId=nodeId!=null ? (dbNodeMap.get(nodeId)||null) : null;
     const p=toProductUpsertInput(item,categoryId);
+    const productStatus=item.isEnded ? 'inactive' : 'active';
     const pr=await client.query(
       `INSERT INTO products
        (name,name_zh_hk,slug,description,description_zh_hk,short_description_zh_hk,
@@ -46,11 +47,12 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
          category_id=COALESCE(EXCLUDED.category_id, products.category_id),
          image_url=EXCLUDED.image_url,gallery_images=EXCLUDED.gallery_images,
          source_url=EXCLUDED.source_url,raw_payload=EXCLUDED.raw_payload,
-         status='active',updated_at=NOW()
+         status=CASE WHEN EXCLUDED.raw_payload->>'isEnded'='true' THEN 'inactive' ELSE 'active' END,
+         updated_at=NOW()
        RETURNING id`,
       [p.name,p.name_zh_hk,p.slug,p.description,p.description_zh_hk,p.short_description_zh_hk,
        p.price,p.original_price,p.category_id,p.image_url,JSON.stringify(p.gallery_images||[]),
-       p.status,p.source,p.source_key,p.source_url,p.sync_status,JSON.stringify(p.raw_payload||{})]);
+       productStatus,p.source,p.source_key,p.source_url,p.sync_status,JSON.stringify(p.raw_payload||{})]);
     const pid=pr.rows[0].id;
 
     const s=toSkuUpsertInput(item,pid);

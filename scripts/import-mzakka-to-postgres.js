@@ -138,6 +138,8 @@ async function runImport({ items, pool, batchSize = 200 }) {
         }
         if (categoryId == null) categoriesUnresolved++;
         const p = toProductUpsertInput(item, categoryId);
+        // 出荷＝販売終了 → 落新貨都直接係下架狀態（Felix 2026-10-05 規則）
+        const productStatus = item.isEnded ? 'inactive' : 'active';
         const pr = await client.query(
           `INSERT INTO products
             (name, name_zh_hk, slug, description, description_zh_hk, short_description_zh_hk,
@@ -161,7 +163,7 @@ async function runImport({ items, pool, batchSize = 200 }) {
              source_url = EXCLUDED.source_url,
              sync_status = EXCLUDED.sync_status,
              raw_payload = EXCLUDED.raw_payload,
-             status = 'active',
+             status = CASE WHEN EXCLUDED.raw_payload->>'isEnded'='true' THEN 'inactive' ELSE 'active' END,
              updated_at = NOW()
            RETURNING id`,
           [
@@ -176,7 +178,7 @@ async function runImport({ items, pool, batchSize = 200 }) {
             p.category_id,
             p.image_url,
             JSON.stringify(p.gallery_images || []),
-            p.status,
+            productStatus,
             p.source,
             p.source_key,
             p.source_url,

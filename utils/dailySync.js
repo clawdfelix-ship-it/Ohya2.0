@@ -198,6 +198,7 @@ async function importItem(dbClient, item, categoryId, dbNodeMap) {
   const { nodeId } = resolveItemNode(item);
   const resolvedCategoryId = categoryId != null ? categoryId : (nodeId != null ? dbNodeMap.get(nodeId) || null : null);
   const p = toProductUpsertInput(item, resolvedCategoryId);
+  const productStatus = item.isEnded ? 'inactive' : 'active';
 
   await dbClient.query(
     `INSERT INTO products
@@ -212,12 +213,13 @@ async function importItem(dbClient, item, categoryId, dbNodeMap) {
        category_id=COALESCE(EXCLUDED.category_id, products.category_id),
        image_url=EXCLUDED.image_url,gallery_images=EXCLUDED.gallery_images,
        source_url=EXCLUDED.source_url,raw_payload=EXCLUDED.raw_payload,
-       status='active',updated_at=NOW()
+       status=CASE WHEN EXCLUDED.raw_payload->>'isEnded'='true' THEN 'inactive' ELSE 'active' END,
+       updated_at=NOW()
      RETURNING id`,
     [
       p.name, p.name_zh_hk, p.slug, p.description, p.description_zh_hk, p.short_description_zh_hk,
       p.price, p.original_price, resolvedCategoryId, p.image_url,
-      JSON.stringify(p.gallery_images || []), p.status, p.source, p.source_key,
+      JSON.stringify(p.gallery_images || []), productStatus, p.source, p.source_key,
       p.source_url, p.sync_status, JSON.stringify(p.raw_payload || {}),
     ]
   );
