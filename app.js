@@ -194,10 +194,12 @@ app.use(express.urlencoded({ extended: true }));
 // DIAGNOSTIC: log every request to stderr so Vercel build/deploy events
 // capture routing details. Helps debug 500-on-prod where runtime logs
 // are Pro-plan gated. Remove after root cause is found.
-app.use((req, res, next) => {
-  console.error('[req]', req.method, 'path=', req.path, 'url=', req.url, 'orig=', req.originalUrl, 'baseUrl=', req.baseUrl);
-  next();
-});
+if (process.env.LOG_REQUESTS === '1') {
+  app.use((req, res, next) => {
+    console.error('[req]', req.method, 'path=', req.path, 'url=', req.url, 'orig=', req.originalUrl, 'baseUrl=', req.baseUrl);
+    next();
+  });
+}
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use((req, res, next) => {
@@ -364,9 +366,23 @@ app.get('/image/:hash', async (req, res) => {
  * @param {string} url - Remote image URL
  * @returns {Promise<Buffer>} Image buffer
  */
-function fetchRemoteImage(url) {
+function fetchRemoteImage(url, { get } = {}) {
   return new Promise((resolve, reject) => {
-    https.get(url, {
+    const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+    let done = false;
+    const finishReject = (err) => {
+      if (done) return;
+      done = true;
+      reject(err);
+    };
+    const finishResolve = (buf) => {
+      if (done) return;
+      done = true;
+      resolve(buf);
+    };
+
+    const httpGet = typeof get === 'function' ? get : https.get;
+    const req = httpGet(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Referer': 'https://mzakka.com/'
@@ -374,18 +390,40 @@ function fetchRemoteImage(url) {
       timeout: 10000
     }, (response) => {
       if (response.statusCode !== 200) {
-        reject(new Error(`HTTP ${response.statusCode}`));
+        response.resume();
+        finishReject(new Error(`HTTP ${response.statusCode}`));
+        return;
+      }
+
+      const lenHeader = response.headers && response.headers['content-length'];
+      const declared = lenHeader ? Number(lenHeader) : 0;
+      if (Number.isFinite(declared) && declared > MAX_IMAGE_BYTES) {
+        response.destroy();
+        finishReject(new Error('Image too large'));
         return;
       }
       
       const chunks = [];
-      response.on('data', (chunk) => chunks.push(chunk));
-      response.on('end', () => resolve(Buffer.concat(chunks)));
-    }).on('error', reject)
-      .setTimeout(10000, function() {
-        this.destroy();
-        reject(new Error('Timeout'));
+      let bytes = 0;
+
+      response.on('data', (chunk) => {
+        bytes += chunk.length;
+        if (bytes > MAX_IMAGE_BYTES) {
+          response.destroy();
+          finishReject(new Error('Image too large'));
+          return;
+        }
+        chunks.push(chunk);
       });
+      response.on('end', () => finishResolve(Buffer.concat(chunks)));
+      response.on('error', finishReject);
+    });
+
+    req.on('error', finishReject);
+    req.setTimeout(10000, function() {
+      this.destroy();
+      finishReject(new Error('Timeout'));
+    });
   });
 }
 
@@ -1622,4 +1660,5 @@ if (require.main === module) {
 }
 
 // Export for Vercel serverless
+app.__test = { fetchRemoteImage };
 module.exports = app;
