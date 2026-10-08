@@ -115,3 +115,59 @@ test('import script: can dry-run parse first line without DATABASE_URL', async (
   assert.ok(result.sample);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
+
+test('import script: keeps existing category when category resolution is missing', async () => {
+  const resolverPath = require.resolve('../utils/mzakkaCategoryResolver');
+  const importPath = require.resolve('../scripts/import-mzakka-to-postgres');
+  const originalResolver = require.cache[resolverPath];
+  const originalImport = require.cache[importPath];
+
+  require.cache[resolverPath] = {
+    exports: {
+      resolveItemNode: () => ({ nodeId: null, via: null }),
+      loadDbNodeMap: async () => new Map(),
+    },
+  };
+  delete require.cache[importPath];
+
+  const queryLog = [];
+  const fakeClient = {
+    async query(sql, params) {
+      const text = String(sql);
+      queryLog.push({ sql: text, params });
+      if (text.includes('RETURNING id')) return { rows: [{ id: 42 }] };
+      return { rows: [] };
+    },
+    release() {},
+  };
+  const fakePool = {
+    async connect() {
+      return fakeClient;
+    },
+  };
+
+  try {
+    const { importMzakkaRecords } = require('../scripts/import-mzakka-to-postgres');
+    await importMzakkaRecords({
+      records: [{
+        id: 'M12521',
+        name: '測試商品',
+        category: '未知分類',
+        priceYen: 957,
+        images: ['https://i.mzakka.com/item/M12521/main.jpg'],
+        productUrl: 'https://mzakka.com/pc/detail/item.php?item_id=M12521',
+      }],
+      pool: fakePool,
+      batchSize: 1,
+    });
+  } finally {
+    if (originalResolver) require.cache[resolverPath] = originalResolver;
+    else delete require.cache[resolverPath];
+    if (originalImport) require.cache[importPath] = originalImport;
+    else delete require.cache[importPath];
+  }
+
+  const productInsert = queryLog.find((entry) => entry.sql.includes('INSERT INTO products'));
+  assert.ok(productInsert);
+  assert.match(productInsert.sql, /category_id\s*=\s*COALESCE\(EXCLUDED\.category_id,\s*products\.category_id\)/i);
+});

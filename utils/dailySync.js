@@ -325,12 +325,17 @@ async function processPendingAndRebuild(pool) {
       if (!item || !item.id) throw new Error('parse returned empty item');
       const dbClient = await pool.connect();
       try {
+        await dbClient.query('BEGIN');
         await importItem(dbClient, item, entry.categoryId != null ? entry.categoryId : null, dbNodeMap);
+        await dbClient.query('DELETE FROM sync_pending_items WHERE item_id=$1', [entry.item_id]);
+        await dbClient.query('COMMIT');
+        imported++;
+      } catch (err) {
+        await dbClient.query('ROLLBACK');
+        throw err;
       } finally {
         dbClient.release();
       }
-      await pool.query('DELETE FROM sync_pending_items WHERE item_id=$1', [entry.item_id]);
-      imported++;
     } catch (err) {
       failed++;
       const msg = String((err && err.message) || err).slice(0, 200);

@@ -85,6 +85,7 @@ function toJsonlRecord(listItem, detailItem) {
     sections: Array.isArray(detailItem.sections) ? detailItem.sections : [],
     productUrl: detailItem.productUrl || listItem.productUrl,
     statusText: detailItem.statusText || listItem.statusText || '',
+    isEnded: Boolean(detailItem.isEnded),
   };
 }
 

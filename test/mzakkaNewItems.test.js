@@ -205,6 +205,7 @@ test('toJsonlRecord prefers detail data and falls back to list data', () => {
       sections: [{ sectionType: 'description', title: '商品介紹', contentText: 'detail desc' }],
       productUrl: 'https://mzakka.com/pc/detail/item.php?item_id=M12521',
       statusText: '予約商品',
+      isEnded: true,
     }
   );
 
@@ -220,5 +221,6 @@ test('toJsonlRecord prefers detail data and falls back to list data', () => {
     sections: [{ sectionType: 'description', title: '商品介紹', contentText: 'detail desc' }],
     productUrl: 'https://mzakka.com/pc/detail/item.php?item_id=M12521',
     statusText: '予約商品',
+    isEnded: true,
   });
 });
