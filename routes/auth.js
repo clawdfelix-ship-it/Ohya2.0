@@ -34,6 +34,10 @@ function serializeUser(user) {
   };
 }
 
+function isUserBlocked(user) {
+  return user && (user.is_active === false || user.is_blacklisted === true);
+}
+
 async function registerUser(pool, bcrypt, payload) {
   const username = normalizeText(payload.username);
   const email = normalizeText(payload.email).toLowerCase();
@@ -84,7 +88,9 @@ async function loginUser(pool, bcrypt, payload) {
   }
 
   const result = await pool.query(
-    `SELECT id, username, email, password_hash, is_admin, is_b2b, contact
+    `SELECT id, username, email, password_hash, is_admin, is_b2b, contact,
+            COALESCE(is_active, true) AS is_active,
+            COALESCE(is_blacklisted, false) AS is_blacklisted
      FROM users
      WHERE username = $1 OR LOWER(email) = LOWER($1)
      LIMIT 1`,
@@ -99,6 +105,9 @@ async function loginUser(pool, bcrypt, payload) {
   const match = await bcrypt.compare(password, user.password_hash);
   if (!match) {
     return { ok: false, status: 400, error: '電郵地址、用戶名或密碼錯誤' };
+  }
+  if (isUserBlocked(user)) {
+    return { ok: false, status: 403, error: '帳戶已停用，請聯絡客服' };
   }
 
   return { ok: true, user };
@@ -225,3 +234,4 @@ module.exports.registerUser = registerUser;
 module.exports.loginUser = loginUser;
 module.exports.serializeUser = serializeUser;
 module.exports.regenerateSession = regenerateSession;
+module.exports.isUserBlocked = isUserBlocked;

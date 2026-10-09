@@ -15,6 +15,16 @@ function timingSafeEqualHex(aHex, bHex) {
   return crypto.timingSafeEqual(a, b);
 }
 
+function timingSafeEqualText(aText, bText) {
+  const a = String(aText || '');
+  const b = String(bText || '');
+  if (!a || !b) return false;
+  const aBuf = Buffer.from(a, 'utf8');
+  const bBuf = Buffer.from(b, 'utf8');
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
 function verifyShipanySignature({ secret, rawBody, headerValue }) {
   if (!secret) return false;
   if (!rawBody || !Buffer.isBuffer(rawBody)) return false;
@@ -24,5 +34,8 @@ function verifyShipanySignature({ secret, rawBody, headerValue }) {
   return timingSafeEqualHex(provided, expected);
 }
 
-module.exports = { verifyShipanySignature };
+function hasValidSharedSecret({ expectedSecret, providedSecret }) {
+  return timingSafeEqualText(expectedSecret, providedSecret);
+}
 
+module.exports = { verifyShipanySignature, hasValidSharedSecret };

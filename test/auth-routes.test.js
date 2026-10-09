@@ -154,6 +154,42 @@ test('loginUser accepts email as identifier', async () => {
   assert.equal(result.user.email, 'alice@example.com');
 });
 
+test('loginUser rejects inactive users after password verification', async () => {
+  let compareCalled = false;
+  const pool = {
+    query: async () => ({
+      rows: [{
+        id: 3,
+        username: 'alice',
+        email: 'alice@example.com',
+        password_hash: 'stored-hash',
+        is_admin: false,
+        is_active: false,
+        is_blacklisted: false,
+        contact: 'alice@example.com',
+      }]
+    })
+  };
+  const bcrypt = {
+    compare: async () => {
+      compareCalled = true;
+      return true;
+    }
+  };
+
+  const result = await authRoutes.loginUser(pool, bcrypt, {
+    email: 'alice@example.com',
+    password: 'secret123',
+  });
+
+  assert.equal(compareCalled, true);
+  assert.deepEqual(result, {
+    ok: false,
+    status: 403,
+    error: '帳戶已停用，請聯絡客服',
+  });
+});
+
 test('storefront auth forms include csrf hidden fields', () => {
   const loginView = fs.readFileSync(path.join(__dirname, '..', 'views', 'login.ejs'), 'utf8');
   const registerView = fs.readFileSync(path.join(__dirname, '..', 'views', 'register.ejs'), 'utf8');

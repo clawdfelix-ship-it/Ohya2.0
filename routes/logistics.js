@@ -9,8 +9,30 @@ module.exports = function(app, pool) {
   const requireAuth = require('./middleware/auth').requireAuth;
   const requireAdmin = require('./middleware/auth').requireAdmin;
   const { requirePermission } = require('./middleware/auth');
-  const { verifyShipanySignature } = require('../utils/webhookSignatures');
+  const { verifyShipanySignature, hasValidSharedSecret } = require('../utils/webhookSignatures');
   const { parseAllowedIps, extractClientIp, isIpAllowed } = require('../utils/ipAllowlist');
+
+  function getSharedSecretFromRequest(req) {
+    const headerSecret = req.get('x-webhook-secret') || req.get('x-sync-secret');
+    if (headerSecret) return String(headerSecret);
+    const auth = req.get('authorization') || '';
+    const match = auth.match(/^Bearer\s+(.+)$/i);
+    return match ? String(match[1]) : '';
+  }
+
+  function ensurePaymentWebhookAuthorized(req, res, envName) {
+    const expectedSecret = String(process.env[envName] || '').trim();
+    if (!expectedSecret) {
+      res.status(503).json({ success: false, error: `${envName} not configured` });
+      return false;
+    }
+    const providedSecret = getSharedSecretFromRequest(req);
+    if (!hasValidSharedSecret({ expectedSecret, providedSecret })) {
+      res.status(401).json({ success: false, error: 'Invalid webhook secret' });
+      return false;
+    }
+    return true;
+  }
 
   // ===========================================
   // Returns & Refunds (After-sales)
@@ -881,6 +903,7 @@ module.exports = function(app, pool) {
   // FPS / PayMe webhook
   app.post('/webhooks/fps-payme', async (req, res) => {
     try {
+      if (!ensurePaymentWebhookAuthorized(req, res, 'FPS_PAYME_WEBHOOK_SECRET')) return;
       const { transaction_id, order_id, amount, status } = req.body;
 
       // Update order payment status
@@ -915,6 +938,7 @@ module.exports = function(app, pool) {
   // AlipayHK webhook
   app.post('/webhooks/alipayhk', async (req, res) => {
     try {
+      if (!ensurePaymentWebhookAuthorized(req, res, 'ALIPAYHK_WEBHOOK_SECRET')) return;
       const { out_trade_no, trade_no, trade_status } = req.body;
 
       // AlipayHK: trade_status = TRADE_SUCCESS means paid
@@ -956,6 +980,9 @@ module.exports = function(app, pool) {
   // WeChat Pay HK webhook
   app.post('/webhooks/wechatpay', async (req, res) => {
     try {
+      if (!ensurePaymentWebhookAuthorized(req, res, 'WECHATPAY_WEBHOOK_SECRET')) {
+        return res.send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[UNAUTHORIZED]]></return_msg></xml>');
+      }
       const { out_trade_no, transaction_id, trade_state } = req.body;
 
       if (trade_state === 'SUCCESS') {

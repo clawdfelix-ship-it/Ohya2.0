@@ -1,10 +1,10 @@
 // Internal cron endpoint that flushes the email outbox via Zoho SMTP.
-// Registered in vercel.json crons. Auth via CRON_SECRET (header/bearer) or
-// Vercel's automatic `x-vercel-cron` header on its own scheduled calls.
+// Registered in vercel.json crons. Auth via CRON_SECRET (header/bearer).
 'use strict';
 
 module.exports = function registerOutboxRoutes(app, pool) {
   const { flushOutbox } = require('../utils/outboxWorker');
+  const { hasValidSharedSecret } = require('../utils/webhookSignatures');
 
   function getExpectedSecrets() {
     return Array.from(new Set(
@@ -15,18 +15,24 @@ module.exports = function registerOutboxRoutes(app, pool) {
   }
 
   function isAuthorized(req) {
-    // Vercel-invoked cron requests carry this header.
-    if (String(req.get('x-vercel-cron') || '') === '1') return true;
-
     const secrets = getExpectedSecrets();
     if (secrets.length === 0) return false;
 
     const headerSecret = req.get('x-sync-secret');
-    if (headerSecret && secrets.includes(String(headerSecret))) return true;
+    if (headerSecret && secrets.some((secret) => hasValidSharedSecret({
+      expectedSecret: secret,
+      providedSecret: headerSecret,
+    }))) {
+      return true;
+    }
 
     const auth = req.get('authorization') || '';
     const match = auth.match(/^Bearer\s+(.+)$/i);
-    return Boolean(match && secrets.includes(String(match[1])));
+    if (!match) return false;
+    return secrets.some((secret) => hasValidSharedSecret({
+      expectedSecret: secret,
+      providedSecret: match[1],
+    }));
   }
 
   async function handle(req, res) {

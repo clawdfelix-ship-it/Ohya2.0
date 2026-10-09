@@ -19,3 +19,18 @@ test('verifyShipanySignature: rejects invalid signature', () => {
   );
 });
 
+test('hasValidSharedSecret: accepts matching plain-text secrets', () => {
+  const { hasValidSharedSecret } = require('../utils/webhookSignatures');
+  assert.equal(
+    hasValidSharedSecret({ expectedSecret: 'cron-secret', providedSecret: 'cron-secret' }),
+    true
+  );
+});
+
+test('hasValidSharedSecret: rejects mismatched secrets', () => {
+  const { hasValidSharedSecret } = require('../utils/webhookSignatures');
+  assert.equal(
+    hasValidSharedSecret({ expectedSecret: 'cron-secret', providedSecret: 'wrong-secret' }),
+    false
+  );
+});
