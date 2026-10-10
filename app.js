@@ -49,6 +49,18 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
+// SEO canonical host: 301 apex ohyagroups.net -> www.ohyagroups.net (preserve path + query).
+// Scoped to ohyagroups.net only; vercel.app preview deployments and other domains are untouched.
+// Registered before any other middleware so bare-host requests never hit the app or set cookies.
+app.use((req, res, next) => {
+  const host = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim().toLowerCase();
+  if (host === 'ohyagroups.net') {
+    const target = 'https://www.ohyagroups.net' + req.originalUrl;
+    return res.redirect(301, target);
+  }
+  next();
+});
+
 const cspMode = String(process.env.CSP_MODE || 'report').toLowerCase();
 const cspReportOnly = cspMode !== 'enforce';
 const cspReportPath = String(process.env.CSP_REPORT_PATH || '/csp-report');
