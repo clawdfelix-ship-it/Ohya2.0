@@ -142,8 +142,8 @@ module.exports = function(app, pool) {
       }
 
       await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO order_status_history (order_id, from_status, to_status, note, processed_by)
+         VALUES ($1, NULL, $2, $3, $4)`,
         [updateResult.rows[0].order_id, `return_${status}`, admin_note || null, req.user.id]
       );
 
@@ -620,8 +620,8 @@ module.exports = function(app, pool) {
 
               // Save to order history
               await pool.query(`
-                INSERT INTO order_status_histories (order_id, status, notes, created_by)
-                VALUES ($1, 'shipping', $2, $3)
+                INSERT INTO order_status_history (order_id, from_status, to_status, note, processed_by)
+                VALUES ($1, NULL, 'shipping', $2, $3)
               `, [order_id, `ShipAny 標籤已生成：${trackingNumber}`, req.user.id]);
 
               res.json({
@@ -900,8 +900,8 @@ module.exports = function(app, pool) {
 
       if (status === 'success') {
         await pool.query(`
-          INSERT INTO order_status_histories (order_id, status, notes)
-          VALUES ($1, 'paid', $2)
+          INSERT INTO order_status_history (order_id, from_status, to_status, note, processed_by)
+          VALUES ($1, NULL, 'paid', $2, NULL)
         `, [order_id, 'FPS/PayMe 付款成功']);
       }
 
@@ -940,8 +940,8 @@ module.exports = function(app, pool) {
           });
 
           await pool.query(`
-            INSERT INTO order_status_histories (order_id, status, notes)
-            VALUES ($1, 'paid', $2)
+            INSERT INTO order_status_history (order_id, from_status, to_status, note, processed_by)
+            VALUES ($1, NULL, 'paid', $2, NULL)
           `, [orderId, 'AlipayHK 付款成功']);
         }
       }
@@ -980,8 +980,8 @@ module.exports = function(app, pool) {
           });
 
           await pool.query(`
-            INSERT INTO order_status_histories (order_id, status, notes)
-            VALUES ($1, 'paid', $2)
+            INSERT INTO order_status_history (order_id, from_status, to_status, note, processed_by)
+            VALUES ($1, NULL, 'paid', $2, NULL)
           `, [orderId, 'WeChat Pay HK 付款成功']);
         }
       }

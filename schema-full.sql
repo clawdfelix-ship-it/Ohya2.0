@@ -528,6 +528,8 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_payment_transactions_method_tx
+  ON payment_transactions(payment_method_code, transaction_id);
 
 -- Refunds
 CREATE TABLE IF NOT EXISTS refunds (

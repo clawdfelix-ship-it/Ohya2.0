@@ -47,8 +47,8 @@ module.exports = function (app, pool) {
       );
 
       await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, 'refund_requested', $2, $3)`,
+        `INSERT INTO order_status_history (order_id, from_status, to_status, note, processed_by)
+         VALUES ($1, NULL, 'refund_requested', $2, $3)`,
         [order_id, `退款申請：${type} ${amount}`, req.user.id]
       );
 
@@ -72,8 +72,8 @@ module.exports = function (app, pool) {
       if (r.rows.length === 0) return res.status(404).json({ error: '退款單不存在' });
 
       await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, 'refund_approved', $2, $3)`,
+        `INSERT INTO order_status_history (order_id, from_status, to_status, note, processed_by)
+         VALUES ($1, NULL, 'refund_approved', $2, $3)`,
         [r.rows[0].order_id, `退款已批准：${r.rows[0].amount}`, req.user.id]
       );
 
@@ -99,8 +99,8 @@ module.exports = function (app, pool) {
       if (r.rows.length === 0) return res.status(404).json({ error: '退款單不存在' });
 
       await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, 'refund_rejected', $2, $3)`,
+        `INSERT INTO order_status_history (order_id, from_status, to_status, note, processed_by)
+         VALUES ($1, NULL, 'refund_rejected', $2, $3)`,
         [r.rows[0].order_id, `退款被拒絕：${note}`, req.user.id]
       );
 
@@ -141,8 +141,8 @@ module.exports = function (app, pool) {
       );
 
       await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, 'refund_completed', $2, $3)`,
+        `INSERT INTO order_status_history (order_id, from_status, to_status, note, processed_by)
+         VALUES ($1, NULL, 'refund_completed', $2, $3)`,
         [refund.order_id, `退款完成：${refund.amount}（憑證：${refund_transaction_id}）`, req.user.id]
       );
 
