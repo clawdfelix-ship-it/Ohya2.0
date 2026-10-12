@@ -27,6 +27,7 @@ const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch
 const { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
 const { normalizeCspReports } = require('./utils/security/cspReport');
 const { storeInfo } = require('./utils/storeInfo');
+const { getCanonicalHostRedirect } = require('./utils/canonicalHost');
 
 let cachedSharp;
 function getSharp() {
@@ -50,14 +51,11 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // SEO canonical host: 301 apex ohyagroups.net -> www.ohyagroups.net (preserve path + query).
-// Scoped to ohyagroups.net only; vercel.app preview deployments and other domains are untouched.
-// Registered before any other middleware so bare-host requests never hit the app or set cookies.
+// Scoped to storefront page navigations only; API/webhook traffic must keep the original host/method.
+// Registered before any other middleware so bare-host browser requests never hit the app or set cookies.
 app.use((req, res, next) => {
-  const host = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim().toLowerCase();
-  if (host === 'ohyagroups.net') {
-    const target = 'https://www.ohyagroups.net' + req.originalUrl;
-    return res.redirect(301, target);
-  }
+  const target = getCanonicalHostRedirect(req);
+  if (target) return res.redirect(301, target);
   next();
 });
 
