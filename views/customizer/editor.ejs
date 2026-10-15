@@ -16,8 +16,19 @@
       </aside>
 
       <section class="customizer-preview">
+        <div class="customizer-preview__toolbar">
+          <div class="customizer-preview__status">
+            <span class="customizer-preview__status-label">Template Zones</span>
+            <span class="customizer-preview__status-value">0</span>
+          </div>
+        </div>
         <div class="customizer-preview__stage">
-          <div class="customizer-preview__placeholder">前後幅 preview 將喺呢度 render</div>
+          <canvas class="customizer-preview__canvas" aria-label="前幅 Preview"></canvas>
+          <div class="customizer-preview__overlay">
+            <div class="customizer-preview__title">前幅 Preview</div>
+            <div class="customizer-preview__meta">載入 catalog 同 session 中</div>
+            <div class="customizer-preview__hint">前後幅 preview foundation 會喺頁面初始化後接管。</div>
+          </div>
         </div>
       </section>
 
@@ -32,6 +43,10 @@
 
   <script id="customizer-bootstrap" type="application/json"><%- JSON.stringify(customizerBootstrap || {}) %></script>
   <script src="/js/customizer/api.js"></script>
+  <script src="/js/customizer/state.js"></script>
+  <script src="/js/customizer/catalog.js"></script>
+  <script src="/js/customizer/editor.js"></script>
+  <script src="/js/customizer/compositor.js"></script>
   <script src="/js/customizer/app.js"></script>
   <%- include('../partials/footer') %>
 </body>

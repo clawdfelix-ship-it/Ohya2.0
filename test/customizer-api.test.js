@@ -86,3 +86,62 @@ test('customizer api create session persists session and design payload', async 
   assert.equal(jsonPayload.design.zones.length, 1);
   assert.equal(calls.length, 2);
 });
+
+test('customizer api design update persists selection and design payload', async () => {
+  const app = createRouteCapturingApp();
+  const calls = [];
+  const fakePool = {
+    query: async (sql, params) => {
+      calls.push({ sql, params });
+      if (sql.includes('UPDATE customizer_sessions')) {
+        return {
+          rows: [{
+            id: params[0],
+            product_type_id: params[1],
+            template_id: params[2],
+          }],
+        };
+      }
+      if (sql.includes('INSERT INTO customizer_session_designs')) {
+        return {
+          rows: [{
+            session_id: params[0],
+            design_json: JSON.parse(params[1]),
+          }],
+        };
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    },
+  };
+
+  customizerApiRoutes(app, fakePool);
+  const route = findRoute(app.routes, 'PUT', '/api/customizer/sessions/:id/design');
+  const req = {
+    params: { id: '17' },
+    body: {
+      productTypeId: 5,
+      templateId: 12,
+      design: { texts: { frontName: 'OHYA FC' } },
+    },
+  };
+
+  let statusCode = 200;
+  let jsonPayload = null;
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(payload) {
+      jsonPayload = payload;
+    },
+  };
+
+  await route.handlers[0](req, res);
+
+  assert.equal(statusCode, 200);
+  assert.equal(jsonPayload.session.product_type_id, 5);
+  assert.equal(jsonPayload.session.template_id, 12);
+  assert.equal(jsonPayload.design.design_json.texts.frontName, 'OHYA FC');
+  assert.equal(calls.length, 2);
+});

@@ -43,6 +43,19 @@ function createSessionsModel(db) {
       return result.rows[0] || null;
     },
 
+    async updateSessionSelection(sessionId, { productTypeId = null, templateId = null } = {}) {
+      const result = await db.query(
+        `UPDATE customizer_sessions
+            SET product_type_id = $2,
+                template_id = $3,
+                updated_at = NOW()
+          WHERE id = $1
+        RETURNING *`,
+        [sessionId, productTypeId, templateId]
+      );
+      return result.rows[0] || null;
+    },
+
     async saveDesign(sessionId, design) {
       const result = await db.query(
         `INSERT INTO customizer_session_designs (session_id, design_json)

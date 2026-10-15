@@ -88,9 +88,15 @@ module.exports = function registerCustomizerApi(app, pool) {
     if (!pool) return res.status(500).json({ error: 'Database not configured' });
     const sessionId = toNullableId(req.params.id);
     if (!sessionId) return res.status(400).json({ error: 'Invalid session id' });
-    const design = buildDesignSession({ design: req.body && req.body.design }).design;
+    const productTypeId = toNullableId(req.body && req.body.productTypeId);
+    const templateId = toNullableId(req.body && req.body.templateId);
+    const design = buildDesignSession({
+      selection: { productTypeId, templateId },
+      design: req.body && req.body.design,
+    }).design;
+    const session = await sessionsModel.updateSessionSelection(sessionId, { productTypeId, templateId });
     const saved = await sessionsModel.saveDesign(sessionId, design);
-    res.json({ design: saved });
+    res.json({ session, design: saved });
   });
 
   app.put('/api/customizer/sessions/:id/roster', async (req, res) => {

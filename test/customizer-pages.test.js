@@ -31,6 +31,7 @@ test('customizer editor view includes root marker and bootstrap payload', () => 
   const editorView = fs.readFileSync(path.join(__dirname, '..', 'views', 'customizer', 'editor.ejs'), 'utf8');
   assert.match(editorView, /id="customizer-app"/);
   assert.match(editorView, /id="customizer-bootstrap"/);
+  assert.match(editorView, /\/js\/customizer\/compositor\.js/);
   assert.match(editorView, /\/js\/customizer\/app\.js/);
 });
 
