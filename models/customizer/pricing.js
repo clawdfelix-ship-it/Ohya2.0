@@ -63,6 +63,106 @@ function decideFulfillmentPath(input = {}) {
   return 'direct_order';
 }
 
+function extractPricingConfig(rules = []) {
+  return (Array.isArray(rules) ? rules : []).reduce((accumulator, rule) => {
+    const ruleType = String(rule.rule_type || rule.ruleType || '');
+    const pricing = rule.pricing_json && typeof rule.pricing_json === 'object'
+      ? rule.pricing_json
+      : rule.pricing && typeof rule.pricing === 'object'
+        ? rule.pricing
+        : {};
+
+    if (ruleType === 'base_unit') {
+      accumulator.baseUnitPrice = Number.isFinite(Number(pricing.baseUnitPrice))
+        ? Number(pricing.baseUnitPrice)
+        : accumulator.baseUnitPrice;
+      accumulator.directOrderMaxQuantity = Number.isFinite(Number(pricing.directOrderMaxQuantity))
+        ? Number(pricing.directOrderMaxQuantity)
+        : accumulator.directOrderMaxQuantity;
+      if (typeof pricing.templateAllowsDirectOrder === 'boolean') {
+        accumulator.templateAllowsDirectOrder = pricing.templateAllowsDirectOrder;
+      }
+    }
+
+    if (ruleType === 'quantity_tier' && Array.isArray(pricing.quantityTiers)) {
+      accumulator.quantityTiers.push(...pricing.quantityTiers);
+    }
+
+    if (ruleType === 'extra') {
+      accumulator.extras.push({
+        code: String(pricing.code || rule.name || ''),
+        label: String(pricing.label || rule.name || pricing.code || ''),
+        unitPrice: Number.isFinite(Number(pricing.unitPrice)) ? Number(pricing.unitPrice) : 0,
+        appliesTo: String(pricing.appliesTo || 'items'),
+      });
+    }
+
+    return accumulator;
+  }, {
+    baseUnitPrice: 0,
+    quantityTiers: [],
+    extras: [],
+    directOrderMaxQuantity: 30,
+    templateAllowsDirectOrder: true,
+  });
+}
+
+function calculateCustomizerPricing(input = {}) {
+  const quantity = Number.isFinite(Number(input.quantity)) && Number(input.quantity) > 0 ? Number(input.quantity) : 0;
+  const textValues = input.textValues && typeof input.textValues === 'object' ? input.textValues : {};
+  const rosterItems = Array.isArray(input.rosterItems) ? input.rosterItems : [];
+  const logoCount = Number.isFinite(Number(input.logoCount)) ? Number(input.logoCount) : 0;
+  const pricingConfig = extractPricingConfig(input.rules || []);
+  const extras = [];
+
+  pricingConfig.extras.forEach((extra) => {
+    let extraQuantity = 0;
+
+    if (extra.appliesTo === 'logos') extraQuantity = logoCount;
+    else if (extra.appliesTo === 'named-items') {
+      extraQuantity = rosterItems.length || (textValues.playerName ? quantity : 0);
+    } else if (extra.appliesTo === 'numbered-items') {
+      extraQuantity = rosterItems.length || (textValues.playerNumber ? quantity : 0);
+    } else if (extra.appliesTo === 'items') extraQuantity = quantity;
+    else if (extra.appliesTo === 'single' || extra.appliesTo === 'order') extraQuantity = 1;
+
+    if (extraQuantity > 0) {
+      extras.push({
+        code: extra.code,
+        label: extra.label,
+        quantity: extraQuantity,
+        unitPrice: extra.unitPrice,
+      });
+    }
+  });
+
+  const breakdown = calculatePriceBreakdown({
+    quantity,
+    baseUnitPrice: pricingConfig.baseUnitPrice,
+    quantityTiers: pricingConfig.quantityTiers,
+    extras,
+  });
+
+  const pricingComplete = quantity > 0 && pricingConfig.baseUnitPrice > 0;
+  const fulfillmentPath = decideFulfillmentPath({
+    pricingComplete,
+    quantity,
+    directOrderMaxQuantity: pricingConfig.directOrderMaxQuantity,
+    templateAllowsDirectOrder: pricingConfig.templateAllowsDirectOrder,
+    isQuotePreferred: input.isQuotePreferred === true,
+    assetReviewRequired: input.assetReviewRequired === true,
+    requiresReview: input.requiresReview === true,
+  });
+
+  return {
+    ...breakdown,
+    pricingComplete,
+    directOrderMaxQuantity: pricingConfig.directOrderMaxQuantity,
+    templateAllowsDirectOrder: pricingConfig.templateAllowsDirectOrder,
+    fulfillmentPath,
+  };
+}
+
 function createPricingModel(db) {
   return {
     async listPricingRules({ productTypeId = null, templateId = null } = {}) {
@@ -82,6 +182,7 @@ function createPricingModel(db) {
 
 module.exports = {
   calculatePriceBreakdown,
+  calculateCustomizerPricing,
   decideFulfillmentPath,
   createPricingModel,
 };

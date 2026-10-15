@@ -24,6 +24,15 @@ module.exports = function registerCustomizerPages(app) {
     res.render('customizer/quote-success', {
       title: '報價提交完成 - OHYA2.0',
       user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: !!req.session.isAdmin } : null,
+      quoteId: req.query.quoteId || null,
+    });
+  });
+
+  app.get('/customizer/order-success', (req, res) => {
+    res.render('customizer/order-success', {
+      title: '訂單草稿已建立 - OHYA2.0',
+      user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: !!req.session.isAdmin } : null,
+      draftId: req.query.draftId || null,
     });
   });
 };

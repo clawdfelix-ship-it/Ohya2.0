@@ -25,6 +25,7 @@ test('customizer pages register storefront entry routes', () => {
   assert.equal(count(app.routes, 'GET', '/customizer'), 1);
   assert.equal(count(app.routes, 'GET', '/customizer/editor'), 1);
   assert.equal(count(app.routes, 'GET', '/customizer/quote-success'), 1);
+  assert.equal(count(app.routes, 'GET', '/customizer/order-success'), 1);
 });
 
 test('customizer editor view includes root marker and bootstrap payload', () => {
@@ -39,4 +40,12 @@ test('customizer index view includes template and blank entry CTAs', () => {
   const indexView = fs.readFileSync(path.join(__dirname, '..', 'views', 'customizer', 'index.ejs'), 'utf8');
   assert.match(indexView, /模板開始/);
   assert.match(indexView, /空白款開始/);
+});
+
+test('customizer success views include quote and order confirmations', () => {
+  const quoteView = fs.readFileSync(path.join(__dirname, '..', 'views', 'customizer', 'quote-success.ejs'), 'utf8');
+  const orderView = fs.readFileSync(path.join(__dirname, '..', 'views', 'customizer', 'order-success.ejs'), 'utf8');
+
+  assert.match(quoteView, /報價請求已提交/);
+  assert.match(orderView, /直接下單草稿已建立/);
 });

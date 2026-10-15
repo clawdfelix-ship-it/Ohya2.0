@@ -66,6 +66,18 @@
     return candidates[0] || null;
   }
 
+  function findTemplateForStartMode(catalog, productTypeId, startMode, preferredId) {
+    const candidates = catalog.templatesByProductType[String(productTypeId)] || [];
+    if (!candidates.length) return null;
+    if (preferredId) return findDefaultTemplate(catalog, productTypeId, preferredId);
+
+    if (String(startMode) === 'blank') {
+      return candidates.find((item) => item.is_blank === true || item.isBlank === true) || candidates[0];
+    }
+
+    return candidates.find((item) => item.is_blank !== true && item.isBlank !== true) || candidates[0];
+  }
+
   function normalizeTemplateDetail(payload = {}) {
     return {
       template: payload.template || null,
@@ -98,6 +110,7 @@
     normalizeTemplateDetail,
     findDefaultProductType,
     findDefaultTemplate,
+    findTemplateForStartMode,
     listAssetsForSelection,
   };
 })(window);

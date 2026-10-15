@@ -45,3 +45,25 @@ test('buildDeliverablePackage defaults to quote_required without pricing decisio
 
   assert.equal(deliverable.fulfillmentPath, 'quote_required');
 });
+
+test('buildDeliverablePackage supports database-shaped previews and session columns', () => {
+  const deliverable = buildDeliverablePackage({
+    session: {
+      id: 11,
+      product_type_id: 4,
+      template_id: 9,
+      fulfillment_path: 'direct_order',
+    },
+    previews: [
+      { preview_side: 'front', storage_key: 'front-ref.json', mime_type: 'image/png', meta_json: {} },
+      { preview_side: 'back', storage_key: 'back-ref.json', mime_type: 'image/png', meta_json: {} },
+    ],
+    roster: { items: [{ quantity: 5 }] },
+    pricing: {},
+  });
+
+  assert.equal(deliverable.selectedProductType, 4);
+  assert.equal(deliverable.selectedTemplate, 9);
+  assert.equal(deliverable.previews.back.storageKey, 'back-ref.json');
+  assert.equal(deliverable.fulfillmentPath, 'direct_order');
+});

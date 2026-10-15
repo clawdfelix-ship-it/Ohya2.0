@@ -43,6 +43,47 @@ function createSessionsModel(db) {
       return result.rows[0] || null;
     },
 
+    async getLatestDesign(sessionId) {
+      const result = await db.query(
+        `SELECT *
+           FROM customizer_session_designs
+          WHERE session_id = $1`,
+        [sessionId]
+      );
+      return result.rows[0] || null;
+    },
+
+    async getRoster(sessionId) {
+      const rosterResult = await db.query(
+        `SELECT *
+           FROM customizer_rosters
+          WHERE session_id = $1`,
+        [sessionId]
+      );
+      const roster = rosterResult.rows[0] || null;
+      if (!roster) return null;
+
+      const itemsResult = await db.query(
+        `SELECT player_name, player_number, size_code, quantity, sort_order, meta_json
+           FROM customizer_roster_items
+          WHERE roster_id = $1
+          ORDER BY sort_order ASC, id ASC`,
+        [roster.id]
+      );
+
+      return {
+        ...roster,
+        items: itemsResult.rows.map((item) => ({
+          playerName: item.player_name,
+          playerNumber: item.player_number,
+          sizeCode: item.size_code,
+          quantity: item.quantity,
+          sortOrder: item.sort_order,
+          meta: item.meta_json || {},
+        })),
+      };
+    },
+
     async updateSessionSelection(sessionId, { productTypeId = null, templateId = null } = {}) {
       const result = await db.query(
         `UPDATE customizer_sessions
@@ -52,6 +93,19 @@ function createSessionsModel(db) {
           WHERE id = $1
         RETURNING *`,
         [sessionId, productTypeId, templateId]
+      );
+      return result.rows[0] || null;
+    },
+
+    async updateSessionCommerce(sessionId, { fulfillmentPath = null, latestPricing = {} } = {}) {
+      const result = await db.query(
+        `UPDATE customizer_sessions
+            SET fulfillment_path = $2,
+                latest_pricing_json = $3::jsonb,
+                updated_at = NOW()
+          WHERE id = $1
+        RETURNING *`,
+        [sessionId, fulfillmentPath, JSON.stringify(latestPricing || {})]
       );
       return result.rows[0] || null;
     },
@@ -77,7 +131,33 @@ function createSessionsModel(db) {
          RETURNING *`,
         [sessionId, totalQuantity, JSON.stringify(meta || {})]
       );
-      return result.rows[0];
+      const roster = result.rows[0];
+      const items = Array.isArray(meta.items) ? meta.items : [];
+
+      await db.query(
+        `DELETE FROM customizer_roster_items
+          WHERE roster_id = $1`,
+        [roster.id]
+      );
+
+      for (const item of items) {
+        await db.query(
+          `INSERT INTO customizer_roster_items
+            (roster_id, player_name, player_number, size_code, quantity, sort_order, meta_json)
+           VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
+          [
+            roster.id,
+            item.playerName,
+            item.playerNumber,
+            item.sizeCode,
+            item.quantity,
+            item.sortOrder || 0,
+            JSON.stringify(item.meta || {}),
+          ]
+        );
+      }
+
+      return this.getRoster(sessionId);
     },
 
     async attachAssets(sessionId, uploadedAssetIds = []) {

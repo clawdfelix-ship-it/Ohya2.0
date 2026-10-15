@@ -21,6 +21,14 @@
     },
   });
   let persistTimer = null;
+  const startMode = bootstrap.startMode || 'template';
+
+  function sumRosterQuantity(items = []) {
+    return (Array.isArray(items) ? items : []).reduce((sum, item) => {
+      const quantity = Number(item.quantity);
+      return sum + (Number.isFinite(quantity) && quantity > 0 ? quantity : 0);
+    }, 0);
+  }
 
   function findZoneDesignEntry(designZones, zoneKey) {
     return (Array.isArray(designZones) ? designZones : []).find((zone) => String(zone.zoneKey) === String(zoneKey)) || null;
@@ -108,11 +116,158 @@
     }, DEBOUNCE_MS);
   }
 
+  function updateNotes(value) {
+    store.update((state) => ({
+      ...state,
+      design: {
+        ...state.design,
+        notes: value,
+      },
+      submission: {
+        ...state.submission,
+        phase: 'ready',
+        error: null,
+      },
+    }));
+    scheduleDesignPersist();
+  }
+
+  function addRosterItem() {
+    store.update((state) => {
+      const items = Array.isArray(state.roster.items) ? state.roster.items : [];
+      const nextItems = items.concat({
+        playerName: '',
+        playerNumber: '',
+        sizeCode: '',
+        quantity: 1,
+        sortOrder: items.length,
+      });
+      return {
+        ...state,
+        roster: {
+          items: nextItems,
+          totalQuantity: sumRosterQuantity(nextItems),
+        },
+      };
+    });
+  }
+
+  function updateRosterItem(index, field, value) {
+    store.update((state) => {
+      const nextItems = (Array.isArray(state.roster.items) ? state.roster.items : []).map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+        return {
+          ...item,
+          [field]: field === 'quantity' ? value : value,
+        };
+      });
+
+      return {
+        ...state,
+        roster: {
+          items: nextItems,
+          totalQuantity: sumRosterQuantity(nextItems.map((item) => ({
+            ...item,
+            quantity: Number(item.quantity) || 0,
+          }))),
+        },
+      };
+    });
+  }
+
+  function removeRosterItem(index) {
+    store.update((state) => {
+      const nextItems = (Array.isArray(state.roster.items) ? state.roster.items : [])
+        .filter((_, itemIndex) => itemIndex !== index)
+        .map((item, itemIndex) => ({
+          ...item,
+          sortOrder: itemIndex,
+        }));
+      return {
+        ...state,
+        roster: {
+          items: nextItems,
+          totalQuantity: sumRosterQuantity(nextItems),
+        },
+      };
+    });
+  }
+
+  function buildPreviewPayload(state) {
+    const sessionId = state.session && state.session.id ? state.session.id : 'draft';
+    const timestamp = Date.now();
+    const sides = ['front', 'back'];
+
+    return sides.reduce((accumulator, side) => {
+      accumulator[side] = {
+        storageKey: `customizer/session-${sessionId}/${side}-${timestamp}.json`,
+        mimeType: 'image/png',
+        meta: {
+          side,
+          selectedTemplateId: state.selectedTemplate ? state.selectedTemplate.id : null,
+          selectedProductTypeId: state.selectedProductType ? state.selectedProductType.id : null,
+          texts: state.design.texts || {},
+          logoCount: Array.isArray(state.design.logos) ? state.design.logos.length : 0,
+          zoneColors: (Array.isArray(state.design.zones) ? state.design.zones : [])
+            .filter((zone) => String(zone.side || 'front') === side || String(zone.zoneKey || '').includes(side))
+            .map((zone) => ({
+              zoneKey: zone.zoneKey,
+              color: zone.color || null,
+            })),
+        },
+      };
+      return accumulator;
+    }, {});
+  }
+
+  async function submitSession(mode) {
+    const current = store.getState();
+    if (!current.session || !current.session.id) return;
+
+    try {
+      setSubmissionPhase(mode === 'quote' ? 'submitting-quote' : 'submitting-order');
+
+      await persistDesignSelection(current);
+      await CustomizerApi.saveRoster(current.session.id, current.roster.items || []);
+      const previewsResponse = await CustomizerApi.savePreviews(current.session.id, buildPreviewPayload(store.getState()));
+      const response = await CustomizerApi.submitSession(current.session.id, {
+        mode,
+        note: current.design.notes || '',
+      });
+
+      store.update((state) => ({
+        ...state,
+        previews: {
+          ...state.previews,
+          ...(previewsResponse.previews || {}),
+        },
+        pricing: response.pricing || state.pricing,
+        deliverable: response.deliverable || state.deliverable,
+        session: response.session || state.session,
+        submission: {
+          phase: 'submitted',
+          error: null,
+        },
+      }));
+
+      if (response.mode === 'direct_order' && response.orderDraft) {
+        global.location.href = `/customizer/order-success?draftId=${encodeURIComponent(response.orderDraft.id)}`;
+        return;
+      }
+
+      if (response.quoteRequest) {
+        global.location.href = `/customizer/quote-success?quoteId=${encodeURIComponent(response.quoteRequest.id)}`;
+      }
+    } catch (error) {
+      setSubmissionPhase('error', error.message || 'Submit failed');
+    }
+  }
+
   async function selectProductType(productTypeId) {
     const current = store.getState();
     const nextProductType = current.catalog.productTypes.find((item) => String(item.id) === String(productTypeId)) || null;
     const nextTemplate = nextProductType
-      ? CustomizerCatalog.findDefaultTemplate(current.catalog, nextProductType.id, null)
+      ? CustomizerCatalog.findTemplateForStartMode(current.catalog, nextProductType.id, startMode, null)
       : null;
 
     store.update((state) => ({
@@ -235,6 +390,16 @@
     updateZoneColor,
     updateTextField,
     selectLogoAsset,
+    updateNotes,
+    addRosterItem,
+    updateRosterItem,
+    removeRosterItem,
+    submitQuote() {
+      return submitSession('quote');
+    },
+    submitOrder() {
+      return submitSession('direct_order');
+    },
   });
   const compositor = CustomizerCompositor && typeof CustomizerCompositor.createPreviewCompositor === 'function'
     ? CustomizerCompositor.createPreviewCompositor(root)
@@ -243,7 +408,7 @@
   store.subscribe((state) => {
     renderer.render(state);
     if (compositor) compositor.render(state);
-    root.dataset.startMode = bootstrap.startMode || 'template';
+    root.dataset.startMode = startMode;
     root.dataset.phase = state.submission.phase || 'idle';
   });
 
@@ -255,7 +420,7 @@
 
       const selectedProductType = CustomizerCatalog.findDefaultProductType(catalog, bootstrap.productTypeId);
       const selectedTemplate = selectedProductType
-        ? CustomizerCatalog.findDefaultTemplate(catalog, selectedProductType.id, bootstrap.templateId)
+        ? CustomizerCatalog.findTemplateForStartMode(catalog, selectedProductType.id, startMode, bootstrap.templateId)
         : null;
 
       store.update((state) => ({

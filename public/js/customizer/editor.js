@@ -221,6 +221,10 @@
     const activeLogo = state.design && Array.isArray(state.design.logos) && state.design.logos[0]
       ? state.design.logos[0].name || state.design.logos[0].slug || '已選擇'
       : '未選擇';
+    const pricingTotal = state.pricing && Number.isFinite(Number(state.pricing.total))
+      ? `HK$${Number(state.pricing.total).toFixed(0)}`
+      : '待報價';
+    const submissionPhase = state.submission && state.submission.phase ? state.submission.phase : 'idle';
 
     return `
       <div class="customizer-summary-card">
@@ -229,7 +233,46 @@
         <div><span class="customizer-summary-card__label">模板</span><span class="customizer-summary-card__value">${escapeHtml(template)}</span></div>
         <div><span class="customizer-summary-card__label">預覽面</span><span class="customizer-summary-card__value">${escapeHtml(activeSide)}</span></div>
         <div><span class="customizer-summary-card__label">Logo</span><span class="customizer-summary-card__value">${escapeHtml(activeLogo)}</span></div>
+        <div><span class="customizer-summary-card__label">預計總額</span><span class="customizer-summary-card__value">${escapeHtml(pricingTotal)}</span></div>
+        <div><span class="customizer-summary-card__label">提交狀態</span><span class="customizer-summary-card__value">${escapeHtml(submissionPhase)}</span></div>
         <div><span class="customizer-summary-card__label">總數量</span><span class="customizer-summary-card__value">${escapeHtml(totalQuantity)}</span></div>
+      </div>
+    `;
+  }
+
+  function renderRosterControls(state) {
+    const items = state.roster && Array.isArray(state.roster.items) ? state.roster.items : [];
+
+    return `
+      <div class="customizer-roster">
+        ${items.length ? items.map((item, index) => `
+          <div class="customizer-roster__row">
+            <input class="customizer-field__control" type="text" placeholder="球員名" value="${escapeHtml(item.playerName || '')}" data-role="roster-input" data-index="${index}" data-field="playerName">
+            <input class="customizer-field__control" type="text" placeholder="號碼" value="${escapeHtml(item.playerNumber || '')}" data-role="roster-input" data-index="${index}" data-field="playerNumber">
+            <input class="customizer-field__control" type="text" placeholder="尺碼" value="${escapeHtml(item.sizeCode || '')}" data-role="roster-input" data-index="${index}" data-field="sizeCode">
+            <input class="customizer-field__control" type="number" min="1" placeholder="數量" value="${escapeHtml(item.quantity || 1)}" data-role="roster-input" data-index="${index}" data-field="quantity">
+            <button type="button" class="customizer-action-button is-secondary" data-role="remove-roster-item" data-index="${index}">刪除</button>
+          </div>
+        `).join('') : '<div class="customizer-empty">未加入球員名單，直接下單前最好先補 roster。</div>'}
+        <button type="button" class="customizer-action-button is-secondary" data-role="add-roster-item">加入球員</button>
+      </div>
+    `;
+  }
+
+  function renderSubmitPanel(state) {
+    const error = state.submission && state.submission.error ? state.submission.error : '';
+
+    return `
+      <div class="customizer-submit-panel">
+        <label class="customizer-field customizer-field--dense">
+          <span class="customizer-field__label">備註</span>
+          <textarea class="customizer-field__control customizer-field__control--textarea" placeholder="交期、特殊要求、印刷位置補充" data-role="design-notes">${escapeHtml(state.design && state.design.notes ? state.design.notes : '')}</textarea>
+        </label>
+        ${error ? `<div class="customizer-submit-panel__error">${escapeHtml(error)}</div>` : ''}
+        <div class="customizer-submit-panel__actions">
+          <button type="button" class="customizer-action-button is-primary" data-role="submit-order">直接下單</button>
+          <button type="button" class="customizer-action-button is-secondary" data-role="submit-quote">提交報價</button>
+        </div>
       </div>
     `;
   }
@@ -313,6 +356,16 @@
             <div class="customizer-section__title">Logo</div>
             ${renderLogoControls(state)}
           </div>
+
+          <div class="customizer-section">
+            <div class="customizer-section__title">Roster</div>
+            ${renderRosterControls(state)}
+          </div>
+
+          <div class="customizer-section">
+            <div class="customizer-section__title">提交</div>
+            ${renderSubmitPanel(state)}
+          </div>
         </aside>
       `;
 
@@ -358,6 +411,50 @@
           actions.selectLogoAsset(button.getAttribute('data-asset-id'));
         });
       });
+
+      const notesField = root.querySelector('[data-role="design-notes"]');
+      if (notesField) {
+        notesField.addEventListener('input', (event) => {
+          actions.updateNotes(event.target.value);
+        });
+      }
+
+      root.querySelectorAll('[data-role="roster-input"]').forEach((input) => {
+        input.addEventListener('input', (event) => {
+          actions.updateRosterItem(
+            Number(input.getAttribute('data-index')),
+            input.getAttribute('data-field'),
+            event.target.value
+          );
+        });
+      });
+
+      root.querySelectorAll('[data-role="remove-roster-item"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          actions.removeRosterItem(Number(button.getAttribute('data-index')));
+        });
+      });
+
+      const addRosterButton = root.querySelector('[data-role="add-roster-item"]');
+      if (addRosterButton) {
+        addRosterButton.addEventListener('click', () => {
+          actions.addRosterItem();
+        });
+      }
+
+      const submitOrderButton = root.querySelector('[data-role="submit-order"]');
+      if (submitOrderButton) {
+        submitOrderButton.addEventListener('click', () => {
+          actions.submitOrder();
+        });
+      }
+
+      const submitQuoteButton = root.querySelector('[data-role="submit-quote"]');
+      if (submitQuoteButton) {
+        submitQuoteButton.addEventListener('click', () => {
+          actions.submitQuote();
+        });
+      }
     }
 
     return { render };

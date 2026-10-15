@@ -22,6 +22,15 @@ test('customizer migration defines core session and registry tables', () => {
   assert.match(sql, /CREATE TABLE IF NOT EXISTS\s+customizer_order_drafts/i);
 });
 
+test('customizer seed migration defines starter catalog and pricing rules', () => {
+  const migrationPath = path.join(__dirname, '..', 'migrations', '20261015_customizer_seed.sql');
+  assert.ok(fs.existsSync(migrationPath));
+  const sql = fs.readFileSync(migrationPath, 'utf8');
+  assert.match(sql, /football-home/);
+  assert.match(sql, /polo-blank/);
+  assert.match(sql, /Customizer Base Unit/);
+});
+
 test('normalizeTemplateZone fills defaults and maps snake_case fields', () => {
   const zone = normalizeTemplateZone({
     zone_key: 'front-body',

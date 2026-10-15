@@ -56,5 +56,19 @@
         body: JSON.stringify({ items: items || [] }),
       });
     },
+    savePreviews(sessionId, previews) {
+      return request(`/api/customizer/sessions/${sessionId}/previews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ previews: previews || {} }),
+      });
+    },
+    submitSession(sessionId, payload) {
+      return request(`/api/customizer/sessions/${sessionId}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload || {}),
+      });
+    },
   };
 })(window);
