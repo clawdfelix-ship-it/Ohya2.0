@@ -2,9 +2,9 @@
 
 > **For agentic workers:** Follow this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在現有 `Node.js + Express + EJS + Postgres` repo 內落地一個可獨立上線的 `團體服／球衣訂製子系統`，支援 `足球、籃球、排球、背心、Polo` 五個品類，提供 `模板開始 / 空白款開始`、`2D + 2.5D 即時預覽`、`全隊名單`、`直接下單 + 報價` 雙軌流程，以及最小可用後台。
+**Goal:** 在現有 `Node.js + Express + EJS + Postgres` repo 內落地一個可獨立上線嘅 `團體服／球衣訂製子系統`，支援 `足球、籃球、排球、背心、Polo`，並以 `asset registry -> design session -> preview pipeline -> deliverable layer -> commerce decision` 作為第一版主骨架。
 
-**Architecture:** 以 `Express` 提供頁面 shell 與 JSON API，前台訂製器採用 `EJS shell + 模組化前端 JS + Canvas compositor`。模板、zone、素材、session、名單、報價與價格規則存入 Postgres。前端以受規則控制的 `半自由編輯器` 讀取模板 metadata 即時合成前後幅效果圖；後端負責素材上傳、session 持久化、價格判斷、報價單與訂單草稿落庫。第一版避免引入第二套大型 frontend toolchain，保留日後把前端遷移至 React/Vite 的資料契約與 API 邊界。
+**Architecture:** 以 `Express` 提供 page shell 同 JSON API，前台採用 `EJS shell + public/js/customizer/* + Canvas compositor`。`Asset registry` 管品類、模板、zones、官方素材；`Design session` 管每次客製狀態；`Preview pipeline` 將 session 轉成前後幅效果圖；`Deliverable layer` 將 session、snapshots、roster、pricing 組成可落單資料；`Commerce decision layer` 負責 direct order / quote required 分流。第一版唔引入第二套大型 frontend build system，但會預留之後遷移至 React/Vue 嘅 API 邊界。
 
 **Tech Stack:** Node.js（CommonJS）+ Express + EJS + Postgres + multer + 原生 Canvas 合成策略（瀏覽器端）+ node:test
 
@@ -12,12 +12,14 @@
 
 ## File Map（預計新增／修改）
 
-**Create（DB / data layer）**
+**Create（DB / core data）**
 - `db/migrations/20261015_customizer_phase1.sql`
 - `models/customizer/catalog.js`
 - `models/customizer/sessions.js`
+- `models/customizer/previews.js`
 - `models/customizer/pricing.js`
 - `models/customizer/quotes.js`
+- `models/customizer/deliverables.js`
 - `models/customizer/uploads.js`
 - `utils/customizer/validation.js`
 - `utils/customizer/snapshot.js`
@@ -43,6 +45,7 @@
 - `public/js/customizer/catalog.js`
 - `public/js/customizer/editor.js`
 - `public/js/customizer/compositor.js`
+- `public/js/customizer/deliverables.js`
 - `public/js/customizer/panels-colors.js`
 - `public/js/customizer/panels-text.js`
 - `public/js/customizer/panels-logo.js`
@@ -58,6 +61,7 @@
 - `test/customizer-pages.test.js`
 - `test/customizer-pricing.test.js`
 - `test/customizer-api.test.js`
+- `test/customizer-deliverables.test.js`
 
 **Modify（app wiring / shared infra）**
 - `app.js`（mount page/API/admin routes，static/upload path，若需要加 body/upload limits）
@@ -70,41 +74,51 @@
 
 ### 實作原則
 
-- 先把 `資料模型 + API 契約 + 前端狀態` 建穩，再做效果圖與 admin。
-- 先支援 `足球、籃球` 的完整模板族驗證流程，然後補齊 `排球、背心、Polo` 模板資料與規則。
-- 任何價格無法完整計算的情況，一律可提交，並自動轉 `報價單`，避免卡死前台流程。
-- 任何效果圖快照失敗的情況，仍保存設計 JSON，供後台重產。
+- 先做好 `schema / contracts / data boundaries`，再做 UI 細節。
+- `Design session` 永遠係主資料；preview 只係 session 嘅投影。
+- `價格規則缺失` 唔當錯誤，而係 `quote required`。
+- `preview 生成失敗` 唔應阻止提交；只要 session 仲在，就可以之後重產。
+- 先支援 `足球、籃球` 做完整驗證，再補 `排球、背心、Polo`。
 
 ### 完成定義
 
 - 使用者可從 `/customizer` 進入訂製器。
 - 可選品類、模板開始、空白款開始。
-- 可完成基本區域配色、圖案、文字、logo 上傳與前後幅預覽。
+- 可建立一份完整 `design session`。
+- 可完成基本區域配色、圖案、文字、logo 上傳與前後幅 preview。
 - 可輸入全隊名單。
-- 系統可判斷 `可直接下單` 或 `需報價`。
+- 系統可產生 `deliverable package`。
+- 系統可判斷 `direct order` 或 `quote required`。
 - 後台可查看模板、價格規則與報價請求。
 
 ---
 
-### Task 1: 建立資料表、model 與純函式測試骨架
+### Task 1: 建立核心 schema，同步鎖定資料邊界
+
+**目標:** 先將 `asset registry / design session / deliverable / commerce` 幾層資料結構鎖死，避免之後用 blob 亂塞。
 
 **Files:**
 - Create: `db/migrations/20261015_customizer_phase1.sql`
 - Create: `models/customizer/catalog.js`
 - Create: `models/customizer/sessions.js`
+- Create: `models/customizer/previews.js`
 - Create: `models/customizer/pricing.js`
 - Create: `models/customizer/quotes.js`
+- Create: `models/customizer/deliverables.js`
 - Create: `utils/customizer/validation.js`
 - Create: `test/customizer-models.test.js`
 - Create: `test/customizer-pricing.test.js`
+- Create: `test/customizer-deliverables.test.js`
 
-- [ ] **Step 1: 先寫純函式 / model 層 failing tests**
+- [ ] **Step 1: 先寫 failing tests，鎖定核心 contract**
 
 最低限度覆蓋：
+- `buildDesignSession()` 會輸出穩定 session shape
 - `normalizeTemplateZone()` 會補齊 zone 預設欄位
 - `validateRosterItems()` 會檢查姓名 / 號碼 / 尺碼
 - `calculatePriceBreakdown()` 可輸出基本價、階梯價、附加費
 - `decideFulfillmentPath()` 可回傳 `direct_order` 或 `quote_required`
+- `buildDeliverablePackage()` 可組出 session + previews + roster + pricing
 
 - [ ] **Step 2: 建 migration**
 
@@ -114,7 +128,8 @@
 - `customizer_template_zones`
 - `customizer_design_assets`
 - `customizer_sessions`
-- `customizer_designs`
+- `customizer_session_designs`
+- `customizer_session_previews`
 - `customizer_rosters`
 - `customizer_roster_items`
 - `customizer_pricing_rules`
@@ -123,18 +138,20 @@
 - `customizer_order_drafts`
 
 最低欄位原則：
-- 模板與 zone 要有 `status`
+- registry 資料與 session 資料分表
 - session / quote / order draft 要有 `status`
-- 設計 JSON 與快照路徑要分開保存
+- 設計 JSON、preview 路徑、roster 分開保存
 - `created_at / updated_at` 一律存在
 
 - [ ] **Step 3: 實作最小 model helpers**
 
 需要有：
 - catalog：讀品類、模板、zone、素材
-- sessions：create / get / saveDesign / saveRoster
+- sessions：create / get / saveDesign / saveRoster / attachAssets
+- previews：savePreviewRefs / getLatestPreviews
 - pricing：讀規則、計價、判斷 direct vs quote
-- quotes：建立報價請求、附帶上傳素材 metadata
+- deliverables：組裝可提交 package
+- quotes：建立報價請求、附帶 deliverable metadata
 
 - [ ] **Step 4: 跑 tests 轉 GREEN**
 
@@ -145,46 +162,48 @@ npm test
 
 ---
 
-### Task 2: 建立 public page routes 與 EJS shell
+### Task 2: 建立 asset registry 與 catalog API
+
+**目標:** 先令前台可以可靠讀到「可設計乜嘢」，再做「點設計」。
 
 **Files:**
-- Create: `routes/customizerPages.js`
-- Create: `views/customizer/index.ejs`
-- Create: `views/customizer/editor.ejs`
-- Create: `views/customizer/quote-success.ejs`
+- Create: `routes/customizerApi.js`
+- Create: `public/js/customizer/api.js`
+- Create: `test/customizer-api.test.js`
 - Modify: `app.js`
-- Create: `test/customizer-pages.test.js`
 
-- [ ] **Step 1: 寫 page routing tests**
+- [ ] **Step 1: 寫 catalog API tests**
 
 至少覆蓋：
-- `GET /customizer` 回 200
-- `GET /customizer/editor` 回 200
-- `GET /customizer/editor` 要包含 root marker，例如 `id="customizer-app"`
-- `GET /customizer/quote-success` 回 200
+- `GET /api/customizer/catalog`
+- `GET /api/customizer/product-types/:id/templates`
+- `GET /api/customizer/templates/:id`
+- `GET /api/customizer/assets`
 
-- [ ] **Step 2: 建 page router**
+- [ ] **Step 2: 實作 catalog endpoints**
 
-頁面規格：
-- `/customizer`
-  - 顯示品類入口、模板開始、空白款開始 CTA
-- `/customizer/editor`
-  - 僅 render shell、root 容器、必要 bootstrap JSON
-- `/customizer/quote-success`
-  - 顯示提交成功與返回入口
+回傳最少包括：
+- product types
+- templates
+- template zones
+- official assets
+- palettes
+- blank template markers
 
-- [ ] **Step 3: 在 `app.js` mount routes**
+- [ ] **Step 3: 前端 API wrapper**
+
+`public/js/customizer/api.js` 提供：
+- `fetchCatalog()`
+- `fetchTemplates(productTypeId)`
+- `fetchTemplate(id)`
+- `fetchAssets(filters)`
+
+- [ ] **Step 4: 在 `app.js` mount API**
 
 建議路徑：
 ```js
-app.use('/customizer', require('./routes/customizerPages'));
+app.use('/api/customizer', require('./routes/customizerApi'));
 ```
-
-- [ ] **Step 4: 加入最小 customizer CSS 與 script hooks**
-
-要求：
-- 不污染現有 storefront 頁面
-- editor shell 需要左側設定區、中間預覽區、右側摘要區骨架
 
 - [ ] **Step 5: 跑 tests**
 
@@ -195,61 +214,53 @@ npm test
 
 ---
 
-### Task 3: 建 catalog / session / pricing API 契約
+### Task 3: 建立 page shell 與 design session 生命週期
+
+**目標:** 先把訂製器入口與 session lifecycle 定清楚。
 
 **Files:**
-- Create: `routes/customizerApi.js`
-- Create: `public/js/customizer/api.js`
-- Create: `test/customizer-api.test.js`
+- Create: `routes/customizerPages.js`
+- Create: `views/customizer/index.ejs`
+- Create: `views/customizer/editor.ejs`
+- Create: `views/customizer/quote-success.ejs`
+- Create: `test/customizer-pages.test.js`
 - Modify: `app.js`
 
-- [ ] **Step 1: 先寫 API tests**
+- [ ] **Step 1: 寫 page routing tests**
 
-最少覆蓋以下 endpoint：
-- `GET /api/customizer/catalog`
-- `GET /api/customizer/templates/:id`
-- `POST /api/customizer/sessions`
-- `PUT /api/customizer/sessions/:id/design`
-- `PUT /api/customizer/sessions/:id/roster`
-- `POST /api/customizer/pricing/preview`
-- `POST /api/customizer/submit`
+至少覆蓋：
+- `GET /customizer`
+- `GET /customizer/editor`
+- `GET /customizer/editor` 包含 `id="customizer-app"`
+- `GET /customizer/quote-success`
 
-- [ ] **Step 2: 實作 catalog endpoints**
+- [ ] **Step 2: 建 page router**
 
-回傳格式要清楚分層：
-- product types
-- templates
-- zones
-- design assets
-- default color palettes
+頁面規格：
+- `/customizer`
+  - 顯示品類入口、模板開始、空白款開始 CTA
+- `/customizer/editor`
+  - 只 render shell、bootstrap payload、root 容器
+- `/customizer/quote-success`
+  - 顯示提交成功訊息
 
-- [ ] **Step 3: 實作 session endpoints**
+- [ ] **Step 3: 建 design session endpoints**
 
 需求：
 - 建立匿名 session
 - 保存設計 JSON
 - 保存 roster
-- 讀回 bootstrap payload
+- 可讀回 bootstrap payload
+- session 狀態至少有 `draft / submitted`
 
-- [ ] **Step 4: 實作 pricing preview / submit**
+- [ ] **Step 4: 將 editor shell 接上 session bootstrap**
 
-規則：
-- 預覽價格回傳 breakdown
-- 若規則不足或命中條件，`submit` 自動建立 quote request
-- 若可自動處理，`submit` 建立 order draft
+要求：
+- 用 query 或 payload 指定 product type / template start
+- 進頁即建立或恢復 session
+- 不污染現有 storefront
 
-- [ ] **Step 5: 前端 API wrapper**
-
-`public/js/customizer/api.js` 提供：
-- `fetchCatalog()`
-- `fetchTemplate(id)`
-- `createSession(payload)`
-- `saveDesign(sessionId, payload)`
-- `saveRoster(sessionId, payload)`
-- `previewPrice(payload)`
-- `submitCustomization(payload)`
-
-- [ ] **Step 6: 跑 tests**
+- [ ] **Step 5: 跑 tests**
 
 Run:
 ```bash
@@ -258,7 +269,7 @@ npm test
 
 ---
 
-### Task 4: 建前端 state 與 editor shell
+### Task 4: 建前端 state，令編輯器以 session 為中心
 
 **Files:**
 - Create: `public/js/customizer/app.js`
@@ -274,13 +285,16 @@ npm test
 - `catalog`
 - `selectedProductType`
 - `selectedTemplate`
-- `zones`
 - `design`
+- `zones`
 - `roster`
+- `uploadedAssets`
+- `previews`
 - `pricing`
+- `deliverable`
 - `submission`
 
-- [ ] **Step 2: 建 editor shell 初始化流程**
+- [ ] **Step 2: 建 session-first 初始化流程**
 
 流程：
 1. 讀 query / bootstrap
@@ -288,6 +302,7 @@ npm test
 3. 建 session
 4. 套用 template defaults
 5. render 左中右三欄
+6. 建立 autosave
 
 - [ ] **Step 3: 建基本 UI 區塊**
 
@@ -306,11 +321,13 @@ npm test
 
 ---
 
-### Task 5: 實作 Canvas compositor 與 2D / 2.5D 預覽
+### Task 5: 實作 preview pipeline，同步分離 session 同 preview
 
 **Files:**
 - Create: `public/js/customizer/compositor.js`
+- Create: `models/customizer/previews.js`
 - Modify: `public/js/customizer/editor.js`
+- Modify: `routes/customizerApi.js`
 - Modify: `public/css/customizer.css`
 
 - [ ] **Step 1: 定義 template asset contract**
@@ -324,7 +341,7 @@ npm test
 - `logoSlots`
 - `textSlots`
 
-- [ ] **Step 2: 實作 compositing pipeline**
+- [ ] **Step 2: 實作前端 compositing pipeline**
 
 順序固定：
 1. base image
@@ -334,13 +351,20 @@ npm test
 5. text rendering
 6. shadow / highlight overlay
 
-- [ ] **Step 3: 支援前後幅切換**
+- [ ] **Step 3: 保存 preview reference，而唔將 preview 混入 session blob**
+
+要求：
+- session 保存 design data
+- previews 表保存 snapshot 路徑或 blob reference
+- submit 前可取最新 preview refs
+
+- [ ] **Step 4: 支援前後幅切換**
 
 要求：
 - 切換不重建整個 editor
 - 保持相同設計 state
 
-- [ ] **Step 4: 建錯誤降級**
+- [ ] **Step 5: 建錯誤降級**
 
 若某個 layer 資產載入失敗：
 - 顯示 warning
@@ -349,7 +373,7 @@ npm test
 
 ---
 
-### Task 6: 實作面板能力：顏色、文字、logo、名單
+### Task 6: 實作 asset-driven 面板能力
 
 **Files:**
 - Create: `public/js/customizer/panels-colors.js`
@@ -360,7 +384,7 @@ npm test
 - Create: `models/customizer/uploads.js`
 - Modify: `routes/customizerApi.js`
 
-- [ ] **Step 1: 顏色 / 圖案面板**
+- [ ] **Step 1: 顏色 / 圖案面板依 registry 規則顯示**
 
 需求：
 - zone 可選顏色
@@ -394,21 +418,39 @@ npm test
 - [ ] **Step 5: autosave 接上 session API**
 
 規則：
-- 編輯設計時 debounce save design
-- 編輯 roster 時 debounce save roster
+- 編輯 design 時 debounce save
+- 編輯 roster 時 debounce save
+- uploaded assets 只保存 reference，唔直接塞入 session blob
 
 ---
 
-### Task 7: 實作價格預覽與提交決策
+### Task 7: 建立 deliverable layer 與 commerce decision layer
+
+**目標:** 將編輯器輸出轉成真正可落單資料，而唔係只停留喺 preview。
 
 **Files:**
-- Create: `public/js/customizer/pricing.js`
+- Create: `public/js/customizer/deliverables.js`
+- Create: `models/customizer/deliverables.js`
 - Modify: `models/customizer/pricing.js`
 - Modify: `routes/customizerApi.js`
+- Modify: `public/js/customizer/pricing.js`
 - Modify: `public/js/customizer/editor.js`
 - Modify: `test/customizer-pricing.test.js`
+- Modify: `test/customizer-deliverables.test.js`
 
-- [ ] **Step 1: 價格 breakdown 輸出格式固定化**
+- [ ] **Step 1: 固定 deliverable package shape**
+
+最少包括：
+- session id
+- selected template
+- selected product type
+- front / back preview refs
+- roster summary
+- uploaded asset refs
+- pricing breakdown
+- fulfillment path
+
+- [ ] **Step 2: 固定 pricing breakdown shape**
 
 至少包括：
 - 基本價
@@ -420,15 +462,7 @@ npm test
 - 小計
 - `fulfillmentPath`
 
-- [ ] **Step 2: 前端價格預覽**
-
-觸發條件：
-- 模板改變
-- 數量改變
-- roster 改變
-- logo / 文字設定影響附加費時
-
-- [ ] **Step 3: 提交決策**
+- [ ] **Step 3: 建 direct / quote decision**
 
 邏輯：
 - 若所有規則齊備且符合 direct 條件，建立 `order draft`
@@ -436,15 +470,21 @@ npm test
 
 - [ ] **Step 4: 覆蓋邊界情況**
 
-最少測試：
+至少測試：
 - 大數量自動轉報價
 - 缺價格規則自動轉報價
 - 特殊模板自動轉報價
 - 標準單可直接產生 order draft
 
+- [ ] **Step 5: submit endpoint 回傳最終 deliverable 結果**
+
+要求：
+- 回傳 `direct_order` 或 `quote_required`
+- 回傳建立後嘅 `orderDraftId` 或 `quoteRequestId`
+
 ---
 
-### Task 8: 實作最小後台頁面
+### Task 8: 建立最小後台，管理 registry / pricing / quotes
 
 **Files:**
 - Create: `routes/adminCustomizerPages.js`
@@ -460,42 +500,45 @@ npm test
 - [ ] **Step 1: 建 admin nav entry**
 
 新增入口：
-- 模板
+- 模板 / registry
 - 價格規則
 - 報價單
 
-- [ ] **Step 2: 模板管理頁**
+- [ ] **Step 2: Registry 頁**
 
-第一版只需：
+第一版最少支援：
 - list templates
 - 啟用 / 停用
 - 查看 zone 摘要
+- 查看 asset coverage
 
-- [ ] **Step 3: 價格規則頁**
+- [ ] **Step 3: Pricing 頁**
 
-第一版只需：
+第一版最少支援：
 - list rules
 - 新增 / 編輯基本價與階梯
-- 設定 direct / quote 條件
+- 設 direct / quote 條件
 
-- [ ] **Step 4: 報價單頁**
+- [ ] **Step 4: Quotes 頁**
 
-第一版只需：
+第一版最少支援：
 - list quote requests
-- 查看快照
+- 查看 previews
 - 查看 roster
+- 查看上傳素材
 - 更新報價狀態與人工價格
 
 ---
 
-### Task 9: 補齊五個品類的最小模板資料與種子內容
+### Task 9: 補齊最小模板種子資料與驗收
 
 **Files:**
 - Modify: `db/migrations/20261015_customizer_phase1.sql` 或新增 seed script
 - Create if needed: `scripts/seed-customizer-phase1.js`
 - Modify: `models/customizer/catalog.js`
+- Modify: `test/customizer-*.test.js`
 
-- [ ] **Step 1: 先落最少可演示模板**
+- [ ] **Step 1: 落最少可演示模板**
 
 建議最少：
 - 足球：2 款
@@ -504,7 +547,7 @@ npm test
 - 背心：1 款
 - Polo：1 款
 
-- [ ] **Step 2: 每款模板有完整資產契約**
+- [ ] **Step 2: 每款模板有完整 asset contract**
 
 必須有：
 - front/back base
@@ -513,27 +556,16 @@ npm test
 - 至少 1 個 logo slot
 - 至少 1 個 text slot
 
-- [ ] **Step 3: 建空白款模板**
+- [ ] **Step 3: 每個品類最少一個 blank template**
 
-每個品類至少 1 個 `blank` 模板，供空白款開始流程使用。
-
----
-
-### Task 10: 驗收、回歸與文件補充
-
-**Files:**
-- Modify: `test/customizer-*.test.js`
-- Modify: `docs/superpowers/specs/2026-10-15-custom-teamwear-customizer-design.md`（如需補充已確認細節）
-- Create if needed: `docs/superpowers/plans/implementation-notes-customizer.md`
-
-- [ ] **Step 1: 跑全量測試**
+- [ ] **Step 4: 跑全量測試**
 
 Run:
 ```bash
 npm test
 ```
 
-- [ ] **Step 2: 手動驗收**
+- [ ] **Step 5: 手動驗收**
 
 至少覆蓋：
 - `/customizer`
@@ -545,35 +577,21 @@ npm test
 - 一張 quote request
 - admin 查看 quote
 
-- [ ] **Step 3: 檢查錯誤降級**
-
-覆蓋：
-- 模板資產缺漏
-- logo 上傳失敗
-- pricing rule 缺失
-- snapshot 失敗
-
-- [ ] **Step 4: 補充 implementation notes**
-
-記錄：
-- 已知限制
-- 待 Phase 2 接商城的整合點
-- 待 Phase 3 升 3D 的 API 邊界
-
 ---
 
 ## Key Decisions Locked
 
-- 第一版不做真 3D，改用 `Canvas + overlay` 做 2.5D。
-- 第一版不引入第二套前端 build system，改用 `EJS shell + public/js/customizer/*`。
-- `價格無法完整計算` 不是錯誤，而是 `轉報價`。
-- `設計 JSON` 永遠是主資料，快照只是輔助。
-- `模板`、`設計`、`roster`、`pricing`、`quote/order` 必須分層，不可混成單一 blob。
+- 第一版以 `asset registry -> design session -> preview -> deliverable -> commerce` 做主線。
+- `Design session` 永遠係主資料；preview 唔可反客為主。
+- `價格算唔到` 係 `quote required`，唔係 fatal error。
+- 第一版唔引入第二套大型前端 toolchain。
+- 模板、session、roster、preview、pricing、submit 結果必須分層。
 
 ## Out Of Scope For This Plan
 
 - 真 3D 模型與自由旋轉
-- 設計器多圖層自由拖放
+- 多圖層自由拖放編輯器
 - AI 圖案生成
+- 社群展示 / remix / competition
 - 與現有商城共用購物車 / 支付 / 會員登入
 - 工廠排產與生產工單
