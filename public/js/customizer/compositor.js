@@ -54,6 +54,79 @@
     ctx.restore();
   }
 
+  function getDesignZones(state) {
+    return state.design && Array.isArray(state.design.zones) ? state.design.zones : [];
+  }
+
+  function findZoneValue(state, matcher, fallback) {
+    const zone = getDesignZones(state).find((entry) => matcher(String(entry.zoneKey || '').toLowerCase()));
+    return zone && zone.color ? zone.color : fallback;
+  }
+
+  function pickBaseColor(state, side) {
+    return findZoneValue(
+      state,
+      (key) => key.includes(`${side}-body`) || key.includes(`${side}-main`) || key.includes('body'),
+      '#f4f4f5'
+    );
+  }
+
+  function pickAccentColor(state, side) {
+    return findZoneValue(
+      state,
+      (key) => key.includes(`${side}-trim`) || key.includes('collar') || key.includes('sleeve') || key.includes('accent'),
+      '#7f1d45'
+    );
+  }
+
+  function drawLogoBadge(ctx, state, x, y) {
+    const logo = state.design && Array.isArray(state.design.logos) ? state.design.logos[0] : null;
+    if (!logo) return;
+
+    const label = String(logo.name || logo.slug || 'LOG').slice(0, 3).toUpperCase();
+    ctx.save();
+    ctx.fillStyle = 'rgba(17, 24, 39, 0.9)';
+    ctx.beginPath();
+    ctx.arc(x, y, 24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(212, 175, 55, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fafafa';
+    ctx.font = '800 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x, y + 1);
+    ctx.restore();
+  }
+
+  function drawTextLayer(ctx, state, x, y, torsoWidth, torsoHeight, side) {
+    const texts = state.design && state.design.texts && typeof state.design.texts === 'object'
+      ? state.design.texts
+      : {};
+
+    ctx.save();
+    ctx.textAlign = 'center';
+
+    if (side === 'back') {
+      if (texts.playerName) {
+        ctx.fillStyle = '#fafafa';
+        ctx.font = '700 16px sans-serif';
+        ctx.fillText(String(texts.playerName).slice(0, 18).toUpperCase(), x + torsoWidth / 2, y + 120);
+      }
+      if (texts.playerNumber) {
+        ctx.fillStyle = '#111827';
+        ctx.font = '900 72px sans-serif';
+        ctx.fillText(String(texts.playerNumber).slice(0, 3), x + torsoWidth / 2, y + torsoHeight * 0.7);
+      }
+    } else if (texts.teamName) {
+      ctx.fillStyle = '#fafafa';
+      ctx.font = '800 22px sans-serif';
+      ctx.fillText(String(texts.teamName).slice(0, 18).toUpperCase(), x + torsoWidth / 2, y + 156);
+    }
+
+    ctx.restore();
+  }
+
   function drawJerseyShape(ctx, state, width, height) {
     const activeSide = state.previews && state.previews.activeSide === 'back' ? 'back' : 'front';
     const selectedProductType = state.selectedProductType && state.selectedProductType.name
@@ -69,11 +142,13 @@
     const y = (height - torsoHeight) / 2 + 10;
     const sleeveWidth = torsoWidth * 0.24;
     const sleeveHeight = torsoHeight * 0.2;
+    const baseColor = pickBaseColor(state, activeSide);
+    const accentColor = pickAccentColor(state, activeSide);
 
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
     ctx.shadowBlur = 24;
-    ctx.fillStyle = '#f4f4f5';
+    ctx.fillStyle = baseColor;
     ctx.beginPath();
     ctx.moveTo(x + sleeveWidth, y);
     ctx.lineTo(x + torsoWidth - sleeveWidth, y);
@@ -87,16 +162,16 @@
     ctx.fill();
 
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = 'rgba(127, 29, 69, 0.36)';
+    ctx.strokeStyle = 'rgba(17, 24, 39, 0.3)';
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    ctx.fillStyle = 'rgba(127, 29, 69, 0.9)';
+    ctx.fillStyle = accentColor;
     ctx.beginPath();
     drawRoundedRect(ctx, x + 18, y + sleeveHeight + 22, torsoWidth - 36, 42, 14);
     ctx.fill();
 
-    ctx.fillStyle = activeSide === 'back' ? 'rgba(133, 88, 111, 0.8)' : 'rgba(212, 175, 55, 0.82)';
+    ctx.fillStyle = accentColor;
     ctx.beginPath();
     drawRoundedRect(ctx, x + torsoWidth * 0.28, y + 94, torsoWidth * 0.44, activeSide === 'back' ? 116 : 136, 18);
     ctx.fill();
@@ -120,6 +195,9 @@
     ctx.fillStyle = '#d4d4d8';
     ctx.font = '600 13px sans-serif';
     ctx.fillText(String(selectedTemplate).slice(0, 28), width / 2, y + torsoHeight + 66);
+
+    drawTextLayer(ctx, state, x, y, torsoWidth, torsoHeight, activeSide);
+    drawLogoBadge(ctx, state, x + torsoWidth * 0.28, y + 120);
     ctx.restore();
   }
 
