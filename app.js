@@ -418,6 +418,8 @@ app.get('/test/health', (req, res) => {
 try {
   require('./routes/adminPages')(app, pool);
   require('./routes/auth')(app, pool, requireAdmin, requireAuth, bcrypt);
+  require('./routes/customizerPages')(app, pool);
+  require('./routes/customizerApi')(app, pool);
   require('./routes/admin')(app, pool, requireAdmin, upload);
   require('./routes/categories')(app, pool, requireAdmin);
   require('./routes/brands')(app, pool, requireAdmin);

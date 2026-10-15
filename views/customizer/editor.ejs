@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <%- include('../partials/head', { title }) %>
+  <link rel="stylesheet" href="/css/customizer.css">
+</head>
+<body class="mz-body min-h-screen text-gray-200" data-logged-in="<%= user ? '1' : '0' %>">
+  <%- include('../partials/header') %>
+
+  <main id="mz-wrapper" class="mz-wrapper max-w-7xl mx-auto mt-4 mb-6 px-4 py-6">
+    <div id="customizer-app" class="customizer-shell">
+      <aside class="customizer-panel">
+        <div class="text-xs font-bold uppercase tracking-[0.18em] text-gold">Style</div>
+        <h1 class="mt-2 text-xl font-black text-white">編輯設計</h1>
+        <p class="mt-2 text-sm text-gray-400">呢度會逐步接上模板、顏色、文字、logo 同 roster 面板。</p>
+      </aside>
+
+      <section class="customizer-preview">
+        <div class="customizer-preview__stage">
+          <div class="customizer-preview__placeholder">前後幅 preview 將喺呢度 render</div>
+        </div>
+      </section>
+
+      <aside class="customizer-panel">
+        <div class="text-xs font-bold uppercase tracking-[0.18em] text-gold">Summary</div>
+        <div class="mt-3 rounded-2xl border border-ink-600 bg-ink-800 p-4 text-sm text-gray-300">
+          Session、roster、pricing 同 submit 狀態會喺呢度顯示。
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script id="customizer-bootstrap" type="application/json"><%- JSON.stringify(customizerBootstrap || {}) %></script>
+  <script src="/js/customizer/api.js"></script>
+  <script src="/js/customizer/app.js"></script>
+  <%- include('../partials/footer') %>
+</body>
+</html>
