@@ -11,6 +11,11 @@ test('csrf middleware is wired and webhooks are exempt', () => {
   assert.ok(s.includes("if (m === 'HEAD' || m === 'OPTIONS') return true;"));
 });
 
+test('csrf middleware skips requests without session support', () => {
+  const s = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.ok(s.includes('if (!req.session) return next();'));
+});
+
 test('adminApiRequest sends X-CSRF-Token on non-GET', () => {
   const s = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'admin', 'common.js'), 'utf8');
   assert.match(s, /X-CSRF-Token/);

@@ -253,6 +253,9 @@ if (connectionString) {
 
 app.use((req, res, next) => {
   if (shouldSkipCsrf(req)) return next();
+  // When DB-backed sessions are unavailable, csurf cannot store its secret.
+  // Allow read-only fallback pages to render instead of throwing a 500.
+  if (!req.session) return next();
   return csrfProtection(req, res, next);
 });
 

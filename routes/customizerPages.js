@@ -1,8 +1,21 @@
+function buildShellLocals(req) {
+  return {
+    user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: !!req.session.isAdmin } : null,
+    categories: [],
+    categoryOptions: [],
+    categoriesTree: [],
+    categorySpecials: [],
+    selectedCategorySlug: 'all',
+    q: '',
+    currentPath: req.path || '',
+  };
+}
+
 module.exports = function registerCustomizerPages(app) {
   app.get('/customizer', (req, res) => {
     res.render('customizer/index', {
       title: '團體服訂製器 - OHYA2.0',
-      user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: !!req.session.isAdmin } : null,
+      ...buildShellLocals(req),
     });
   });
 
@@ -15,7 +28,7 @@ module.exports = function registerCustomizerPages(app) {
 
     res.render('customizer/editor', {
       title: '編輯團體服設計 - OHYA2.0',
-      user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: !!req.session.isAdmin } : null,
+      ...buildShellLocals(req),
       customizerBootstrap: bootstrap,
     });
   });
@@ -23,7 +36,7 @@ module.exports = function registerCustomizerPages(app) {
   app.get('/customizer/quote-success', (req, res) => {
     res.render('customizer/quote-success', {
       title: '報價提交完成 - OHYA2.0',
-      user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: !!req.session.isAdmin } : null,
+      ...buildShellLocals(req),
       quoteId: req.query.quoteId || null,
     });
   });
@@ -31,7 +44,7 @@ module.exports = function registerCustomizerPages(app) {
   app.get('/customizer/order-success', (req, res) => {
     res.render('customizer/order-success', {
       title: '訂單草稿已建立 - OHYA2.0',
-      user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: !!req.session.isAdmin } : null,
+      ...buildShellLocals(req),
       draftId: req.query.draftId || null,
     });
   });
