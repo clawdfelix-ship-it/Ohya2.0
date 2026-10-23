@@ -111,32 +111,42 @@ module.exports = function registerCustomizerApi(app, pool) {
 
   app.get('/api/customizer/catalog', async (req, res) => {
     if (!pool) return res.status(500).json({ error: 'Database not configured' });
-    const [productTypes, templates, assets] = await Promise.all([
+    const [productTypes, templateFamilies, assets] = await Promise.all([
       catalogModel.listProductTypes(),
       catalogModel.listAllTemplates(),
       catalogModel.listAssets(),
     ]);
-    res.json({ productTypes, templates, assets });
+    res.json({
+      productTypes,
+      templateFamilies,
+      templates: templateFamilies,
+      assets,
+    });
   });
 
   app.get('/api/customizer/product-types/:id/templates', async (req, res) => {
     if (!pool) return res.status(500).json({ error: 'Database not configured' });
     const productTypeId = toNullableId(req.params.id);
     if (!productTypeId) return res.status(400).json({ error: 'Invalid product type id' });
-    const templates = await catalogModel.listTemplatesByProductType(productTypeId);
-    res.json({ templates });
+    const templateFamilies = await catalogModel.listTemplatesByProductType(productTypeId);
+    res.json({ templateFamilies, templates: templateFamilies });
   });
 
   app.get('/api/customizer/templates/:id', async (req, res) => {
     if (!pool) return res.status(500).json({ error: 'Database not configured' });
     const templateId = toNullableId(req.params.id);
     if (!templateId) return res.status(400).json({ error: 'Invalid template id' });
-    const [template, zones] = await Promise.all([
-      catalogModel.getTemplateById(templateId),
-      catalogModel.listTemplateZones(templateId),
-    ]);
-    if (!template) return res.status(404).json({ error: 'Template not found' });
-    res.json({ template, zones });
+    const detail = await catalogModel.getTemplateDetail(templateId);
+    if (!detail) return res.status(404).json({ error: 'Template not found' });
+    res.json({
+      templateFamily: detail.templateFamily,
+      template: detail.templateFamily,
+      partVariants: detail.partVariants,
+      colorZones: detail.colorZones,
+      defaultPartSelection: detail.defaultPartSelection,
+      palette: detail.palette,
+      zones: detail.colorZones,
+    });
   });
 
   app.get('/api/customizer/assets', async (req, res) => {

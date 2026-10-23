@@ -254,6 +254,69 @@
   font-size: 0.85rem;
 }
 
+.customizer-template-card__desc {
+  color: #a1a1aa;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.customizer-template-list--compact {
+  gap: 0.65rem;
+}
+
+.customizer-section__help {
+  color: #71717a;
+  font-size: 0.8rem;
+  margin-bottom: 0.65rem;
+}
+
+.customizer-part-card {
+  width: 100%;
+  border: 1px solid rgba(133, 88, 111, 0.28);
+  border-radius: 1rem;
+  background: rgba(15, 13, 22, 0.72);
+  color: #fafafa;
+  cursor: pointer;
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.9rem;
+  text-align: left;
+}
+
+.customizer-part-card.is-selected {
+  border-color: rgba(251, 191, 36, 0.75);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.22) inset;
+  background: rgba(127, 29, 69, 0.18);
+}
+
+.customizer-part-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 3.1rem;
+  min-height: 1.8rem;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.65rem;
+  text-transform: uppercase;
+}
+
+.customizer-part-card__name {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.customizer-part-card__desc {
+  color: #a1a1aa;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 .customizer-empty {
   border: 1px dashed rgba(133, 88, 111, 0.35);
   border-radius: 1rem;

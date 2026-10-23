@@ -7,19 +7,35 @@
     let state = {
       catalog: {
         productTypes: [],
+        templateFamilies: [],
         templates: [],
-        templatesByProductType: {},
+        templateFamiliesByProductType: {},
         assets: [],
       },
       selectedProductType: null,
-      selectedTemplate: null,
+      selectedTemplateFamily: null,
+      familyDetail: {
+        partVariants: {},
+        colorZones: [],
+        defaultPartSelection: {},
+        palette: [],
+      },
       design: {
-        zones: [],
+        parts: {
+          body: null,
+          sleeve: null,
+          collar: null,
+        },
+        colorZones: {
+          primary: '#f4f4f5',
+          secondary: '#7f1d45',
+          trim: '#fbbf24',
+        },
+        currentView: 'front',
         texts: {},
         logos: [],
         notes: '',
       },
-      zones: [],
       roster: {
         items: [],
         totalQuantity: 0,

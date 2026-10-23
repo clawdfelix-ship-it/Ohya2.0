@@ -1,5 +1,10 @@
 (function attachCustomizerEditor(global, document) {
-  const FALLBACK_SWATCHES = ['#f4f4f5', '#d4af37', '#7f1d45', '#111827', '#2563eb', '#16a34a'];
+  const FALLBACK_SWATCHES = ['#f4f4f5', '#7f1d45', '#fbbf24', '#111827', '#2563eb', '#16a34a'];
+  const PART_TYPES = [
+    { key: 'body', label: 'Body', help: '主身款式' },
+    { key: 'sleeve', label: 'Sleeve', help: '袖形 / 包邊' },
+    { key: 'collar', label: 'Collar', help: '領口結構' },
+  ];
 
   function escapeHtml(value) {
     return String(value || '')
@@ -8,6 +13,20 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function getActiveSelection(state) {
+    return {
+      productTypeId: state.selectedProductType ? state.selectedProductType.id : null,
+      templateId: state.selectedTemplateFamily ? state.selectedTemplateFamily.id : null,
+    };
+  }
+
+  function listSelectionAssets(state, assetTypes) {
+    if (!global.CustomizerCatalog || typeof global.CustomizerCatalog.listAssetsForSelection !== 'function') {
+      return [];
+    }
+    return global.CustomizerCatalog.listAssetsForSelection(state.catalog, getActiveSelection(state), assetTypes);
   }
 
   function renderProductTypeOptions(state) {
@@ -23,76 +42,52 @@
     }).join('');
   }
 
-  function renderTemplateCards(state) {
+  function renderFamilyCards(state) {
     if (!state.selectedProductType) {
       return '<div class="customizer-empty">請先選擇品類。</div>';
     }
 
-    const templates = state.catalog.templatesByProductType[String(state.selectedProductType.id)] || [];
-    if (!templates.length) {
-      return '<div class="customizer-empty">呢個品類仲未有模板資料。</div>';
+    const families = state.catalog.templateFamiliesByProductType[String(state.selectedProductType.id)] || [];
+    if (!families.length) {
+      return '<div class="customizer-empty">呢個品類仲未有模板家族。</div>';
     }
 
-    return templates.map((template) => {
-      const selected = state.selectedTemplate && String(template.id) === String(state.selectedTemplate.id);
+    return families.map((family) => {
+      const selected = state.selectedTemplateFamily && String(family.id) === String(state.selectedTemplateFamily.id);
       const className = selected ? 'customizer-template-card is-selected' : 'customizer-template-card';
       return `
-        <button type="button" class="${className}" data-template-id="${escapeHtml(template.id)}">
-          <span class="customizer-template-card__name">${escapeHtml(template.name)}</span>
-          <span class="customizer-template-card__meta">${template.is_blank ? '空白款' : '模板'}</span>
+        <button type="button" class="${className}" data-role="template-family" data-template-id="${escapeHtml(family.id)}">
+          <span class="customizer-template-card__meta">${family.isBlank ? '空白家族' : '模板家族'}</span>
+          <span class="customizer-template-card__name">${escapeHtml(family.name)}</span>
+          <span class="customizer-template-card__desc">${escapeHtml(family.description || '')}</span>
         </button>
       `;
     }).join('');
   }
 
-  function getSelection(state) {
-    return {
-      productTypeId: state.selectedProductType ? state.selectedProductType.id : null,
-      templateId: state.selectedTemplate ? state.selectedTemplate.id : null,
-    };
-  }
-
-  function listSelectionAssets(state, assetTypes) {
-    if (!global.CustomizerCatalog || typeof global.CustomizerCatalog.listAssetsForSelection !== 'function') {
-      return [];
-    }
-    return global.CustomizerCatalog.listAssetsForSelection(state.catalog, getSelection(state), assetTypes);
-  }
-
-  function getZoneDesign(state, zoneKey) {
-    return (state.design && Array.isArray(state.design.zones) ? state.design.zones : [])
-      .find((zone) => String(zone.zoneKey) === String(zoneKey)) || {};
-  }
-
-  function buildTextFields(state) {
-    const textZones = (Array.isArray(state.zones) ? state.zones : []).filter((zone) => zone.allowText);
-    const fields = [];
-    const seen = new Set();
-
-    textZones.forEach((zone) => {
-      const keySource = String(zone.zoneKey || '').toLowerCase();
-      let key = zone.zoneKey;
-      if (keySource.includes('number')) key = 'playerNumber';
-      else if (keySource.includes('name')) key = keySource.includes('team') ? 'teamName' : 'playerName';
-      else if (keySource.includes('front')) key = 'teamName';
-
-      if (seen.has(key)) return;
-      seen.add(key);
-      fields.push({
-        key,
-        label: zone.zoneName || key,
-      });
-    });
-
-    if (!fields.length) {
-      return [
-        { key: 'teamName', label: '隊名' },
-        { key: 'playerName', label: '球員名' },
-        { key: 'playerNumber', label: '號碼' },
-      ];
+  function renderPartVariantCards(state, partType) {
+    const variants = state.familyDetail && state.familyDetail.partVariants && Array.isArray(state.familyDetail.partVariants[partType])
+      ? state.familyDetail.partVariants[partType]
+      : [];
+    if (!variants.length) {
+      return '<div class="customizer-empty">未有可切換款式。</div>';
     }
 
-    return fields.slice(0, 3);
+    const selectedCode = state.design && state.design.parts ? state.design.parts[partType] : null;
+
+    return variants.map((variant) => `
+      <button
+        type="button"
+        class="customizer-part-card${String(selectedCode) === String(variant.code) ? ' is-selected' : ''}"
+        data-role="part-variant"
+        data-part-type="${escapeHtml(partType)}"
+        data-part-code="${escapeHtml(variant.code)}"
+      >
+        <span class="customizer-part-card__badge">${escapeHtml((variant.badge || partType).toUpperCase())}</span>
+        <span class="customizer-part-card__name">${escapeHtml(variant.name)}</span>
+        <span class="customizer-part-card__desc">${escapeHtml(variant.description || '')}</span>
+      </button>
+    `).join('');
   }
 
   function buildPalette(state) {
@@ -108,29 +103,36 @@
       return [];
     });
 
-    const defaultZoneColors = (Array.isArray(state.design && state.design.zones) ? state.design.zones : [])
-      .map((zone) => zone.color)
-      .filter(Boolean);
+    const familyPalette = state.familyDetail && Array.isArray(state.familyDetail.palette)
+      ? state.familyDetail.palette
+      : [];
 
-    return Array.from(new Set([...assetColors, ...defaultZoneColors, ...FALLBACK_SWATCHES])).slice(0, 8);
+    const selectedColors = state.design && state.design.colorZones && typeof state.design.colorZones === 'object'
+      ? Object.values(state.design.colorZones)
+      : [];
+
+    return Array.from(new Set([...familyPalette, ...assetColors, ...selectedColors, ...FALLBACK_SWATCHES])).slice(0, 8);
   }
 
-  function renderZoneControls(state) {
-    const colorZones = (Array.isArray(state.zones) ? state.zones : []).filter((zone) => zone.allowColor);
-    if (!colorZones.length) {
-      return '<div class="customizer-empty">呢個模板暫時未定義可改色區域。</div>';
+  function renderColorZoneControls(state) {
+    const zones = Array.isArray(state.familyDetail.colorZones)
+      ? state.familyDetail.colorZones.filter((zone) => zone.allowColor)
+      : [];
+    if (!zones.length) {
+      return '<div class="customizer-empty">呢個模板家族暫時未定義色區。</div>';
     }
 
     const palette = buildPalette(state);
 
-    return colorZones.map((zone) => {
-      const zoneDesign = getZoneDesign(state, zone.zoneKey);
-      const value = zoneDesign.color || '#f4f4f5';
+    return zones.map((zone) => {
+      const value = state.design && state.design.colorZones && typeof state.design.colorZones === 'object'
+        ? state.design.colorZones[zone.zoneKey] || zone.defaultColor || '#f4f4f5'
+        : zone.defaultColor || '#f4f4f5';
 
       return `
         <div class="customizer-control-card">
           <div class="customizer-control-card__header">
-            <div class="customizer-control-card__title">${escapeHtml(zone.zoneName || zone.zoneKey)}</div>
+            <div class="customizer-control-card__title">${escapeHtml(zone.zoneName)}</div>
             <div class="customizer-control-card__value">${escapeHtml(value)}</div>
           </div>
           <input
@@ -159,7 +161,13 @@
   }
 
   function renderTextControls(state) {
-    return buildTextFields(state).map((field) => `
+    const fields = [
+      { key: 'teamName', label: '隊名' },
+      { key: 'playerName', label: '球員名' },
+      { key: 'playerNumber', label: '號碼' },
+    ];
+
+    return fields.map((field) => `
       <label class="customizer-field customizer-field--dense">
         <span class="customizer-field__label">${escapeHtml(field.label)}</span>
         <input
@@ -186,12 +194,7 @@
 
     return `
       <div class="customizer-logo-grid">
-        <button
-          type="button"
-          class="customizer-logo-card${selectedLogoId ? '' : ' is-selected'}"
-          data-role="logo-asset"
-          data-asset-id=""
-        >
+        <button type="button" class="customizer-logo-card${selectedLogoId ? '' : ' is-selected'}" data-role="logo-asset" data-asset-id="">
           <span class="customizer-logo-card__badge">NONE</span>
           <span class="customizer-logo-card__name">不使用</span>
         </button>
@@ -212,29 +215,26 @@
 
   function renderSummary(state) {
     const productType = state.selectedProductType ? state.selectedProductType.name : '未選擇';
-    const template = state.selectedTemplate ? state.selectedTemplate.name : '未選擇';
+    const family = state.selectedTemplateFamily ? state.selectedTemplateFamily.name : '未選擇';
     const sessionId = state.session && state.session.id ? state.session.id : '未建立';
     const activeSide = state.previews.activeSide || 'front';
     const totalQuantity = state.roster && Number.isFinite(Number(state.roster.totalQuantity))
       ? state.roster.totalQuantity
       : 0;
-    const activeLogo = state.design && Array.isArray(state.design.logos) && state.design.logos[0]
-      ? state.design.logos[0].name || state.design.logos[0].slug || '已選擇'
-      : '未選擇';
     const pricingTotal = state.pricing && Number.isFinite(Number(state.pricing.total))
       ? `HK$${Number(state.pricing.total).toFixed(0)}`
       : '待報價';
-    const submissionPhase = state.submission && state.submission.phase ? state.submission.phase : 'idle';
 
     return `
       <div class="customizer-summary-card">
         <div><span class="customizer-summary-card__label">Session</span><span class="customizer-summary-card__value">${escapeHtml(sessionId)}</span></div>
         <div><span class="customizer-summary-card__label">品類</span><span class="customizer-summary-card__value">${escapeHtml(productType)}</span></div>
-        <div><span class="customizer-summary-card__label">模板</span><span class="customizer-summary-card__value">${escapeHtml(template)}</span></div>
+        <div><span class="customizer-summary-card__label">家族</span><span class="customizer-summary-card__value">${escapeHtml(family)}</span></div>
+        <div><span class="customizer-summary-card__label">Body</span><span class="customizer-summary-card__value">${escapeHtml(state.design.parts.body || '未選') }</span></div>
+        <div><span class="customizer-summary-card__label">Sleeve</span><span class="customizer-summary-card__value">${escapeHtml(state.design.parts.sleeve || '未選')}</span></div>
+        <div><span class="customizer-summary-card__label">Collar</span><span class="customizer-summary-card__value">${escapeHtml(state.design.parts.collar || '未選')}</span></div>
         <div><span class="customizer-summary-card__label">預覽面</span><span class="customizer-summary-card__value">${escapeHtml(activeSide)}</span></div>
-        <div><span class="customizer-summary-card__label">Logo</span><span class="customizer-summary-card__value">${escapeHtml(activeLogo)}</span></div>
         <div><span class="customizer-summary-card__label">預計總額</span><span class="customizer-summary-card__value">${escapeHtml(pricingTotal)}</span></div>
-        <div><span class="customizer-summary-card__label">提交狀態</span><span class="customizer-summary-card__value">${escapeHtml(submissionPhase)}</span></div>
         <div><span class="customizer-summary-card__label">總數量</span><span class="customizer-summary-card__value">${escapeHtml(totalQuantity)}</span></div>
       </div>
     `;
@@ -279,16 +279,15 @@
 
   function renderPreview(state) {
     const activeSide = state.previews.activeSide || 'front';
-    const title = activeSide === 'back' ? '後幅 Preview' : '前幅 Preview';
+    const familyName = state.selectedTemplateFamily ? state.selectedTemplateFamily.name : '未選擇模板家族';
     const productType = state.selectedProductType ? state.selectedProductType.name : '未選擇品類';
-    const template = state.selectedTemplate ? state.selectedTemplate.name : '未選擇模板';
-    const zoneCount = Array.isArray(state.zones) ? state.zones.length : 0;
+    const title = activeSide === 'back' ? '後幅 Preview' : '前幅 Preview';
 
     return `
       <div class="customizer-preview__toolbar">
         <div class="customizer-preview__status">
-          <span class="customizer-preview__status-label">Template Zones</span>
-          <span class="customizer-preview__status-value">${escapeHtml(zoneCount)}</span>
+          <span class="customizer-preview__status-label">Family</span>
+          <span class="customizer-preview__status-value">${escapeHtml(familyName)}</span>
         </div>
         <div class="customizer-preview__toggle-group">
           <button type="button" class="customizer-preview__toggle${activeSide === 'front' ? ' is-active' : ''}" data-side="front">前幅</button>
@@ -299,8 +298,8 @@
         <canvas class="customizer-preview__canvas" data-role="preview-canvas" aria-label="${escapeHtml(title)}"></canvas>
         <div class="customizer-preview__overlay">
           <div class="customizer-preview__title">${escapeHtml(title)}</div>
-          <div class="customizer-preview__meta">${escapeHtml(productType)} / ${escapeHtml(template)}</div>
-          <div class="customizer-preview__hint">而家已經有 preview foundation，下一步會再接真實 layers 同 snapshots。</div>
+          <div class="customizer-preview__meta">${escapeHtml(productType)} / ${escapeHtml(familyName)}</div>
+          <div class="customizer-preview__hint">逐個切換 body / sleeve / collar，就會見到款式結構即時改變。</div>
         </div>
       </div>
     `;
@@ -310,9 +309,9 @@
     function render(state) {
       root.innerHTML = `
         <aside class="customizer-panel">
-          <div class="text-xs font-bold uppercase tracking-[0.18em] text-gold">Style</div>
-          <h1 class="mt-2 text-xl font-black text-white">編輯設計</h1>
-          <p class="mt-2 text-sm text-gray-400">第一步先鎖定品類、模板同 session，之後再接上 zone 面板同 preview compositing。</p>
+          <div class="text-xs font-bold uppercase tracking-[0.18em] text-gold">Build</div>
+          <h1 class="mt-2 text-xl font-black text-white">模板玩法編輯器</h1>
+          <p class="mt-2 text-sm text-gray-400">先揀模板家族，再逐件換 body、sleeve、collar，玩法會開始接近 fifakitcreator。</p>
 
           <label class="customizer-field">
             <span class="customizer-field__label">品類</span>
@@ -322,16 +321,26 @@
           </label>
 
           <div class="customizer-section">
-            <div class="customizer-section__title">模板</div>
+            <div class="customizer-section__title">Template Family</div>
             <div class="customizer-template-list">
-              ${renderTemplateCards(state)}
+              ${renderFamilyCards(state)}
             </div>
           </div>
 
+          ${PART_TYPES.map((part) => `
+            <div class="customizer-section">
+              <div class="customizer-section__title">${escapeHtml(part.label)}</div>
+              <div class="customizer-section__help">${escapeHtml(part.help)}</div>
+              <div class="customizer-template-list customizer-template-list--compact">
+                ${renderPartVariantCards(state, part.key)}
+              </div>
+            </div>
+          `).join('')}
+
           <div class="customizer-section">
-            <div class="customizer-section__title">顏色區域</div>
+            <div class="customizer-section__title">配色區</div>
             <div class="customizer-control-stack">
-              ${renderZoneControls(state)}
+              ${renderColorZoneControls(state)}
             </div>
           </div>
         </aside>
@@ -341,8 +350,8 @@
         </section>
 
         <aside class="customizer-panel">
-          <div class="text-xs font-bold uppercase tracking-[0.18em] text-gold">Summary</div>
-          <div class="mt-3 text-sm text-gray-400">呢度會顯示今次 session、template 同 roster 狀態。</div>
+          <div class="text-xs font-bold uppercase tracking-[0.18em] text-gold">Finalize</div>
+          <div class="mt-3 text-sm text-gray-400">呢邊保留文字、logo、roster 同下單／報價流程。</div>
           <div class="mt-4">${renderSummary(state)}</div>
 
           <div class="customizer-section">
@@ -376,9 +385,18 @@
         });
       }
 
-      root.querySelectorAll('[data-template-id]').forEach((button) => {
+      root.querySelectorAll('[data-role="template-family"]').forEach((button) => {
         button.addEventListener('click', () => {
-          actions.selectTemplate(button.getAttribute('data-template-id'));
+          actions.selectTemplateFamily(button.getAttribute('data-template-id'));
+        });
+      });
+
+      root.querySelectorAll('[data-role="part-variant"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          actions.selectPartVariant(
+            button.getAttribute('data-part-type'),
+            button.getAttribute('data-part-code')
+          );
         });
       });
 

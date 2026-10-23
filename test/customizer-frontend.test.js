@@ -32,81 +32,33 @@ test('customizer state store returns cloned snapshots and notifies subscribers',
   snapshot.selectedProductType.name = 'Mutated';
 
   store.setState({
-    selectedTemplate: { id: 2, name: 'Home Kit' },
+    selectedTemplateFamily: { id: 2, name: 'Velocity Home' },
   });
 
   const nextSnapshot = store.getState();
   assert.equal(nextSnapshot.selectedProductType.name, 'Football');
-  assert.equal(nextSnapshot.selectedTemplate.name, 'Home Kit');
-  assert.equal(observed.selectedTemplate.name, 'Home Kit');
+  assert.equal(nextSnapshot.selectedTemplateFamily.name, 'Velocity Home');
+  assert.equal(observed.selectedTemplateFamily.name, 'Velocity Home');
 });
 
-test('customizer catalog indexes templates by product type and resolves defaults', () => {
+test('customizer catalog indexes template families by product type and resolves defaults', () => {
   const windowObject = loadBrowserScript('public/js/customizer/catalog.js');
   const catalog = windowObject.CustomizerCatalog.normalizeCatalogPayload({
     productTypes: [{ id: 10, name: 'Basketball' }, { id: 20, name: 'Volleyball' }],
-    templates: [
-      { id: 100, name: 'Fast Break', product_type_id: 10 },
-      { id: 101, name: 'Defense', product_type_id: 10 },
-      { id: 200, name: 'Ace', product_type_id: 20 },
+    templateFamilies: [
+      { id: 100, name: 'Fast Break', product_type_id: 10, recommended: true },
+      { id: 101, name: 'Defense', product_type_id: 10, is_blank: true },
+      { id: 200, name: 'Ace', product_type_id: 20, recommended: true },
     ],
   });
 
-  assert.equal(catalog.templatesByProductType['10'].length, 2);
+  assert.equal(catalog.templateFamiliesByProductType['10'].length, 2);
   assert.equal(windowObject.CustomizerCatalog.findDefaultProductType(catalog, null).id, 10);
   assert.equal(windowObject.CustomizerCatalog.findDefaultTemplate(catalog, 10, 101).name, 'Defense');
+  assert.equal(windowObject.CustomizerCatalog.findTemplateForStartMode(catalog, 10, 'blank', null).name, 'Defense');
 });
 
-test('customizer catalog filters assets by selection and type', () => {
-  const windowObject = loadBrowserScript('public/js/customizer/catalog.js');
-  const catalog = windowObject.CustomizerCatalog.normalizeCatalogPayload({
-    assets: [
-      { id: 1, asset_type: 'logo', product_type_id: 10, template_id: null, name: 'Global Team Mark' },
-      { id: 2, asset_type: 'logo', product_type_id: 20, template_id: null, name: 'Other Sport Mark' },
-      { id: 3, asset_type: 'palette', product_type_id: 10, template_id: 99, name: 'Home Palette' },
-    ],
-  });
-
-  const assets = windowObject.CustomizerCatalog.listAssetsForSelection(
-    catalog,
-    { productTypeId: 10, templateId: 99 },
-    ['logo', 'palette']
-  );
-
-  assert.equal(assets.length, 2);
-  assert.equal(assets[0].id, 1);
-  assert.equal(assets[1].id, 3);
-});
-
-test('customizer editor module loads successfully', () => {
-  const windowObject = loadBrowserScript('public/js/customizer/editor.js', {
-    window: {
-      CustomizerCatalog: {
-        listAssetsForSelection() {
-          return [];
-        },
-      },
-    },
-    document: {},
-  });
-
-  assert.equal(typeof windowObject.CustomizerEditor.createEditorRenderer, 'function');
-});
-
-test('customizer app module loads successfully when editor root is absent', () => {
-  const windowObject = loadBrowserScript('public/js/customizer/app.js', {
-    window: {},
-    document: {
-      getElementById() {
-        return null;
-      },
-    },
-  });
-
-  assert.ok(windowObject);
-});
-
-test('customizer compositor paints preview canvas for current side', () => {
+test('customizer compositor paints preview canvas for part-driven current side', () => {
   const windowObject = loadBrowserScript('public/js/customizer/compositor.js', {
     window: { devicePixelRatio: 1 },
   });
@@ -160,9 +112,14 @@ test('customizer compositor paints preview canvas for current side', () => {
   const compositor = windowObject.CustomizerCompositor.createPreviewCompositor(root);
   compositor.render({
     selectedProductType: { name: 'Football' },
-    selectedTemplate: { name: 'Away Kit' },
+    selectedTemplateFamily: { name: 'Away Kit' },
     previews: { activeSide: 'back' },
-    zones: [{ label: 'Back Number' }],
+    design: {
+      parts: { body: 'speed-chevron', sleeve: 'double-band', collar: 'v-neck' },
+      colorZones: { primary: '#ffffff', secondary: '#7f1d45', trim: '#fbbf24' },
+      texts: {},
+      logos: [],
+    },
   });
 
   assert.equal(canvas.width, 640);

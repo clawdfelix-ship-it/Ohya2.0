@@ -4,11 +4,11 @@
   <%- include('../partials/head', { title }) %>
   <link rel="stylesheet" href="/css/customizer.css">
 </head>
-<body class="mz-body min-h-screen text-gray-200" data-logged-in="<%= user ? '1' : '0' %>">
+<body class="min-h-screen text-zinc-100">
   <%- include('../partials/header') %>
 
-  <main id="mz-wrapper" class="mz-wrapper max-w-4xl mx-auto mt-4 mb-6 px-4 py-12">
-    <section class="rounded-3xl border border-ink-600 bg-ink-850 p-8 text-center shadow-card">
+  <main class="mx-auto max-w-4xl px-4 py-12">
+    <section class="rounded-3xl border border-white/10 bg-white/5 p-8 text-center shadow-2xl shadow-black/20">
       <div class="text-xs font-bold uppercase tracking-[0.18em] text-gold">Order Draft</div>
       <h1 class="mt-2 text-3xl font-black text-white">直接下單草稿已建立</h1>
       <p class="mt-4 text-sm leading-7 text-gray-400">
@@ -16,8 +16,8 @@
         <% if (draftId) { %>草稿編號：<span class="font-bold text-white">#<%= draftId %></span><% } %>
       </p>
       <div class="mt-8 flex flex-wrap justify-center gap-3">
-        <a href="/customizer" class="rounded-full bg-wine px-5 py-3 text-sm font-bold text-white hover:bg-wine-light">返回訂製器</a>
-        <a href="/cart" class="rounded-full border border-ink-500 px-5 py-3 text-sm font-bold text-gray-200 hover:border-gold/60 hover:text-gold-light">前往購物車</a>
+        <a href="/customizer" class="rounded-full bg-rose-800 px-5 py-3 text-sm font-bold text-white transition hover:bg-rose-700">返回訂製器</a>
+        <a href="/customizer/editor?startMode=template" class="rounded-full border border-white/15 px-5 py-3 text-sm font-bold text-zinc-200 transition hover:border-amber-300/60 hover:text-amber-200">再改一個版本</a>
       </div>
     </section>
   </main>

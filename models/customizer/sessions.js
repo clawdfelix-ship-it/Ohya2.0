@@ -1,6 +1,8 @@
 function buildDesignSession(input = {}) {
   const selection = input.selection && typeof input.selection === 'object' ? input.selection : {};
   const design = input.design && typeof input.design === 'object' ? input.design : {};
+  const parts = design.parts && typeof design.parts === 'object' ? design.parts : {};
+  const colorZones = design.colorZones && typeof design.colorZones === 'object' ? design.colorZones : {};
 
   return {
     status: String(input.status || 'draft'),
@@ -9,7 +11,18 @@ function buildDesignSession(input = {}) {
       templateId: selection.templateId ?? selection.template_id ?? null,
     },
     design: {
-      zones: Array.isArray(design.zones) ? design.zones : [],
+      templateFamilyId: selection.templateId ?? selection.template_id ?? null,
+      parts: {
+        body: parts.body ?? null,
+        sleeve: parts.sleeve ?? null,
+        collar: parts.collar ?? null,
+      },
+      colorZones: {
+        primary: typeof colorZones.primary === 'string' ? colorZones.primary : '#f4f4f5',
+        secondary: typeof colorZones.secondary === 'string' ? colorZones.secondary : '#7f1d45',
+        trim: typeof colorZones.trim === 'string' ? colorZones.trim : '#fbbf24',
+      },
+      currentView: String(design.currentView || 'front') === 'back' ? 'back' : 'front',
       texts: design.texts && typeof design.texts === 'object' ? { ...design.texts } : {},
       logos: Array.isArray(design.logos) ? design.logos : [],
       notes: String(design.notes || ''),

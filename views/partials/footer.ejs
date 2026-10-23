@@ -1,73 +1,18 @@
-<footer class="mt-10">
-  <!-- 主 footer：品牌 + 真實導航 + 付款/送貨信任 -->
-  <div class="border-t border-ink-700 bg-ink-900">
-    <div class="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="sm:col-span-2 lg:col-span-1">
-        <div class="mz-display text-xl font-black tracking-tight text-gold">OHYA2.0</div>
-        <p class="mt-3 text-sm leading-relaxed text-gray-400">
-          日本正貨入口·批發分銷。正貨保證、保密包裝，香港倉庫順豐到付。
-        </p>
-      </div>
-
-      <div>
-        <div class="mb-3 text-sm font-bold text-white">購物</div>
-        <ul class="space-y-1 text-sm text-gray-400">
-          <li><a href="/products" class="inline-block py-1 transition hover:text-gold-light">全部商品</a></li>
-          <li><a href="/cart" class="inline-block py-1 transition hover:text-gold-light">購物車</a></li>
-          <li><a href="/account/orders" class="inline-block py-1 transition hover:text-gold-light">我的訂單</a></li>
-          <li><a href="/wholesale" class="inline-block py-1 transition hover:text-gold-light">批發分銷</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <div class="mb-3 text-sm font-bold text-white">顧客服務</div>
-        <ul class="space-y-1 text-sm text-gray-400">
-          <li><a href="/about" class="inline-block py-1 transition hover:text-gold-light">關於 OHYA2.0</a></li>
-          <li><a href="/help" class="inline-block py-1 transition hover:text-gold-light">顧客須知</a></li>
-          <li><a href="/shipping" class="inline-block py-1 transition hover:text-gold-light">送貨安排</a></li>
-          <li><a href="/payment" class="inline-block py-1 transition hover:text-gold-light">付款方式</a></li>
-          <li><a href="/returns" class="inline-block py-1 transition hover:text-gold-light">退換須知</a></li>
-          <li><a href="/faq" class="inline-block py-1 transition hover:text-gold-light">常見問題</a></li>
-          <li><a href="/contact" class="inline-block py-1 transition hover:text-gold-light">聯絡我們</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <div class="mb-3 text-sm font-bold text-white"><%= t('footer.payments') %></div>
-        <div class="flex flex-wrap gap-2">
-          <span class="rounded-lg border border-ink-600 bg-ink-800 px-2.5 py-1 text-xs font-semibold text-gray-300">銀行轉帳</span>
-          <span class="rounded-lg border border-ink-600 bg-ink-800 px-2.5 py-1 text-xs font-semibold text-gray-300">FPS 轉數快</span>
-          <span class="rounded-lg border border-ink-600 bg-ink-800 px-2.5 py-1 text-xs font-semibold text-gray-300">運費到付</span>
-        </div>
-      </div>
+<footer class="border-t border-white/10 bg-black/30">
+  <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 text-sm text-zinc-400 md:flex-row md:items-end md:justify-between">
+    <div>
+      <div class="text-lg font-black text-white"><%= siteName || 'Custom Cloth' %></div>
+      <p class="mt-2 max-w-2xl leading-7">
+        專注團體服訂製流程，支援足球、籃球、排球、背心同 Polo。
+        第一版提供模板家族、body / sleeve / collar 組合、2D/2.5D 預覽、名單輸入，同直接下單 / 提交報價。
+      </p>
     </div>
-  </div>
-
-  <div id="mz-footer-links" class="mz-footer-links bg-ink-850 text-gray-400">
-    <div class="max-w-7xl mx-auto px-4 py-1 text-xs flex flex-wrap gap-x-5 gap-y-1 items-center">
-      <a href="/help" class="-my-1 inline-block py-2 hover:text-gold-light hover:underline">使用指南</a>
-      <a href="/faq" class="-my-1 inline-block py-2 hover:text-gold-light hover:underline">常見問題</a>
-      <a href="/contact" class="-my-1 inline-block py-2 hover:text-gold-light hover:underline">聯絡我們</a>
-      <a href="/privacy" class="-my-1 inline-block py-2 hover:text-gold-light hover:underline">私隱政策</a>
-      <a href="/terms" class="-my-1 inline-block py-2 hover:text-gold-light hover:underline">使用條款</a>
-    </div>
-  </div>
-
-  <div id="mz-footer-18" class="mz-footer-18">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
-      <div class="flex items-center gap-2">
-        <img src="/assets/mzakka/ui/logo_18.gif" alt="18+" class="h-5 w-auto">
-        <div class="font-bold"><%= t('footer.ageRestrictionTitle') %></div>
-      </div>
-      <div class="opacity-90"><%= t('footer.ageRestrictionDesc') %></div>
+    <div class="flex flex-wrap gap-2">
+      <span class="rounded-full border border-white/10 px-3 py-2">足球</span>
+      <span class="rounded-full border border-white/10 px-3 py-2">籃球</span>
+      <span class="rounded-full border border-white/10 px-3 py-2">排球</span>
+      <span class="rounded-full border border-white/10 px-3 py-2">背心</span>
+      <span class="rounded-full border border-white/10 px-3 py-2">Polo</span>
     </div>
   </div>
 </footer>
-
-<%- include('fab') %>
-<%- include('mobile-tabbar') %>
-
-<%# 通用版商品卡→詳情共享圖片轉場（FLIP，所有手機瀏覽器支援） %>
-<script src="/js/product-transition.js" defer></script>
-<%# 長按商品卡快速預覽（觸控設施） %>
-<script src="/js/longpress-preview.js" defer></script>
