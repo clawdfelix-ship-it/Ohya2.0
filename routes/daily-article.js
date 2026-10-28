@@ -115,11 +115,33 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
       }
 
       const product = result.rows[0];
-      // 頂層 storefront slug 推導（同 buildProductSeo 一致）
+      // 頂層 storefront slug 推導：產品直接 category_slug 多數係子分類，要經 storefront_category_map 推導
+      // 但 /pick 係 internal，唔使 100% 準確 — 我哋直接用產品嘅 mzakka 頂層分類名對應返 storefront slug
       let topSlug = null;
       if (product.category_slug) {
-        const m = String(product.category_slug).match(/^sf-([a-z]+)-/);
-        topSlug = m ? ('storefront-' + m[1]) : product.category_slug;
+        const s = String(product.category_slug);
+        const m = s.match(/^sf-([a-z]+)-/);
+        if (m) {
+          topSlug = 'storefront-' + m[1];
+        } else if (s.startsWith('storefront-')) {
+          topSlug = s;
+        }
+        // mzakka-cat-real-XXXX → 要靠名 mapping
+      }
+      // 由 category_name 推導（日文→storefront slug）
+      if (!topSlug && product.category_name) {
+        const cn = String(product.category_name);
+        if (/潤滑|ローション|清洁|清潔/i.test(cn)) topSlug = 'storefront-lotion';
+        else if (/オナホ|飛機|名器/i.test(cn)) topSlug = 'storefront-onahole';
+        else if (/バイブ|震動|按摩/i.test(cn)) topSlug = 'storefront-vibrators';
+        else if (/コンドーム|安全套|避孕套/i.test(cn)) topSlug = 'storefront-condom';
+        else if (/SM|緊縛|捆綁/i.test(cn)) topSlug = 'storefront-sm';
+        else if (/アナル|後庭/i.test(cn)) topSlug = 'storefront-anal';
+        else if (/下着|內衣|ランジェリー/i.test(cn)) topSlug = 'storefront-lingerie';
+        else if (/ディルド|仿真/i.test(cn)) topSlug = 'storefront-dildos';
+        else if (/ダッチ|娃娃|抱枕/i.test(cn)) topSlug = 'storefront-dolls';
+        else if (/ケア|護理|保健/i.test(cn)) topSlug = 'storefront-care';
+        else topSlug = 'storefront-misc';
       }
 
       res.json({
