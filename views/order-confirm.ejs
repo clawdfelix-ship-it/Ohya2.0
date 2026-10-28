@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="<%= csrfToken || '' %>">
-  <title><%= title %></title>
+  <title><%= title %><%- String(title).includes("OHYA2.0") ? "" : " · OHYA2.0" %></title>
   <%- include('partials/seo-meta', { seo: { robots: 'noindex,nofollow' } }) %>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">

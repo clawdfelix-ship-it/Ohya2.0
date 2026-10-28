@@ -813,7 +813,7 @@ app.use(async (req, res, next) => {
         const featuredProducts = getSampleProducts();
         res.locals.homeModules = homeModules;
         return res.render('index', {
-          title: 'OHYA2.0 - 熱門男士護理網店',
+          title: 'OHYA2.0 · 日本正貨成人用品入口・批發分銷',
           user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
           formatPrice,
           homeModules,
@@ -889,7 +889,7 @@ app.use(async (req, res, next) => {
       const hasRanking = rankingProducts.length > 0;
 
       res.render('index', {
-        title: 'OHYA2.0 - 熱門男士護理網店',
+        title: 'OHYA2.0 · 日本正貨成人用品入口・批發分銷',
         user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
         formatPrice,
         homeModules,
@@ -902,7 +902,7 @@ app.use(async (req, res, next) => {
     } catch (err) {
       console.error('Homepage error:', err);
       res.render('index', {
-        title: 'OHYA2.0 - 熱門男士護理網店',
+        title: 'OHYA2.0 · 日本正貨成人用品入口・批發分銷',
         user: null,
         formatPrice,
         homeModules: getFallbackHomeModules(),
@@ -960,7 +960,7 @@ app.use(async (req, res, next) => {
         }
 
         return res.render('products', {
-          title: '商品列表 - OHYA2.0',
+          title: '全部商品',
           products,
           categories,
           user: res.locals.user,
@@ -1158,7 +1158,7 @@ app.use(async (req, res, next) => {
       };
 
       res.render('products', {
-        title: '商品列表 - OHYA2.0',
+        title: '全部商品',
         products,
         categories: res.locals.categories,
         user: res.locals.user,
@@ -1180,7 +1180,7 @@ app.use(async (req, res, next) => {
     } catch (err) {
       console.error('Products page error:', err);
       res.render('products', {
-        title: '商品列表 - OHYA2.0',
+        title: '全部商品',
         products: getSampleProducts(),
         categories: getSampleCategories(),
         user: null,
@@ -1324,7 +1324,7 @@ app.use(async (req, res, next) => {
           .slice(0, 4);
 
         return res.render('product', {
-          title: product.name + ' - OHYA2.0',
+          title: product.name,
           product,
           relatedProducts,
           user: res.locals.user,
@@ -1446,7 +1446,7 @@ app.use(async (req, res, next) => {
       }
 
       res.render('product', {
-        title: product.name + ' - OHYA2.0',
+        title: product.name,
         product,
         relatedProducts,
         user: res.locals.user,
@@ -1464,7 +1464,7 @@ app.use(async (req, res, next) => {
   // 登入頁
   app.get('/login', (req, res) => {
     res.render('login', {
-      title: '登入 - OHYA2.0',
+      title: '登入',
       error: null,
       redirect: typeof req.query.redirect === 'string' ? req.query.redirect : '',
     });
@@ -1473,7 +1473,7 @@ app.use(async (req, res, next) => {
   // 註冊頁
   app.get('/register', (req, res) => {
     res.render('register', {
-      title: '新會員註冊 - OHYA2.0',
+      title: '新會員註冊',
       error: null
     });
   });
@@ -1512,6 +1512,7 @@ app.use(async (req, res, next) => {
         seo: {
           description: '聯絡 OHYA2.0：WhatsApp +852 9551 4133 或電郵 f.chan@hy-toy.com。香港倉庫 + 東京池袋實店。',
           canonical: '/contact',
+          jsonLd: contactSchema,
         },
       });
     } catch (err) { next(err); }
@@ -1533,6 +1534,70 @@ app.use(async (req, res, next) => {
     ],
   };
 
+  // About 頁 AboutPage schema（E-E-A-T：公司實體資料）
+  const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+  const aboutSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    name: '關於 OHYA2.0',
+    url: base + '/about',
+    description: 'OHYA2.0 由浩洋國際商品代理有限公司創立，14 年日本成人用品入口經驗。香港倉庫 + 東京池袋實店「トゥインクル池袋」。',
+    mainEntity: {
+      '@type': 'Organization',
+      name: 'OHYA2.0',
+      legalName: 'Hao Yang HK Intl Co Ltd',
+      alternateName: '香港浩洋商品代理有限公司',
+      url: base,
+      logo: base + '/img/logo.png',
+      foundingDate: '2012',
+      contactPoint: [{
+        '@type': 'ContactPoint',
+        telephone: '+852-9551-4133',
+        email: 'f.chan@hy-toy.com',
+        contactType: 'customer service',
+        availableLanguage: ['zh-HK', 'zh-Hant', 'en', 'ja'],
+      }],
+      location: [{
+        '@type': 'Place',
+        name: 'トゥインクル池袋 (Twinkle Ikebukuro)',
+        address: {
+          '@type': 'PostalAddress',
+          addressCountry: 'JP',
+          addressRegion: '東京都',
+          addressLocality: '豊島区',
+          streetAddress: '西池袋 3-29-4 ジェスト 7 ビル B1F',
+          postalCode: '〒171-0021',
+        },
+        telephone: '+81-3-3983-5778',
+      }],
+    },
+  };
+
+  // Contact 頁 ContactPage schema
+  const contactSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ContactPage',
+    name: '聯絡我們',
+    url: base + '/contact',
+    mainEntity: {
+      '@type': 'Organization',
+      name: 'OHYA2.0',
+      contactPoint: [{
+        '@type': 'ContactPoint',
+        telephone: '+852-9551-4133',
+        email: 'f.chan@hy-toy.com',
+        contactType: 'customer service',
+        availableLanguage: ['zh-HK', 'zh-Hant'],
+      }, {
+        '@type': 'ContactPoint',
+        telephone: '+852-9551-4133',
+        contactType: 'sales',
+        description: '批發分銷查詢',
+        availableLanguage: ['zh-HK', 'zh-Hant'],
+      }],
+    },
+  };
+
   infoPages.forEach((page) => {
     app.get(page.route, (req, res) => {
       const seo = {
@@ -1541,6 +1606,10 @@ app.use(async (req, res, next) => {
       };
       if (page.route === '/faq') {
         seo.jsonLd = faqSchema;
+      } else if (page.route === '/about') {
+        seo.jsonLd = aboutSchema;
+      } else if (page.route === '/contact') {
+        seo.jsonLd = contactSchema;
       }
       res.render(page.view, {
         title: page.title,
@@ -1554,7 +1623,7 @@ app.use(async (req, res, next) => {
   app.get('/cart', async (req, res) => {
     const sessUser = req.session && req.session.userId;
     const renderOpts = {
-      title: '購物車 - OHYA2.0',
+      title: '購物車',
       user: sessUser ? { id: sessUser, isAdmin: req.session.isAdmin } : null,
       formatPrice: formatPrice,
       paymentInfo: getPaymentInfo(),
@@ -1585,14 +1654,14 @@ app.use(async (req, res, next) => {
     }
     if (!connectionString) {
       return res.status(500).render('order-confirm', {
-        title: '訂單確認 - OHYA2.0', user: null, order: null, items: [],
+        title: '訂單確認', user: null, order: null, items: [],
         formatPrice, paymentInfo: getPaymentInfo(), error: '數據庫未配置',
       });
     }
     try {
       const id = parseInt(req.params.id, 10);
       if (!Number.isFinite(id)) return res.status(404).render('order-confirm', {
-        title: '訂單確認 - OHYA2.0', user: null, order: null, items: [],
+        title: '訂單確認', user: null, order: null, items: [],
         formatPrice, paymentInfo: getPaymentInfo(), error: '訂單不存在',
       });
       const orderResult = await pool.query(
@@ -1601,7 +1670,7 @@ app.use(async (req, res, next) => {
       );
       if (orderResult.rows.length === 0) {
         return res.status(404).render('order-confirm', {
-          title: '訂單確認 - OHYA2.0',
+          title: '訂單確認',
           user: { id: sessUser, isAdmin: req.session.isAdmin },
           order: null, items: [], formatPrice,
           paymentInfo: getPaymentInfo(), error: '訂單不存在',
@@ -1618,7 +1687,7 @@ app.use(async (req, res, next) => {
       `, [id]);
       attachTimeline(orderResult.rows);
       res.render('order-confirm', {
-        title: '訂單確認 - OHYA2.0',
+        title: '訂單確認',
         user: { id: sessUser, isAdmin: req.session.isAdmin },
         order: orderResult.rows[0],
         items: itemsResult.rows,
@@ -1629,7 +1698,7 @@ app.use(async (req, res, next) => {
     } catch (err) {
       console.error('Order confirm page error:', err);
       res.status(500).render('order-confirm', {
-        title: '訂單確認 - OHYA2.0', user: null, order: null, items: [],
+        title: '訂單確認', user: null, order: null, items: [],
         formatPrice, paymentInfo: getPaymentInfo(), error: '服務器錯誤',
       });
     }
@@ -1726,7 +1795,7 @@ app.use(async (req, res, next) => {
     }
     if (!connectionString) {
       return res.status(500).render('account-orders', {
-        title: '我的訂單 - OHYA2.0', user: renderUser, formatPrice,
+        title: '我的訂單', user: renderUser, formatPrice,
         orders: [], page: 1, totalPages: 1, total: 0, error: '數據庫未配置',
       });
     }
@@ -1772,7 +1841,7 @@ app.use(async (req, res, next) => {
       `, params);
       attachTimeline(result.rows);
       res.render('account-orders', {
-        title: '我的訂單 - OHYA2.0',
+        title: '我的訂單',
         user: renderUser,
         formatPrice,
         orders: result.rows,
@@ -1785,7 +1854,7 @@ app.use(async (req, res, next) => {
     } catch (err) {
       console.error('Account orders page error:', err);
       res.status(500).render('account-orders', {
-        title: '我的訂單 - OHYA2.0', user: renderUser, formatPrice,
+        title: '我的訂單', user: renderUser, formatPrice,
         orders: [], page: 1, totalPages: 1, total: 0, error: '服務器錯誤',
       });
     }

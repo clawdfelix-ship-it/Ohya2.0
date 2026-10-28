@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %> · OHYA2.0</title>
+  <title><%= title %><%- String(title).includes("OHYA2.0") ? "" : " · OHYA2.0" %></title>
   <%- include('seo-meta') %>
   <script src="https://cdn.tailwindcss.com"></script>
   <%- include('theme-head') %>
