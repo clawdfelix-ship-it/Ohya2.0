@@ -181,7 +181,7 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
         imageBase64,       // optional: base64 encoded image
         imageMimeType,     // optional: image/png, image/jpeg
         imageUrl,          // optional: external URL（如果已上傳）
-        status = 'published',
+        status = 'draft',  // 預設 draft（Felix review 先手動 publish）；要 auto-publish 就明確傳 'published'
       } = req.body || {};
 
       if (!productId || !title || !slug || !content) {
