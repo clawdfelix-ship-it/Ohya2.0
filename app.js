@@ -783,7 +783,7 @@ app.use(async (req, res, next) => {
         '@type': 'Organization',
         name: 'OHYA2.0',
         url: 'https://www.ohyagroups.net',
-        logo: 'https://www.ohyagroups.net/assets/company/logo-mark.jpg',
+        logo: 'https://www.ohyagroups.net/img/logo.png',
         description: '日本正貨成人用品入口・批發分銷，香港倉庫現貨，順豐保密包裝到付。東京池袋設有實體店「トゥインクル池袋」。',
         contactPoint: [{
           '@type': 'ContactPoint',

@@ -20,7 +20,7 @@
   const _canonicalPath = _seo.canonical || (typeof currentPath !== 'undefined' ? currentPath : '');
   const _canonical = /^https?:\/\//.test(String(_canonicalPath)) ? String(_canonicalPath) : (_seoBase + (_canonicalPath || '/'));
   const _robots = _seo.robots || 'index,follow';
-  const _ogImage = _seo.ogImage || '/assets/company/logo-mark.jpg';
+  const _ogImage = _seo.ogImage || '/img/logo.png';
   const _ogImageAbs = /^https?:\/\//.test(String(_ogImage)) ? String(_ogImage) : (_seoBase + _ogImage);
   const _ogType = _seo.ogType || 'website';
 %>
