@@ -215,7 +215,53 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use((req, res, next) => {
   res.locals.t = createTranslator({ locale: 'zh-HK', dict: dictZhHK });
   res.locals.store = storeInfo;
+  // SEO canonical base（www 係 canonical host；apex 已 301 過嚟）
+  res.locals.seoCanonicalBase = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
   next();
+});
+
+// 動態 sitemap.xml：靜態頁 + 全部 active 產品
+app.get('/sitemap.xml', async (req, res) => {
+  const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+  const staticPages = [
+    { loc: '/', changefreq: 'daily', priority: '1.0' },
+    { loc: '/products', changefreq: 'daily', priority: '0.9' },
+    { loc: '/wholesale', changefreq: 'weekly', priority: '0.8' },
+    { loc: '/about', changefreq: 'monthly', priority: '0.7' },
+    { loc: '/faq', changefreq: 'monthly', priority: '0.7' },
+    { loc: '/help', changefreq: 'monthly', priority: '0.6' },
+    { loc: '/shipping', changefreq: 'monthly', priority: '0.6' },
+    { loc: '/payment', changefreq: 'monthly', priority: '0.6' },
+    { loc: '/returns', changefreq: 'monthly', priority: '0.6' },
+    { loc: '/contact', changefreq: 'monthly', priority: '0.6' },
+    { loc: '/terms', changefreq: 'yearly', priority: '0.3' },
+    { loc: '/privacy', changefreq: 'yearly', priority: '0.3' },
+  ];
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+  for (const p of staticPages) {
+    xml += `  <url><loc>${esc(base + p.loc)}</loc><changefreq>${p.changefreq}</changefreq><priority>${p.priority}</priority></url>\n`;
+  }
+  if (connectionString) {
+    try {
+      const r = await pool.query(
+        `SELECT id, updated_at FROM products
+          WHERE status = 'active'
+            AND COALESCE(name_zh_hk, name) NOT ILIKE '%販売終了%'
+          ORDER BY id DESC LIMIT 5000`
+      );
+      for (const row of r.rows) {
+        const lastmod = row.updated_at ? new Date(row.updated_at).toISOString().slice(0, 10) : null;
+        xml += `  <url><loc>${esc(base + '/product/' + row.id)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}<changefreq>weekly</changefreq><priority>0.8</priority></url>\n`;
+      }
+    } catch (e) {
+      console.error('sitemap products query failed:', e.message);
+    }
+  }
+  xml += '</urlset>\n';
+  res.set('Content-Type', 'application/xml; charset=utf-8');
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send(xml);
 });
 
 app.get('/@vite/*', (req, res) => {
@@ -731,6 +777,37 @@ app.use(async (req, res, next) => {
   app.get('/', async (req, res) => {
     try {
       let homeModules = getFallbackHomeModules();
+      // Organization + WebSite schema：畀 Google/AI search 認住品牌
+      const orgSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'OHYA2.0',
+        url: 'https://www.ohyagroups.net',
+        logo: 'https://www.ohyagroups.net/assets/company/logo-mark.jpg',
+        description: '日本正貨成人用品入口・批發分銷，香港倉庫現貨，順豐保密包裝到付。東京池袋設有實體店「トゥインクル池袋」。',
+        contactPoint: [{
+          '@type': 'ContactPoint',
+          telephone: '+852-9551-4133',
+          contactType: 'customer service',
+          availableLanguage: ['zh-HK', 'zh-Hant', 'en', 'ja'],
+        }],
+        sameAs: [],
+      };
+      const websiteSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'OHYA2.0',
+        url: 'https://www.ohyagroups.net',
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: { '@type': 'EntryPoint', urlTemplate: 'https://www.ohyagroups.net/products?q={search_term_string}' },
+          'query-input': 'required name=search_term_string',
+        },
+      };
+      const homeSeo = {
+        description: '日本正貨成人用品入口・批發分銷。香港倉庫現貨，順豐保密包裝到付；池袋實店每週直飛，7–10 個工作天到港。',
+        jsonLd: [orgSchema, websiteSchema],
+      };
 
       if (!connectionString) {
         const featuredProducts = getSampleProducts();
@@ -744,6 +821,7 @@ app.use(async (req, res, next) => {
           newProducts: featuredProducts.slice(0, 20),
           hasRanking: false,
           holidaysMap,
+          seo: homeSeo,
         });
       }
 
@@ -819,6 +897,7 @@ app.use(async (req, res, next) => {
         newProducts,
         hasRanking,
         holidaysMap,
+        seo: homeSeo,
       });
     } catch (err) {
       console.error('Homepage error:', err);
@@ -831,6 +910,7 @@ app.use(async (req, res, next) => {
         newProducts: getSampleProducts().slice(0, 20),
         hasRanking: false,
         holidaysMap,
+        seo: homeSeo,
       });
     }
   });
@@ -1067,6 +1147,16 @@ app.use(async (req, res, next) => {
         priceBounds = { min: 0, max: Math.max(500, hi) };
       } catch (_) {}
 
+      // 篩選/搜尋/分頁頁面會造成大量 duplicate content — 只有乾淨嘅 /products 先 index
+      const hasFilters = !!(q || (selectedCategorySlug && selectedCategorySlug !== 'all') || page > 1 || minPrice > 0 || maxPrice != null || inStockOnly || explicitSort);
+      const productsSeo = {
+        description: q
+          ? `搜尋「${q}」- 日本正貨成人用品 | OHYA2.0`
+          : (selectedCategorySlug !== 'all' ? `${selectedCategory} - 日本正貨入口 | OHYA2.0` : '全部商品 - 日本正貨成人用品入口，香港倉庫現貨，順豐保密包裝到付 | OHYA2.0'),
+        canonical: '/products',
+        robots: hasFilters ? 'noindex,follow' : 'index,follow',
+      };
+
       res.render('products', {
         title: '商品列表 - OHYA2.0',
         products,
@@ -1085,6 +1175,7 @@ app.use(async (req, res, next) => {
         maxPrice,
         inStockOnly,
         priceBounds,
+        seo: productsSeo,
       });
     } catch (err) {
       console.error('Products page error:', err);
@@ -1106,6 +1197,7 @@ app.use(async (req, res, next) => {
         maxPrice: null,
         inStockOnly: false,
         priceBounds: { min: 0, max: 10000 },
+        seo: { description: '全部商品 - 日本正貨成人用品入口，香港倉庫現貨，順豐保密包裝到付 | OHYA2.0', canonical: '/products' },
       });
     }
   });
@@ -1161,6 +1253,62 @@ app.use(async (req, res, next) => {
   });
   
   // 商品詳情頁
+  // Product 頁 SEO helper：Product schema + BreadcrumbList + canonical
+  function buildProductSeo(product) {
+    const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+    const normDesc = (s) => String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const desc = normDesc(product.description) || `${product.name} - 日本正貨入口，香港倉庫現貨，順豐保密包裝到付 | OHYA2.0`;
+    const shortDesc = desc.length > 155 ? desc.slice(0, 154).trim() + '…' : desc;
+    const productUrl = `${base}/product/${product.id}`;
+    const priceHkd = (Number(product.price) || 0) / 100; // cents -> HKD
+    const inStock = (Number(product.stock) || 0) > 0;
+
+    const productSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.name,
+      description: shortDesc,
+      url: productUrl,
+      brand: { '@type': 'Brand', name: product.brand || 'OHYA2.0' },
+      offers: {
+        '@type': 'Offer',
+        url: productUrl,
+        priceCurrency: 'HKD',
+        price: priceHkd.toFixed(2),
+        availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        itemCondition: 'https://schema.org/NewCondition',
+        seller: { '@type': 'Organization', name: 'OHYA2.0' },
+      },
+    };
+    if (product.image) {
+      productSchema.image = /^https?:\/\//.test(product.image) ? product.image : base + product.image;
+    }
+    if (product.category) {
+      productSchema.category = product.category;
+    }
+
+    const breadcrumbSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: '首頁', item: base + '/' },
+        { '@type': 'ListItem', position: 2, name: '全部商品', item: base + '/products' },
+        ...(product.category
+          ? [{ '@type': 'ListItem', position: 3, name: product.category, item: `${base}/products?category=${encodeURIComponent(product.categorySlug || '')}` },
+             { '@type': 'ListItem', position: 4, name: product.name, item: productUrl }]
+          : [{ '@type': 'ListItem', position: 3, name: product.name, item: productUrl }]),
+      ],
+    };
+
+    return {
+      description: shortDesc,
+      canonical: `/product/${product.id}`,
+      ogType: 'product',
+      ogImage: product.image && /^https?:\/\//.test(product.image) ? product.image : (product.image || undefined),
+      jsonLd: [productSchema, breadcrumbSchema],
+    };
+  }
+
   app.get('/product/:id', async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1182,6 +1330,7 @@ app.use(async (req, res, next) => {
           user: res.locals.user,
           formatPrice,
           selectedCategorySlug: null,
+          seo: buildProductSeo(product),
         });
       }
 
@@ -1304,6 +1453,7 @@ app.use(async (req, res, next) => {
         formatPrice,
         showWholesale: _seeWholesale,
         selectedCategorySlug: product.categorySlug || null,
+        seo: buildProductSeo(product),
       });
     } catch (err) {
       console.error('Product page error:', err);
@@ -1330,16 +1480,16 @@ app.use(async (req, res, next) => {
 
   // 顧客服務 / 資訊頁（送貨、付款、退換、FAQ、批發、聯絡、條款、私隱等）
   const infoPages = [
-    { route: '/about', view: 'info/about', title: '關於 OHYA2.0', key: '/about' },
-    { route: '/help', view: 'info/help', title: '顧客須知', key: '/help' },
-    { route: '/shipping', view: 'info/shipping', title: '送貨安排', key: '/shipping' },
-    { route: '/payment', view: 'info/payment', title: '付款方式', key: '/payment' },
-    { route: '/returns', view: 'info/returns', title: '退換須知', key: '/returns' },
-    { route: '/faq', view: 'info/faq', title: '常見問題', key: '/faq' },
-    { route: '/wholesale', view: 'info/wholesale', title: '批發分銷', key: '/wholesale' },
-    { route: '/contact', view: 'info/contact', title: '聯絡我們', key: '/contact' },
-    { route: '/terms', view: 'info/terms', title: '服務條款', key: '/terms' },
-    { route: '/privacy', view: 'info/privacy', title: '私隱政策', key: '/privacy' },
+    { route: '/about', view: 'info/about', title: '關於 OHYA2.0', key: '/about', description: 'OHYA2.0 由浩洋國際商品代理有限公司創立，14 年日本成人用品入口經驗。香港倉庫 + 東京池袋實店「トゥインクル池袋」，每週直飛 7–10 個工作天到港。' },
+    { route: '/help', view: 'info/help', title: '顧客須知', key: '/help', description: 'OHYA2.0 購物流程、落單步驟、付款核實、送貨須知完整指引。' },
+    { route: '/shipping', view: 'info/shipping', title: '送貨安排', key: '/shipping', description: 'OHYA2.0 送貨安排：日本入口貨到香港倉庫後，以順豐速運本地派送（運費到付），預計 10–14 個工作天。可選順豐站/智能櫃自取。' },
+    { route: '/payment', view: 'info/payment', title: '付款方式', key: '/payment', description: 'OHYA2.0 接受 FPS 轉數快及 HSBC 銀行轉帳。落單後 48 小時內提交付款截圖核實。' },
+    { route: '/returns', view: 'info/returns', title: '退換須知', key: '/returns', description: 'OHYA2.0 退換貨政策：成人用品衛生性質已拆封不設退換；新品瑕疵、損毀或缺件可於收貨 7 天內聯絡跟進。' },
+    { route: '/faq', view: 'info/faq', title: '常見問題', key: '/faq', description: 'OHYA2.0 常見問題：付款方式、送貨時間、運費、保密包裝、退換政策、正貨保證、批發合作。' },
+    { route: '/wholesale', view: 'info/wholesale', title: '批發分銷', key: '/wholesale', description: 'OHYA2.0 批發分銷：日本正貨成人用品 B2B 合作，香港/澳門零售店及網店歡迎查詢。首次合作 50% 訂金，貨到香港收餘額。' },
+    { route: '/contact', view: 'info/contact', title: '聯絡我們', key: '/contact', description: '聯絡 OHYA2.0：WhatsApp +852 9551 4133 或電郵 f.chan@hy-toy.com。香港倉庫 + 東京池袋實店。' },
+    { route: '/terms', view: 'info/terms', title: '服務條款', key: '/terms', description: 'OHYA2.0 服務條款：使用本網站購物之條款及細則。' },
+    { route: '/privacy', view: 'info/privacy', title: '私隱政策', key: '/privacy', description: 'OHYA2.0 私隱政策：個人資料收集、使用及保障聲明。' },
   ];
   // 聯絡我們：專屬路由，額外帶預設倉庫地址（通用 infoPages render 帶唔到）
   app.get('/contact', async (req, res, next) => {
@@ -1359,15 +1509,43 @@ app.use(async (req, res, next) => {
         title: '聯絡我們',
         activeInfoKey: 'contact',
         warehouse,
+        seo: {
+          description: '聯絡 OHYA2.0：WhatsApp +852 9551 4133 或電郵 f.chan@hy-toy.com。香港倉庫 + 東京池袋實店。',
+          canonical: '/contact',
+        },
       });
     } catch (err) { next(err); }
   });
 
+  // FAQ 頁 FAQPage schema（最容易攞 rich result，畀 AI search 引用）
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      { '@type': 'Question', name: '你哋接受邊啲付款方式？', acceptedAnswer: { '@type': 'Answer', text: '目前接受轉數快 FPS 同銀行轉帳（HSBC 滙豐）。落單後請於 48 小時內把付款截圖連訂單號碼發送給我們核實。' } },
+      { '@type': 'Question', name: '一定要開會員帳號先可以落單嗎？', acceptedAnswer: { '@type': 'Answer', text: '你可以註冊帳號以查閱訂單記錄；即使未登入，亦可使用購物車落單，並透過訂單號碼向我們查詢狀態。' } },
+      { '@type': 'Question', name: '送貨要幾耐？', acceptedAnswer: { '@type': 'Answer', text: '商品由日本入口，先到香港倉庫再以順豐速運本地派送，由落單計整體預計約 10–14 個工作天。實際需視乎日本貨況、清關及本地派送。' } },
+      { '@type': 'Question', name: '運費點計？', acceptedAnswer: { '@type': 'Answer', text: '本地派送採用順豐到付，運費由收件人收貨時直接向順豐支付。選擇順豐站／智能櫃／便利店自取，收費一般較上門派送低。' } },
+      { '@type': 'Question', name: '包裝會唔會寫明係成人用品？', acceptedAnswer: { '@type': 'Answer', text: '唔會。所有貨品均以不透明、無敏感標示嘅方式保密包裝，包裹外不會顯示商品內容，充分保障私隱。' } },
+      { '@type': 'Question', name: '收到貨唔啱用可以退嗎？', acceptedAnswer: { '@type': 'Answer', text: '基於成人用品嘅衛生性質，沒有瑕疵、已拆封或已使用嘅商品不設退貨或退款。如屬新品瑕疵、損毀或缺件，可於收貨 7 天內聯絡我們跟進。' } },
+      { '@type': 'Question', name: '你哋嘅貨係咪正貨？', acceptedAnswer: { '@type': 'Answer', text: '本店由日本入口正貨，由香港浩洋商品代理有限公司（Hao Yang HK Intl Co Ltd）營運。我們重視正貨保證，如有疑問歡迎聯絡查證。' } },
+      { '@type': 'Question', name: '你哋有冇做批發／分銷？', acceptedAnswer: { '@type': 'Answer', text: '有。我們以批發分銷為主要業務，歡迎香港、澳門等地嘅零售店舖、網店及合資格商戶查詢批發安排。首次合作採用 50% 訂金、貨到香港收餘額後再寄出。' } },
+    ],
+  };
+
   infoPages.forEach((page) => {
     app.get(page.route, (req, res) => {
+      const seo = {
+        description: page.description,
+        canonical: page.route,
+      };
+      if (page.route === '/faq') {
+        seo.jsonLd = faqSchema;
+      }
       res.render(page.view, {
         title: page.title,
         activeInfoKey: page.key,
+        seo,
       });
     });
   });

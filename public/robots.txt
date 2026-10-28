@@ -1,0 +1,39 @@
+# OHYA2.0 robots.txt
+# 允許所有搜索引擎 + AI crawler 存取公開頁面
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /account
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order/
+Disallow: /login
+Disallow: /register
+Disallow: /webhooks/
+Disallow: /csp-report
+
+# AI crawlers（顯式歡迎）
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+Sitemap: https://www.ohyagroups.net/sitemap.xml

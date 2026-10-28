@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="<%= csrfToken || '' %>">
   <title>會員中心 · OHYA2.0</title>
+  <%- include('partials/seo-meta', { seo: { robots: 'noindex,nofollow' } }) %>
   <script src="https://cdn.tailwindcss.com"></script>
   <%- include('partials/theme-head') %>
   <link rel="stylesheet" href="/css/mzakka-theme.css">

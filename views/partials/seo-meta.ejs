@@ -1,0 +1,43 @@
+<%#
+  SEO/GEO 統一 meta block。使用方式：
+  1. 每個 view 喺 head 內 include 呢個 partial
+  2. Route 可選傳 seo object 覆蓋預設：
+     seo = {
+       title: '自訂標題',
+       description: '...',
+       canonical: '/products',
+       robots: 'noindex,follow',
+       ogImage: '/assets/...',
+       ogType: 'website' | 'product',
+       jsonLd: { ... } 或 [ {...} ]
+     }
+%>
+<%
+  const _seoBase = (typeof seoCanonicalBase !== 'undefined' && seoCanonicalBase) ? seoCanonicalBase : 'https://www.ohyagroups.net';
+  const _seo = (typeof seo !== 'undefined' && seo) ? seo : {};
+  const _title = _seo.title || (typeof title !== 'undefined' ? title : 'OHYA2.0');
+  const _desc = _seo.description || '日本正貨入口・批發分銷。香港倉庫現貨，順豐保密包裝到付；池袋實店每週直飛，7–10 個工作天到港。';
+  const _canonicalPath = _seo.canonical || (typeof currentPath !== 'undefined' ? currentPath : '');
+  const _canonical = /^https?:\/\//.test(String(_canonicalPath)) ? String(_canonicalPath) : (_seoBase + (_canonicalPath || '/'));
+  const _robots = _seo.robots || 'index,follow';
+  const _ogImage = _seo.ogImage || '/assets/company/logo-mark.jpg';
+  const _ogImageAbs = /^https?:\/\//.test(String(_ogImage)) ? String(_ogImage) : (_seoBase + _ogImage);
+  const _ogType = _seo.ogType || 'website';
+%>
+<meta name="description" content="<%= _desc %>">
+<meta name="robots" content="<%= _robots %>">
+<link rel="canonical" href="<%= _canonical %>">
+<meta property="og:site_name" content="OHYA2.0">
+<meta property="og:locale" content="zh_HK">
+<meta property="og:type" content="<%= _ogType %>">
+<meta property="og:title" content="<%= _title %>">
+<meta property="og:description" content="<%= _desc %>">
+<meta property="og:url" content="<%= _canonical %>">
+<meta property="og:image" content="<%= _ogImageAbs %>">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<%= _title %>">
+<meta name="twitter:description" content="<%= _desc %>">
+<meta name="twitter:image" content="<%= _ogImageAbs %>">
+<% if (_seo.jsonLd) { const _arr = Array.isArray(_seo.jsonLd) ? _seo.jsonLd : [_seo.jsonLd]; _arr.forEach(function(_ld) { %>
+<script type="application/ld+json"><%- JSON.stringify(_ld).replace(/</g, '\\u003c') %></script>
+<% }); } %>
