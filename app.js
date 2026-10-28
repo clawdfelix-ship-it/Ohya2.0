@@ -494,6 +494,7 @@ try {
   require('./routes/reports')(app, pool);
   require('./routes/mzakka-sync')(app, pool);
   require('./routes/daily-sync')(app, pool);
+  require('./routes/daily-article')(app, pool);
   require('./routes/admin-settings')(app, pool, requireAdmin);
   require('./routes/outbox-jobs')(app, pool);
 
