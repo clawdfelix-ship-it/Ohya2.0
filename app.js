@@ -901,6 +901,19 @@ app.use(async (req, res, next) => {
       // 排行榜有貨就顯示（唔再靠銷量；新店都有新到推介）
       const hasRanking = rankingProducts.length > 0;
 
+      // 最新 3 篇選購指南（首頁 section + 內部連結 SEO）
+      let guidePosts = [];
+      try {
+        const g = await pool.query(
+          `SELECT title, slug, excerpt, featured_image, publish_at
+             FROM blog_posts
+            WHERE status = 'published'
+            ORDER BY publish_at DESC NULLS LAST, id DESC
+            LIMIT 3`
+        );
+        guidePosts = g.rows;
+      } catch (_) { guidePosts = []; }
+
       res.render('index', {
         title: '香港成人用品・情趣用品丨日本正貨入口丨OHYA2.0',
         user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
@@ -911,6 +924,7 @@ app.use(async (req, res, next) => {
         hasRanking,
         holidaysMap,
         seo: homeSeo,
+        guidePosts,
       });
     } catch (err) {
       console.error('Homepage error:', err);
@@ -1195,6 +1209,9 @@ app.use(async (req, res, next) => {
       }
       // 品類介紹文（E-E-A-T 內容）傳入 template
       const categoryIntro = catContent && catContent.intro ? catContent.intro : null;
+      // 對應選購指南 URL（例如 /products?category=storefront-onahole → /guide/how-to-choose-onahole-2026）
+      const { getCategoryGuideUrl } = require('./utils/categoryContent');
+      const categoryGuideUrl = getCategoryGuideUrl(selectedCategorySlug);
 
       res.render('products', {
         title: catContent ? catContent.titleSuffix : (selectedCategory === '全部商品' ? '全部商品' : selectedCategory),
@@ -1216,6 +1233,7 @@ app.use(async (req, res, next) => {
         priceBounds,
         seo: productsSeo,
         categoryIntro,
+        categoryGuideUrl,
       });
     } catch (err) {
       console.error('Products page error:', err);

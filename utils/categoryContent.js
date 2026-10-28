@@ -2,6 +2,16 @@
 // 目的：品類關鍵字（飛機杯/潤滑液/震動棒…）先係顧客真正會搜尋嘅字，唔係品牌名。
 // 原則：內容要真係有用（E-E-A-T），唔好齋堆關鍵字 — AI search 會引用有資訊價值嘅文字。
 
+// 每個品類對應一篇選購指南（做 category 頁 CTA）
+const CATEGORY_GUIDE_MAP = {
+  'storefront-onahole': '/guide/how-to-choose-onahole-2026',
+  'storefront-lotion': '/guide/lubricant-guide-hong-kong',
+  'storefront-vibrators': '/guide/vibrator-beginner-guide-hk',
+  'storefront-condom': '/guide/japan-condom-001-002-003-comparison',
+  'storefront-sm': '/guide/sm-beginner-safety-guide',
+  'storefront-anal': '/guide/anal-toys-beginner-safety-hk',
+};
+
 const CATEGORY_CONTENT = {
   'storefront-onahole': {
     name: '飛機杯',
@@ -109,4 +119,9 @@ function getCategoryContent(slug) {
   return CATEGORY_CONTENT[slug] || SECTION_CONTENT[slug] || null;
 }
 
-module.exports = { CATEGORY_CONTENT, SECTION_CONTENT, getCategoryContent };
+function getCategoryGuideUrl(slug) {
+  if (!slug) return null;
+  return CATEGORY_GUIDE_MAP[slug] || null;
+}
+
+module.exports = { CATEGORY_CONTENT, SECTION_CONTENT, CATEGORY_GUIDE_MAP, getCategoryContent, getCategoryGuideUrl };
