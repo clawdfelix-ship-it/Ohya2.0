@@ -1,29 +1,40 @@
-# OHYA2.0
+# OHYA2.0 — 香港成人用品・情趣用品網店
 
-> 日本正貨成人用品入口・批發分銷，香港倉庫現貨，順豐保密包裝到付。東京池袋設有實體店「トゥインクル池袋」，每週直飛香港，7–10 個工作天到港。
+> OHYA2.0 係香港成人用品（adult products）同情趣用品（sex toys）網店，專營日本正貨入口。主要品類：飛機杯、潤滑液、震動棒、按摩棒、避孕套（安全套）、情趣內衣、SM 用品、後庭用品、仿真陽具、充氣娃娃。香港倉庫現貨，順豐保密包裝到付。東京池袋設有實體店「トゥインクル池袋」，每週直飛香港，7–10 個工作天到港。
 
 營運公司：浩洋國際商品代理有限公司（HAO YANG HK INTL CO LTD），香港情趣用品零售及批發 14 年經驗。
 
-## 主要頁面
+## 主要品類（Product Categories）
 
-- [首頁](https://www.ohyagroups.net/)：日本直送・私密精選商品
+- [飛機杯・名器](https://www.ohyagroups.net/products?category=storefront-onahole)：日本飛機杯香港現貨，TENGA、Magic Eyes 等正貨品牌
+- [潤滑液](https://www.ohyagroups.net/products?category=storefront-lotion)：水性/矽性/溫熱/免洗潤滑液，日本正貨
+- [震動棒・按摩棒・震蛋](https://www.ohyagroups.net/products?category=storefront-vibrators)：女用震動玩具，靜音防水款齊全
+- [仿真陽具](https://www.ohyagroups.net/products?category=storefront-dildos)：吸盤假陽具，醫療級矽膠
+- [情趣內衣](https://www.ohyagroups.net/products?category=storefront-lingerie)：性感內衣、角色扮演服
+- [後庭用品](https://www.ohyagroups.net/products?category=storefront-anal)：肛塞、後庭玩具，新手入門款齊全
+- [SM 用品](https://www.ohyagroups.net/products?category=storefront-sm)：捆綁繩、手銬、眼罩等 BDSM 用品
+- [避孕套・安全套](https://www.ohyagroups.net/products?category=storefront-condom)：Sagami 相模、Okamoto 岡本 0.01/0.02/0.03 超薄款
+- [娃娃・抱枕](https://www.ohyagroups.net/products?category=storefront-dolls)：充氣娃娃、名器抱枕
+- [護理保健](https://www.ohyagroups.net/products?category=storefront-care)：玩具清潔劑、保養粉、私處護理
+- [新到推介](https://www.ohyagroups.net/products?category=storefront-new)：每週日本直飛新款
+- [特價區](https://www.ohyagroups.net/products?category=storefront-sale)：減價成人用品
+
+## 服務頁面
+
+- [首頁](https://www.ohyagroups.net/)：香港成人用品・日本正貨入口
 - [全部商品](https://www.ohyagroups.net/products)：完整商品目錄
-- [批發分銷](https://www.ohyagroups.net/wholesale)：B2B 批發合作詳情（50% 訂金、貨到付尾款）
-- [關於 OHYA2.0](https://www.ohyagroups.net/about)：公司背景、14 年歷史、東京池袋實店地址
-- [常見問題](https://www.ohyagroups.net/faq)：付款、送貨、退換、正貨保證
-- [顧客須知](https://www.ohyagroups.net/help)：購物流程與指引
+- [批發分銷](https://www.ohyagroups.net/wholesale)：成人用品批發香港（B2B，50% 訂金、貨到付尾款）
+- [常見問題](https://www.ohyagroups.net/faq)：付款、送貨、退換、正貨保證、選購指南
 - [送貨安排](https://www.ohyagroups.net/shipping)：順豐到付、日本入口時程
 - [付款方式](https://www.ohyagroups.net/payment)：FPS 轉數快、HSBC 銀行轉帳
-- [退換須知](https://www.ohyagroups.net/returns)：瑕疵退換政策
+- [關於 OHYA2.0](https://www.ohyagroups.net/about)：公司背景、14 年歷史、東京池袋實店地址
 - [聯絡我們](https://www.ohyagroups.net/contact)：WhatsApp +852 9551 4133 / f.chan@hy-toy.com
-- [服務條款](https://www.ohyagroups.net/terms)
-- [私隱政策](https://www.ohyagroups.net/privacy)
 
 ## 公司資料
 
 - **中文名**：香港浩洋商品代理有限公司
 - **英文名**：Hao Yang HK Intl Co Ltd
-- **業務**：日本成人用品入口、批發分銷、零售
+- **業務**：日本成人用品入口、情趣用品批發分銷、零售
 - **香港倉庫**：處理訂單、包裝、批發出貨
 - **日本實店**：トゥインクル池袋（〒171-0021 東京都豊島区西池袋 3-29-4 ジェスト 7 ビル B1F，電話 03-3983-5778）
 - **WhatsApp**：+852 9551 4133
@@ -31,7 +42,7 @@
 
 ## 服務承諾
 
-- 日本正貨保證
+- 日本正貨保證（14 年入口經驗）
 - 保密包裝（不透明、無敏感標示）
 - 香港本地倉庫，順豐到付
 - 批發分銷：首次合作 50% 訂金

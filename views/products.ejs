@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %><%- String(title).includes("OHYA2.0") ? "" : " · OHYA2.0" %></title>
+  <% const _pageTitle = (typeof seo !== "undefined" && seo && seo.title) ? seo.title : title; %><title><%= _pageTitle %><%- String(_pageTitle).includes("OHYA2.0") ? "" : " · OHYA2.0" %></title>
   <%- include('partials/seo-meta') %>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
@@ -44,7 +44,11 @@
         <div>
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-gold">Product Listing</p>
           <h1 class="mt-2 text-3xl font-black text-white"><%= selectedCategory && selectedCategory !== '全部商品' ? selectedCategory : '全部商品' %></h1>
-          <p class="mt-2 text-sm text-gray-500">齊全貨品任你揀，支援分類篩選同排序，輕鬆搵到心水商品。</p>
+          <% if (typeof categoryIntro !== 'undefined' && categoryIntro) { %>
+            <p class="mt-3 text-sm leading-relaxed text-gray-300 max-w-3xl"><%= categoryIntro %></p>
+          <% } else { %>
+            <p class="mt-2 text-sm text-gray-500">齊全貨品任你揀，支援分類篩選同排序，輕鬆搵到心水商品。</p>
+          <% } %>
         </div>
         <div class="rounded-2xl bg-ink-800 px-4 py-3 text-sm text-gray-500">
           已找到 <span class="font-black text-white"><%= (typeof total === 'number' ? total : products.length) %></span> 件商品

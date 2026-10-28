@@ -227,6 +227,7 @@ app.get('/sitemap.xml', async (req, res) => {
     { loc: '/', changefreq: 'daily', priority: '1.0' },
     { loc: '/products', changefreq: 'daily', priority: '0.9' },
     { loc: '/wholesale', changefreq: 'weekly', priority: '0.8' },
+    { loc: '/guide', changefreq: 'weekly', priority: '0.8' },
     { loc: '/about', changefreq: 'monthly', priority: '0.7' },
     { loc: '/faq', changefreq: 'monthly', priority: '0.7' },
     { loc: '/help', changefreq: 'monthly', priority: '0.6' },
@@ -256,6 +257,18 @@ app.get('/sitemap.xml', async (req, res) => {
       }
     } catch (e) {
       console.error('sitemap products query failed:', e.message);
+    }
+    // 指南文章
+    try {
+      const r = await pool.query(
+        `SELECT slug, updated_at, publish_at FROM blog_posts WHERE status = 'published' ORDER BY publish_at DESC NULLS LAST LIMIT 500`
+      );
+      for (const row of r.rows) {
+        const lastmod = row.updated_at ? new Date(row.updated_at).toISOString().slice(0, 10) : (row.publish_at ? new Date(row.publish_at).toISOString().slice(0, 10) : null);
+        xml += `  <url><loc>${esc(base + '/guide/' + row.slug)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}<changefreq>monthly</changefreq><priority>0.7</priority></url>\n`;
+      }
+    } catch (e) {
+      console.error('sitemap blog query failed:', e.message);
     }
   }
   xml += '</urlset>\n';
@@ -805,7 +818,7 @@ app.use(async (req, res, next) => {
         },
       };
       const homeSeo = {
-        description: '日本正貨成人用品入口・批發分銷。香港倉庫現貨，順豐保密包裝到付；池袋實店每週直飛，7–10 個工作天到港。',
+        description: '香港成人用品、情趣用品網店。日本正貨飛機杯、潤滑液、震動棒、避孕套、情趣內衣、SM用品直送入港，香港倉庫現貨，順豐保密包裝到付，7–10 個工作天到貨。14 年日本入口經驗，池袋實店每週直飛。',
         jsonLd: [orgSchema, websiteSchema],
       };
 
@@ -813,7 +826,7 @@ app.use(async (req, res, next) => {
         const featuredProducts = getSampleProducts();
         res.locals.homeModules = homeModules;
         return res.render('index', {
-          title: 'OHYA2.0 · 日本正貨成人用品入口・批發分銷',
+          title: '香港成人用品・情趣用品丨日本正貨入口丨OHYA2.0',
           user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
           formatPrice,
           homeModules,
@@ -889,7 +902,7 @@ app.use(async (req, res, next) => {
       const hasRanking = rankingProducts.length > 0;
 
       res.render('index', {
-        title: 'OHYA2.0 · 日本正貨成人用品入口・批發分銷',
+        title: '香港成人用品・情趣用品丨日本正貨入口丨OHYA2.0',
         user: req.session && req.session.userId ? { id: req.session.userId, isAdmin: req.session.isAdmin } : null,
         formatPrice,
         homeModules,
@@ -902,7 +915,7 @@ app.use(async (req, res, next) => {
     } catch (err) {
       console.error('Homepage error:', err);
       res.render('index', {
-        title: 'OHYA2.0 · 日本正貨成人用品入口・批發分銷',
+        title: '香港成人用品・情趣用品丨日本正貨入口丨OHYA2.0',
         user: null,
         formatPrice,
         homeModules: getFallbackHomeModules(),
@@ -1147,18 +1160,44 @@ app.use(async (req, res, next) => {
         priceBounds = { min: 0, max: Math.max(500, hi) };
       } catch (_) {}
 
-      // 篩選/搜尋/分頁頁面會造成大量 duplicate content — 只有乾淨嘅 /products 先 index
-      const hasFilters = !!(q || (selectedCategorySlug && selectedCategorySlug !== 'all') || page > 1 || minPrice > 0 || maxPrice != null || inStockOnly || explicitSort);
-      const productsSeo = {
-        description: q
-          ? `搜尋「${q}」- 日本正貨成人用品 | OHYA2.0`
-          : (selectedCategorySlug !== 'all' ? `${selectedCategory} - 日本正貨入口 | OHYA2.0` : '全部商品 - 日本正貨成人用品入口，香港倉庫現貨，順豐保密包裝到付 | OHYA2.0'),
-        canonical: '/products',
-        robots: hasFilters ? 'noindex,follow' : 'index,follow',
-      };
+      // 品類頁 SEO 策略：
+      // - 頂層 storefront 分類 = SEO 資產 → index,follow（係「飛機杯/潤滑液」呢類搜尋字嘅 landing page）
+      // - 搜尋字、分頁、價錢篩選、排序、子分類 → noindex,follow（避免 duplicate / thin content）
+      const { getCategoryContent } = require('./utils/categoryContent');
+      const catContent = getCategoryContent(selectedCategorySlug);
+      const isTopLevelStorefront = !!(catContent && !dynamicSection);
+      const hasNarrowFilters = !!(q || page > 1 || minPrice > 0 || maxPrice != null || inStockOnly || explicitSort);
+      const isSubCategory = selectedCategorySlug && selectedCategorySlug !== 'all'
+        && !catContent; // 子分類（sf-xxx-NNNNN）冇自訂內容 → 視作 thin content
+      const shouldIndex = !hasNarrowFilters && !isSubCategory;
+
+      let productsSeo;
+      if (q) {
+        productsSeo = {
+          description: `搜尋「${q}」- 香港成人用品、情趣用品 | OHYA2.0`,
+          canonical: '/products',
+          robots: 'noindex,follow',
+        };
+      } else if (catContent && selectedCategorySlug !== 'all') {
+        // 頂層品類：關鍵字-rich title + description（同時 override <title>）
+        productsSeo = {
+          title: `${catContent.titleSuffix} · 香港成人用品 | OHYA2.0`,
+          description: catContent.description,
+          canonical: `/products?category=${selectedCategorySlug}`,
+          robots: shouldIndex ? 'index,follow' : 'noindex,follow',
+        };
+      } else {
+        productsSeo = {
+          description: '香港成人用品、情趣用品網店：日本正貨飛機杯、潤滑液、震動棒、避孕套、情趣內衣、SM用品、後庭用品齊全。香港倉庫現貨，順豐保密包裝到付。',
+          canonical: '/products',
+          robots: shouldIndex ? 'index,follow' : 'noindex,follow',
+        };
+      }
+      // 品類介紹文（E-E-A-T 內容）傳入 template
+      const categoryIntro = catContent && catContent.intro ? catContent.intro : null;
 
       res.render('products', {
-        title: '全部商品',
+        title: catContent ? catContent.titleSuffix : (selectedCategory === '全部商品' ? '全部商品' : selectedCategory),
         products,
         categories: res.locals.categories,
         user: res.locals.user,
@@ -1176,6 +1215,7 @@ app.use(async (req, res, next) => {
         inStockOnly,
         priceBounds,
         seo: productsSeo,
+        categoryIntro,
       });
     } catch (err) {
       console.error('Products page error:', err);
@@ -1256,8 +1296,24 @@ app.use(async (req, res, next) => {
   // Product 頁 SEO helper：Product schema + BreadcrumbList + canonical
   function buildProductSeo(product) {
     const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+    const { getCategoryContent } = require('./utils/categoryContent');
+    // product.categorySlug 可能係子分類（sf-onahole-69905）→ 由前綴推導頂層 storefront 類
+    let topSlug = null;
+    if (product.categorySlug) {
+      const m = String(product.categorySlug).match(/^sf-([a-z]+)-/);
+      topSlug = m ? ('storefront-' + m[1]) : product.categorySlug;
+    }
+    const catContent = topSlug ? getCategoryContent(topSlug) : null;
     const normDesc = (s) => String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    const desc = normDesc(product.description) || `${product.name} - 日本正貨入口，香港倉庫現貨，順豐保密包裝到付 | OHYA2.0`;
+    let desc = normDesc(product.description);
+    if (!desc || desc === normDesc(product.name)) {
+      // 冇真 description → 用品類關鍵字砌
+      const catKw = catContent ? catContent.name : '成人用品';
+      desc = `${product.name} - 日本正貨${catKw}，香港倉庫現貨，順豐保密包裝到付 | OHYA2.0`;
+    } else if (catContent && !desc.includes(catContent.name)) {
+      // 有 description 但冇品類字 → 補品類關鍵字落尾
+      desc = desc + ` | ${catContent.name} | OHYA2.0`;
+    }
     const shortDesc = desc.length > 155 ? desc.slice(0, 154).trim() + '…' : desc;
     const productUrl = `${base}/product/${product.id}`;
     const priceHkd = (Number(product.price) || 0) / 100; // cents -> HKD
@@ -1531,6 +1587,11 @@ app.use(async (req, res, next) => {
       { '@type': 'Question', name: '收到貨唔啱用可以退嗎？', acceptedAnswer: { '@type': 'Answer', text: '基於成人用品嘅衛生性質，沒有瑕疵、已拆封或已使用嘅商品不設退貨或退款。如屬新品瑕疵、損毀或缺件，可於收貨 7 天內聯絡我們跟進。' } },
       { '@type': 'Question', name: '你哋嘅貨係咪正貨？', acceptedAnswer: { '@type': 'Answer', text: '本店由日本入口正貨，由香港浩洋商品代理有限公司（Hao Yang HK Intl Co Ltd）營運。我們重視正貨保證，如有疑問歡迎聯絡查證。' } },
       { '@type': 'Question', name: '你哋有冇做批發／分銷？', acceptedAnswer: { '@type': 'Answer', text: '有。我們以批發分銷為主要業務，歡迎香港、澳門等地嘅零售店舖、網店及合資格商戶查詢批發安排。首次合作採用 50% 訂金、貨到香港收餘額後再寄出。' } },
+      { '@type': 'Question', name: '飛機杯點揀？', acceptedAnswer: { '@type': 'Answer', text: '揀飛機杯主要考慮三樣：尺寸（一次性細杯 vs 可重用中大型）、內部結構（直線紋、螺旋紋、仿真黏膜）、軟硬度。新手建議由軟身中尺寸入手，例如 TENGA 或者 Magic Eyes 嘅入門款，配合水性潤滑液使用。' } },
+      { '@type': 'Question', name: '潤滑液點揀？水性定矽性好？', acceptedAnswer: { '@type': 'Answer', text: '水性潤滑液最通用：易清洗、唔傷玩具、可配安全套。矽性持久但唔可以配矽膠玩具（會侵蝕表面）。如果配飛機杯或矽膠玩具，一定只可以用水性。日本仲有溫熱型、免洗型、高黏度等功能款。' } },
+      { '@type': 'Question', name: '日本安全套邊款好？0.01 係咩意思？', acceptedAnswer: { '@type': 'Answer', text: '0.01 指厚度 0.01mm，係現時最薄嘅安全套（Sagami 相模原創）。Okamoto 岡本就有 0.02/0.03。越薄體感越好但價錢越貴。日本尺碼比歐美款細少少，更貼合亞洲人。' } },
+      { '@type': 'Question', name: '震動棒點揀？新手買邊款好？', acceptedAnswer: { '@type': 'Answer', text: '新手建議由細件震蛋開始，習慣後先考慮按摩棒。留意：震動模式（多段變頻好過單頻）、音量（日本品牌普遍靜音）、防水（可水洗清潔方便）、充電方式（USB 最方便）。' } },
+      { '@type': 'Question', name: 'SM 用品新手點入手？', acceptedAnswer: { '@type': 'Answer', text: 'SM 新手由輕量道具開始：眼罩、軟手銬（魔術貼款可快速解開最安全）、羽毛棒。玩之前雙方要溝通底線同安全詞。日本 SM 用品以安全設計聞名，建議由新手套裝開始。' } },
     ],
   };
 
@@ -1617,6 +1678,99 @@ app.use(async (req, res, next) => {
         seo,
       });
     });
+  });
+
+  // 選購指南（blog）公開頁：/guide 列表 + /guide/:slug 文章頁
+  // 用現有 blog_posts 表（admin 後台已有）；加 Article schema 畀 AI search 引用
+  app.get('/guide', async (req, res) => {
+    const guideSeo = {
+      description: '日本成人用品選購指南：飛機杯點揀、潤滑液比較、震動棒推薦、安全套尺碼、SM 入門。14 年日本入口經驗分享。',
+      canonical: '/guide',
+    };
+    if (!connectionString) {
+      return res.render('guide', {
+        title: '選購指南',
+        posts: [],
+        seo: guideSeo,
+      });
+    }
+    try {
+      const r = await pool.query(
+        `SELECT id, title, slug, excerpt, featured_image, publish_at
+           FROM blog_posts
+          WHERE status = 'published'
+          ORDER BY publish_at DESC NULLS LAST, id DESC
+          LIMIT 50`
+      );
+      res.render('guide', {
+        title: '選購指南',
+        posts: r.rows,
+        seo: guideSeo,
+      });
+    } catch (e) {
+      console.error('Guide list error:', e.message);
+      res.render('guide', { title: '選購指南', posts: [], seo: guideSeo });
+    }
+  });
+
+  app.get('/guide/:slug', async (req, res) => {
+    if (!connectionString) return res.redirect('/guide');
+    try {
+      const slug = String(req.params.slug || '').slice(0, 200);
+      const r = await pool.query(
+        `SELECT id, title, slug, content, excerpt, featured_image, publish_at, meta_title, meta_description, updated_at
+           FROM blog_posts
+          WHERE slug = $1 AND status = 'published'
+          LIMIT 1`,
+        [slug]
+      );
+      if (!r.rows[0]) return res.redirect('/guide');
+      const post = r.rows[0];
+      const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+      const postUrl = base + '/guide/' + post.slug;
+      const desc = post.meta_description || post.excerpt || String(post.content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 155);
+      const articleSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: post.title,
+        description: desc,
+        url: postUrl,
+        inLanguage: 'zh-HK',
+        author: { '@type': 'Organization', name: 'OHYA2.0', url: base },
+        publisher: {
+          '@type': 'Organization',
+          name: 'OHYA2.0',
+          logo: { '@type': 'ImageObject', url: base + '/img/logo.png' },
+        },
+        ...(post.publish_at ? { datePublished: new Date(post.publish_at).toISOString() } : {}),
+        ...(post.updated_at ? { dateModified: new Date(post.updated_at).toISOString() } : {}),
+        ...(post.featured_image ? { image: post.featured_image } : {}),
+      };
+      const breadcrumbSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: '首頁', item: base + '/' },
+          { '@type': 'ListItem', position: 2, name: '選購指南', item: base + '/guide' },
+          { '@type': 'ListItem', position: 3, name: post.title, item: postUrl },
+        ],
+      };
+      res.render('guide-post', {
+        title: post.meta_title || post.title,
+        post,
+        seo: {
+          title: post.meta_title || post.title,
+          description: desc,
+          canonical: '/guide/' + post.slug,
+          ogType: 'article',
+          ogImage: post.featured_image || undefined,
+          jsonLd: [articleSchema, breadcrumbSchema],
+        },
+      });
+    } catch (e) {
+      console.error('Guide post error:', e.message);
+      res.redirect('/guide');
+    }
   });
   
   // 購物車頁
