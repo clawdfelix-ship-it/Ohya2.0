@@ -73,8 +73,13 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
         )
       `);
 
-      const result = await pool.query(`
-        SELECT p.id,
+      // 支援一次過揀多款（預設 1，上限 20）
+      const limit = Math.min(20, Math.max(1, parseInt(req.query.limit) || 1));
+      // 預設唔計冇貨嘅產品（?includeOutOfStock=1 先會包）
+      const includeOutOfStock = req.query.includeOutOfStock === '1';
+
+      const result = await pool.query(
+        `SELECT p.id,
                COALESCE(p.name_zh_hk, p.name) as name,
                COALESCE(NULLIF(p.description_zh_hk, ''), NULLIF(p.description, '')) as description,
                COALESCE(pc.name_zh_hk, pc.name, c.name_zh_hk, c.name) as category_name,
@@ -98,6 +103,7 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
         WHERE p.status = 'active'
           AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
           AND ap.product_id IS NULL
+          ${includeOutOfStock ? '' : 'AND COALESCE(s.total_stock, 0) > 0'}
         ORDER BY
           -- 最新上架優先（7 日內）
           CASE WHEN p.created_at > NOW() - INTERVAL '7 days' THEN 0 ELSE 1 END,
@@ -107,45 +113,41 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
           COALESCE(s.total_stock, 0) DESC,
           -- 最後按 created_at DESC（新嘅先寫）
           p.created_at DESC
-        LIMIT 1
-      `);
+        LIMIT $1`,
+        [limit]
+      );
 
-      if (!result.rows[0]) {
+      if (!result.rows.length) {
         return res.status(404).json({ error: 'No unwritten products available' });
       }
 
-      const product = result.rows[0];
-      // 頂層 storefront slug 推導：產品直接 category_slug 多數係子分類，要經 storefront_category_map 推導
-      // 但 /pick 係 internal，唔使 100% 準確 — 我哋直接用產品嘅 mzakka 頂層分類名對應返 storefront slug
-      let topSlug = null;
-      if (product.category_slug) {
-        const s = String(product.category_slug);
-        const m = s.match(/^sf-([a-z]+)-/);
-        if (m) {
-          topSlug = 'storefront-' + m[1];
-        } else if (s.startsWith('storefront-')) {
-          topSlug = s;
+      // 批量模式：回傳 array
+      const products = result.rows.map(product => {
+        let topSlug = null;
+        if (product.category_slug) {
+          const s = String(product.category_slug);
+          const m = s.match(/^sf-([a-z]+)-/);
+          if (m) {
+            topSlug = 'storefront-' + m[1];
+          } else if (s.startsWith('storefront-')) {
+            topSlug = s;
+          }
         }
-        // mzakka-cat-real-XXXX → 要靠名 mapping
-      }
-      // 由 category_name 推導（日文→storefront slug）
-      if (!topSlug && product.category_name) {
-        const cn = String(product.category_name);
-        if (/潤滑|ローション|清洁|清潔/i.test(cn)) topSlug = 'storefront-lotion';
-        else if (/オナホ|飛機|名器/i.test(cn)) topSlug = 'storefront-onahole';
-        else if (/バイブ|震動|按摩/i.test(cn)) topSlug = 'storefront-vibrators';
-        else if (/コンドーム|安全套|避孕套/i.test(cn)) topSlug = 'storefront-condom';
-        else if (/SM|緊縛|捆綁/i.test(cn)) topSlug = 'storefront-sm';
-        else if (/アナル|後庭/i.test(cn)) topSlug = 'storefront-anal';
-        else if (/下着|內衣|ランジェリー/i.test(cn)) topSlug = 'storefront-lingerie';
-        else if (/ディルド|仿真/i.test(cn)) topSlug = 'storefront-dildos';
-        else if (/ダッチ|娃娃|抱枕/i.test(cn)) topSlug = 'storefront-dolls';
-        else if (/ケア|護理|保健/i.test(cn)) topSlug = 'storefront-care';
-        else topSlug = 'storefront-misc';
-      }
-
-      res.json({
-        product: {
+        if (!topSlug && product.category_name) {
+          const cn = String(product.category_name);
+          if (/潤滑|ローション|清洁|清潔/i.test(cn)) topSlug = 'storefront-lotion';
+          else if (/オナホ|飛機|名器/i.test(cn)) topSlug = 'storefront-onahole';
+          else if (/バイブ|震動|按摩/i.test(cn)) topSlug = 'storefront-vibrators';
+          else if (/コンドーム|安全套|避孕套/i.test(cn)) topSlug = 'storefront-condom';
+          else if (/SM|緊縛|捆綁/i.test(cn)) topSlug = 'storefront-sm';
+          else if (/アナル|後庭/i.test(cn)) topSlug = 'storefront-anal';
+          else if (/下着|內衣|ランジェリー/i.test(cn)) topSlug = 'storefront-lingerie';
+          else if (/ディルド|仿真/i.test(cn)) topSlug = 'storefront-dildos';
+          else if (/ダッチ|娃娃|抱枕/i.test(cn)) topSlug = 'storefront-dolls';
+          else if (/ケア|護理|保健/i.test(cn)) topSlug = 'storefront-care';
+          else topSlug = 'storefront-misc';
+        }
+        return {
           id: product.id,
           name: product.name,
           description: product.description || '',
@@ -158,8 +160,14 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
           stock: product.stock,
           imageUrl: product.image_url,
           createdAt: product.created_at,
-        },
+        };
       });
+
+      // 向後兼容：limit=1 時返回單個 product object，否則返回 array
+      if (limit === 1) {
+        return res.json({ product: products[0] });
+      }
+      res.json({ products, count: products.length });
     } catch (e) {
       console.error('daily-article pick error:', e);
       res.status(500).json({ error: e.message });
@@ -188,20 +196,13 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
         return res.status(400).json({ error: 'Missing required fields: productId, title, slug, content' });
       }
 
-      // 處理 image：如果有 base64 → save 去 public/assets/guide/daily/
+      // 處理 image：
+      // - 如果傳咗 imageUrl（外部 URL，例如產品圖）→ 直接用
+      // - 如果傳咗 imageBase64 → Vercel serverless 唔俾寫 public/，會失敗。改用產品圖或者唔要圖
+      // 註：將來要支援 AI 生成圖，要整合 Vercel Blob（而家冇）
       let finalImageUrl = imageUrl || null;
       if (imageBase64) {
-        const mime = imageMimeType || 'image/png';
-        const ext = mime.includes('jpeg') || mime.includes('jpg') ? 'jpg' : 'png';
-        const dir = path.join(__dirname, '..', 'public', 'assets', 'guide', 'daily');
-        fs.mkdirSync(dir, { recursive: true });
-        const hash = crypto.createHash('sha1').update(slug + Date.now()).digest('hex').slice(0, 8);
-        const filename = `${slug}-${hash}.${ext}`;
-        const filePath = path.join(dir, filename);
-        const buf = Buffer.from(imageBase64, 'base64');
-        fs.writeFileSync(filePath, buf);
-        finalImageUrl = `/assets/guide/daily/${filename}`;
-        console.log(`daily-article: saved image ${filePath} (${buf.length} bytes)`);
+        console.warn('daily-article: imageBase64 received but Vercel serverless cannot write to public/, ignoring. Use imageUrl instead.');
       }
 
       // Insert blog_posts（upsert on slug）
@@ -212,7 +213,7 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
            title = EXCLUDED.title,
            content = EXCLUDED.content,
            excerpt = EXCLUDED.excerpt,
-           featured_image = EXCLUDED.featured_image,
+           featured_image = COALESCE(EXCLUDED.featured_image, blog_posts.featured_image),
            status = EXCLUDED.status,
            meta_title = EXCLUDED.meta_title,
            meta_description = EXCLUDED.meta_description,
