@@ -526,6 +526,25 @@ module.exports = function(app, pool) {
     }
   });
 
+  // Admin: get single blog post (full content, for editing drafts)
+  app.get('/api/admin/blog/posts/:id', requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await pool.query(
+        `SELECT id, title, slug, content, excerpt, featured_image, status, publish_at, meta_title, meta_description, created_at, updated_at
+         FROM blog_posts WHERE id = $1`,
+        [id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: '文章不存在' });
+      }
+      res.json({ post: result.rows[0] });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: '服務器錯誤' });
+    }
+  });
+
   app.put('/api/admin/blog/posts/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;

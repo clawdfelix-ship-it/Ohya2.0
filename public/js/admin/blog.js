@@ -161,18 +161,13 @@
   async function editPost(row) {
     setError('');
     fillSummary(row);
-    // 列表 endpoint 唔包內容，published 文可以用公開 endpoint 補齊
-    if (row.status === 'published' && row.slug) {
-      try {
-        const data = await adminApiRequest('/api/blog/posts/' + encodeURIComponent(row.slug));
-        if (data && data.post) fillFull(data.post);
-      } catch (e) {
-        setError('未能載入文章完整內容：' + (e && e.message ? e.message : String(e)) +
-          '\n喺未載入內容嘅情況下儲存會覆蓋原有內文。');
-      }
-    } else {
-      setError('草稿／封存文章嘅後端列表冇提供內文，且冇管理員單篇端點可用；' +
-        '直接儲存會以目前表單內容覆蓋原有內文。');
+    // 列表 endpoint 唔包內容；而家有管理員單篇 endpoint，任何狀態都可以攞全文
+    try {
+      const data = await adminApiRequest('/api/admin/blog/posts/' + encodeURIComponent(String(row.id)));
+      if (data && data.post) fillFull(data.post);
+    } catch (e) {
+      setError('未能載入文章完整內容：' + (e && e.message ? e.message : String(e)) +
+        '\n喺未載入內容嘅情況下儲存會覆蓋原有內文。');
     }
     openModal(false);
   }
