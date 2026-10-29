@@ -177,6 +177,55 @@
     return status || '';
   }
 
+  function buildListSwitch(post) {
+    const isPublished = post.status === 'published';
+    const isArchived = post.status === 'archived';
+    const btn = el('button', {
+      type: 'button',
+      role: 'switch',
+      'aria-checked': isPublished ? 'true' : 'false',
+      'aria-label': '切換發佈狀態',
+      class: 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ' +
+        (isArchived ? 'bg-gray-200 cursor-not-allowed opacity-50' : isPublished ? 'bg-blue-600' : 'bg-gray-300'),
+      onclick: async () => {
+        if (isArchived || btn.disabled) return;
+        const newStatus = post.status === 'published' ? 'draft' : 'published';
+        btn.disabled = true;
+        try {
+          const endpoint = '/api/admin/blog/posts/' + encodeURIComponent(String(post.id));
+          // PUT 會更新整篇文章；先攞全文再改狀態，避免清空內文或其他欄位。
+          const data = await adminApiRequest(endpoint);
+          const fullPost = data && data.post;
+          if (!fullPost) throw new Error('未能載入文章內容');
+          await adminApiRequest(endpoint, {
+            method: 'PUT',
+            json: {
+              title: fullPost.title,
+              slug: fullPost.slug,
+              content: fullPost.content,
+              excerpt: fullPost.excerpt,
+              featured_image: fullPost.featured_image,
+              status: newStatus,
+              publish_at: fullPost.publish_at,
+              meta_title: fullPost.meta_title,
+              meta_description: fullPost.meta_description,
+            },
+          });
+          await loadPosts();
+        } catch (e) {
+          btn.disabled = false;
+          setError(e && e.message ? e.message : String(e));
+        }
+      },
+    });
+    const knob = el('span', {
+      class: 'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ' +
+        (isPublished ? 'translate-x-4' : 'translate-x-0.5'),
+    });
+    btn.appendChild(knob);
+    return btn;
+  }
+
   async function editPost(row) {
     setError('');
     fillSummary(row);
@@ -225,7 +274,7 @@
         els.tbody.appendChild(el('tr', {}, [
           el('td', { text: p.title || '' }),
           el('td', { text: p.slug || '' }),
-          el('td', { text: statusLabel(p.status) }),
+          el('td', {}, [buildListSwitch(p), el('span', { text: ' ' + statusLabel(p.status), class: 'ml-1 text-xs' })]),
           el('td', { text: p.publish_at ? isoToLocalInput(p.publish_at).replace('T', ' ') : '—' }),
           el('td', {}, [editBtn, el('span', { text: ' ' }), delBtn]),
         ]));
