@@ -21,6 +21,9 @@
     slugGen: $('#bl-slug-gen'),
     featuredImage: $('#bl-featured-image'),
     status: $('#bl-status'),
+    statusSwitch: $('#bl-status-switch'),
+    statusKnob: $('#bl-status-knob'),
+    statusLabel: $('#bl-status-label'),
     publishAt: $('#bl-publish-at'),
     metaTitle: $('#bl-meta-title'),
     excerpt: $('#bl-excerpt'),
@@ -101,6 +104,22 @@
       .slice(0, 255);
   }
 
+  function setStatus(status) {
+    const value = STATUSES.indexOf(status) >= 0 ? status : 'draft';
+    if (els.status) els.status.value = value;
+    const published = value === 'published';
+    if (els.statusSwitch) {
+      els.statusSwitch.setAttribute('aria-checked', published ? 'true' : 'false');
+      els.statusSwitch.classList.toggle('bg-blue-600', published);
+      els.statusSwitch.classList.toggle('bg-gray-300', !published);
+    }
+    if (els.statusKnob) {
+      els.statusKnob.classList.toggle('translate-x-5', published);
+      els.statusKnob.classList.toggle('translate-x-0.5', !published);
+    }
+    if (els.statusLabel) els.statusLabel.textContent = statusLabel(value);
+  }
+
   function clearForm() {
     const fields = [
       els.id, els.title, els.slug, els.featuredImage, els.publishAt,
@@ -109,7 +128,7 @@
     for (const f of fields) {
       if (f) f.value = '';
     }
-    if (els.status) els.status.value = 'draft';
+    setStatus('draft');
   }
 
   function readForm() {
@@ -135,7 +154,7 @@
     if (els.title) els.title.value = row && row.title ? String(row.title) : '';
     if (els.slug) els.slug.value = row && row.slug ? String(row.slug) : '';
     if (els.featuredImage) els.featuredImage.value = row && row.featured_image ? String(row.featured_image) : '';
-    if (els.status) els.status.value = row && STATUSES.indexOf(row.status) >= 0 ? row.status : 'draft';
+    setStatus(row && STATUSES.indexOf(row.status) >= 0 ? row.status : 'draft');
     if (els.publishAt) els.publishAt.value = isoToLocalInput(row ? row.publish_at : '');
     if (els.metaTitle) els.metaTitle.value = '';
     if (els.excerpt) els.excerpt.value = '';
@@ -282,6 +301,11 @@
   if (els.filter) els.filter.addEventListener('change', () => {
     currentPage = 1;
     loadPosts().catch((e) => setError(e.message));
+  });
+  if (els.statusSwitch) els.statusSwitch.addEventListener('click', () => {
+    const current = els.status ? els.status.value : 'draft';
+    if (current === 'archived') return;
+    setStatus(current === 'published' ? 'draft' : 'published');
   });
   if (els.slugGen) els.slugGen.addEventListener('click', () => {
     if (!els.slug || !els.title) return;

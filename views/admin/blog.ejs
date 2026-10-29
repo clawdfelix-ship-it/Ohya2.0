@@ -22,14 +22,18 @@
             <button id="bl-slug-gen" class="admin-btn-secondary" type="button">由標題產生</button>
           </div>
           <input id="bl-featured-image" class="admin-input col-span-2" placeholder="封面圖片網址" />
-          <label class="text-sm">
-            <div class="mb-1">狀態</div>
-            <select id="bl-status" class="admin-input">
-              <option value="draft">草稿（draft）</option>
-              <option value="published">已發佈（published）</option>
-              <option value="archived">已封存（archived）</option>
-            </select>
-          </label>
+          <div class="text-sm">
+            <div class="mb-1">發佈狀態</div>
+            <div class="flex h-[42px] items-center gap-3">
+              <input id="bl-status" type="hidden" value="draft" />
+              <button id="bl-status-switch" type="button" role="switch" aria-checked="false"
+                aria-label="切換發佈狀態"
+                class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                <span id="bl-status-knob" class="inline-block h-5 w-5 translate-x-0.5 transform rounded-full bg-white shadow transition-transform"></span>
+              </button>
+              <span id="bl-status-label" class="font-medium text-gray-700">草稿</span>
+            </div>
+          </div>
           <label class="text-sm">
             <div class="mb-1">發佈時間（可留空）</div>
             <input id="bl-publish-at" type="datetime-local" class="admin-input" />
