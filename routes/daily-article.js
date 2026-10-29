@@ -75,8 +75,8 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
 
       // 支援一次過揀多款（預設 1，上限 20）
       const limit = Math.min(20, Math.max(1, parseInt(req.query.limit) || 1));
-      // 預設唔計冇貨嘅產品（?includeOutOfStock=1 先會包）
-      const includeOutOfStock = req.query.includeOutOfStock === '1';
+      // 預購模式：唔使理 stock（所有產品都係預購，10–14 日寄出）
+      // 如果特別想 filter 先有貨嘅，可以用 ?inStockOnly=1
 
       const result = await pool.query(
         `SELECT p.id,
@@ -103,7 +103,7 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
         WHERE p.status = 'active'
           AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
           AND ap.product_id IS NULL
-          ${includeOutOfStock ? '' : 'AND COALESCE(s.total_stock, 0) > 0'}
+          ${req.query.inStockOnly === '1' ? 'AND COALESCE(s.total_stock, 0) > 0' : ''}
         ORDER BY
           -- 最新上架優先（7 日內）
           CASE WHEN p.created_at > NOW() - INTERVAL '7 days' THEN 0 ELSE 1 END,
