@@ -35,6 +35,30 @@
             <p class="mb-5 text-xs text-gray-500">發佈日期：<%= new Date(post.publish_at).toLocaleDateString('zh-HK', { year: 'numeric', month: 'long', day: 'numeric' }) %></p>
           <% } %>
 
+          <% if (typeof relatedProduct !== 'undefined' && relatedProduct) { %>
+            <div class="mb-6 rounded-2xl border border-gold/40 bg-ink-800 p-4">
+              <div class="mb-3 text-xs font-semibold text-gold-light">📦 本文產品</div>
+              <a href="/product/<%= relatedProduct.id %>" class="group flex gap-4 items-center">
+                <% if (relatedProduct.image) { %>
+                  <div class="w-24 h-24 rounded-xl overflow-hidden bg-ink-900 flex-shrink-0">
+                    <img src="<%= relatedProduct.image %>" alt="<%= relatedProduct.name %>" loading="lazy" class="w-full h-full object-contain p-1 group-hover:scale-105 transition">
+                  </div>
+                <% } %>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11px] text-gold/80"><%= relatedProduct.category %></div>
+                  <div class="mt-0.5 font-bold text-white line-clamp-2 group-hover:text-gold-light transition"><%= relatedProduct.name %></div>
+                  <div class="mt-2 flex items-center gap-3">
+                    <span class="text-base font-black text-wine-light"><%= formatPrice(relatedProduct.price) %></span>
+                    <% if (relatedProduct.originalPrice && relatedProduct.originalPrice > relatedProduct.price) { %>
+                      <span class="text-xs text-gray-500 line-through"><%= formatPrice(relatedProduct.originalPrice) %></span>
+                    <% } %>
+                  </div>
+                </div>
+                <span class="text-xs text-gold-light flex-shrink-0">睇產品 →</span>
+              </a>
+            </div>
+          <% } %>
+
           <% if (post.featured_image) { %>
             <div class="mb-6 rounded-2xl overflow-hidden border border-ink-600 bg-ink-800">
               <img src="<%= post.featured_image %>" alt="<%= post.title %>" class="w-full h-auto">

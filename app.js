@@ -1402,6 +1402,7 @@ app.use(async (req, res, next) => {
           title: product.name,
           product,
           relatedProducts,
+          relatedGuides: [],
           user: res.locals.user,
           formatPrice,
           selectedCategorySlug: null,
@@ -1520,10 +1521,29 @@ app.use(async (req, res, next) => {
         product.wholesale = wsRes.rows[0] || null;
       }
 
+      // 相關指南：article_products 表搵呢個產品寫過嘅文章
+      let relatedGuides = [];
+      try {
+        const gr = await pool.query(
+          `SELECT bp.title, bp.slug, bp.excerpt, bp.featured_image, bp.publish_at
+             FROM article_products ap
+             JOIN blog_posts bp ON bp.id = ap.blog_post_id
+            WHERE ap.product_id = $1 AND bp.status = 'published'
+            ORDER BY ap.written_at DESC
+            LIMIT 4`,
+          [id]
+        );
+        relatedGuides = gr.rows;
+      } catch (e) {
+        console.warn('relatedGuides query failed:', e.message);
+        relatedGuides = [];
+      }
+
       res.render('product', {
         title: product.name,
         product,
         relatedProducts,
+        relatedGuides,
         user: res.locals.user,
         formatPrice,
         showWholesale: _seeWholesale,
@@ -1774,9 +1794,43 @@ app.use(async (req, res, next) => {
           { '@type': 'ListItem', position: 3, name: post.title, item: postUrl },
         ],
       };
+      // 文章頁：搵返對應產品（article_products 表）
+      let relatedProduct = null;
+      try {
+        const pr = await pool.query(
+          `SELECT p.id,
+                  COALESCE(p.name_zh_hk, p.name) as name,
+                  COALESCE(pc.name_zh_hk, pc.name, c.name_zh_hk, c.name) as category_name,
+                  (p.price * 100)::int as price_cents,
+                  CASE WHEN p.original_price IS NULL THEN NULL ELSE (p.original_price * 100)::int END as original_price_cents,
+                  p.image_url
+             FROM article_products ap
+             JOIN products p ON p.id = ap.product_id
+             LEFT JOIN categories c ON p.category_id = c.id
+             LEFT JOIN categories pc ON c.parent_id = pc.id
+            WHERE ap.blog_post_id = $1
+            LIMIT 1`,
+          [post.id]
+        );
+        if (pr.rows[0]) {
+          relatedProduct = {
+            id: pr.rows[0].id,
+            name: pr.rows[0].name,
+            category: pr.rows[0].category_name || '未分類',
+            price: pr.rows[0].price_cents,
+            originalPrice: pr.rows[0].original_price_cents,
+            image: pr.rows[0].image_url,
+          };
+        }
+      } catch (e) {
+        console.warn('guide-post relatedProduct query failed:', e.message);
+        relatedProduct = null;
+      }
+
       res.render('guide-post', {
         title: post.meta_title || post.title,
         post,
+        relatedProduct,
         seo: {
           title: post.meta_title || post.title,
           description: desc,
