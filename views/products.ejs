@@ -147,7 +147,7 @@
                 <% if (_discPct >= 1) { %>
                   <span class="rounded-full bg-orange-500 px-2 py-1 text-xs font-bold text-white shadow">-<%= _discPct %>%OFF</span>
                 <% } %>
-                <%# 預購模式：不追蹤庫存，不顯示缺貨/存貨徽章 %>
+                <%- include('partials/product-fulfilment', { className: 'rounded-full bg-ink-950/90 px-2 py-1' }) %>
               </div>
               <% if (product.image) { %>
                 <img src="<%= product.image %>" alt="" draggable="false" loading="lazy" decoding="async" class="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.03]">
@@ -168,6 +168,9 @@
               </div>
               <div class="mb-3 text-xs">
                 <span class="font-bold text-gold">賺 <%= pointsForDisplay(product.price) %> 積分</span>
+              </div>
+              <div class="mb-3">
+                <%- include('partials/product-fulfilment') %>
               </div>
               <div class="mt-auto flex gap-2">
                 <a href="/product/<%= product.id %>" class="flex min-h-[44px] flex-1 items-center justify-center rounded-full bg-wine px-3 text-center text-xs font-bold text-white transition hover:bg-wine active:scale-[0.98]"><%= t('product.cta.details') %></a>

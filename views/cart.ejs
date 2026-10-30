@@ -98,9 +98,12 @@
           <span class="font-bold text-green-400" id="discount-price">-HK$0</span>
         </div>
 
-        <div class="flex justify-between">
+        <div class="flex justify-between gap-3">
           <span class="text-gray-400">運費</span>
-          <span class="font-bold text-orange-600">到付（收貨時支付）</span>
+          <span class="text-right font-bold text-orange-600">
+            到付（收貨時支付）
+            <a href="/shipping" class="ml-2 text-xs font-medium text-gold-light underline underline-offset-2">送貨安排</a>
+          </span>
         </div>
         <div class="flex justify-between items-center border-t border-ink-700 pt-3">
           <span class="text-xl font-bold text-white">而家需付款</span>
@@ -425,6 +428,7 @@
           </div>
           <div class="flex-grow min-w-0">
             <a href="${detailHref}" class="font-semibold text-white hover:text-gold line-clamp-2">${escapeHtml(item.name)}</a>
+            <p class="mt-1 text-xs leading-5 text-sky-300"><span class="font-semibold">預購</span> · 10–14 日寄出</p>
             <p class="text-gold font-bold mt-1">單價 ${formatPriceValue(item.price)}</p>
           </div>
           <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t border-ink-700 pt-3 sm:pt-0 sm:border-0">
