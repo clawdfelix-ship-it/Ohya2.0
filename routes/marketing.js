@@ -471,7 +471,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin: blog posts
-  app.get('/api/admin/blog/posts', requireAdmin, async (req, res) => {
+  app.get('/api/admin/blog/posts', requirePermission('*'), async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
       const pageSize = parseInt(req.query.page_size) || 20;
@@ -527,7 +527,7 @@ module.exports = function(app, pool) {
   });
 
   // Admin: get single blog post (full content, for editing drafts)
-  app.get('/api/admin/blog/posts/:id', requireAdmin, async (req, res) => {
+  app.get('/api/admin/blog/posts/:id', requirePermission('*'), async (req, res) => {
     try {
       const { id } = req.params;
       const result = await pool.query(

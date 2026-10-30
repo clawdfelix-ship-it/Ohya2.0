@@ -11,5 +11,5 @@ test('admin pages are guarded by permission keys', () => {
   assert.match(s, /requireAdminPage\('catalog:read'\)/);
   assert.match(s, /requireAdminPage\('orders:read'\)/);
   assert.match(s, /requireAdminPage\('refunds:read'\)/);
+  assert.match(s, /\/admin\/blog',\s*requireAdminPage\('\*'\)/);
 });
-

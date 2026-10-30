@@ -7,5 +7,5 @@ test('admin layout hides links based on session adminPermissions', () => {
   const s = fs.readFileSync(path.join(__dirname, '..', 'views', 'admin', 'layout.ejs'), 'utf8');
   assert.match(s, /adminPermissions/);
   assert.match(s, /hasPerm/);
+  assert.match(s, /\{ key: 'blog', href: '\/admin\/blog', label: '網誌', perm: '\*' \}/);
 });
-

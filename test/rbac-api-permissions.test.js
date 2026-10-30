@@ -62,6 +62,12 @@ test('marketing write endpoints are restricted to super-admin permission', () =>
   assert.match(s, /\/api\/admin\/blog\/posts'\s*,\s*requirePermission\('\*'\)/);
 });
 
+test('marketing blog read endpoints are also restricted to super-admin permission', () => {
+  const s = read('routes/marketing.js');
+  assert.match(s, /\/api\/admin\/blog\/posts'\s*,\s*requirePermission\('\*'\)/);
+  assert.match(s, /\/api\/admin\/blog\/posts\/:id'\s*,\s*requirePermission\('\*'\)/);
+});
+
 test('shipping and payment write endpoints are restricted to super-admin permission', () => {
   const s = read('routes/shipping.js');
   assert.match(s, /\/api\/admin\/shipping\/methods'\s*,\s*requirePermission\('\*'\)/);

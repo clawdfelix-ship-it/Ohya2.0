@@ -231,7 +231,7 @@ function register(app, pool) {
   app.get('/admin/abandoned-carts', requireAdminPage(), (req, res) => {
     res.render('admin/layout', { title: '遺棄購物車', active: 'abandoned-carts', content: 'abandoned-carts' });
   });
-  app.get('/admin/blog', requireAdminPage(), (req, res) => {
+  app.get('/admin/blog', requireAdminPage('*'), (req, res) => {
     res.render('admin/layout', { title: '網誌', active: 'blog', content: 'blog' });
   });
   // 配置線
