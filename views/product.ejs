@@ -151,7 +151,7 @@
           </ul>
           
           <% if (productInfoSection || narrativeSections.length || fallbackDescription) { %>
-            <div class="border-t border-b py-4 mb-6 space-y-4">
+            <div data-product-narrative class="order-2 border-t border-b py-4 mb-6 space-y-4 lg:order-none">
               <% if (productInfoSection) { %>
                 <section>
                   <h3 class="font-bold text-white mb-3 jpn-bracket">商品情報</h3>
@@ -187,7 +187,7 @@
           <% } %>
           
           <!-- 購買區 -->
-          <div class="mt-auto space-y-4">
+          <div data-purchase-controls class="order-1 mt-auto space-y-4 lg:order-none">
             <div class="flex items-center gap-4">
               <label class="text-gray-300 font-medium text-sm" for="quantity">數量：</label>
               <div class="flex items-center rounded-full border border-gray-600 bg-ink-850">
@@ -200,9 +200,6 @@
             <div class="flex gap-3">
               <button type="button" id="detail-add-cart" onclick="addToCart()" class="flex flex-1 min-h-[56px] items-center justify-center gap-2 rounded-full bg-wine px-6 text-lg font-bold text-white transition hover:bg-wine active:scale-[0.98]">
                 🛒 加入購物車
-              </button>
-              <button type="button" aria-label="收藏商品" class="flex h-[56px] w-[56px] items-center justify-center rounded-full bg-ink-700 text-lg transition hover:bg-ink-500 active:scale-95">
-                ❤️
               </button>
             </div>
             

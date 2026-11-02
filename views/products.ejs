@@ -67,6 +67,7 @@
     <%- include('partials/category-mobile-drawer') %>
 
     <%# Facet 篩選：價格區間 + 現貨 %>
+    <% const facetClearUrl = buildFacetClearUrl({ category: selectedCategorySlug, q, sort }); %>
     <form class="mb-6 rounded-2xl border border-ink-600 bg-ink-850 p-4 shadow-sm" data-facet-form>
       <div class="flex flex-wrap items-end gap-4">
         <div class="flex flex-col gap-3">
@@ -94,13 +95,13 @@
             </div>
           </div>
         </div>
-        <label class="flex items-center gap-2 pb-2 text-sm text-gray-300">
+        <label class="flex min-h-[44px] items-center gap-2 text-sm text-gray-300">
           <input type="checkbox" name="in_stock" value="1" <%= inStockOnly ? 'checked' : '' %> class="h-4 w-4 accent-wine">
           只睇有現貨
         </label>
         <div class="flex items-center gap-2 pb-1">
           <button type="submit" class="rounded-full bg-wine px-5 py-2 text-sm font-bold text-white transition hover:bg-wine-light active:scale-[0.98]">套用篩選</button>
-          <a href="/products?page=1" class="rounded-full border border-ink-500 px-4 py-2 text-sm text-gray-400 hover:text-gold-light">清除</a>
+          <a href="<%= facetClearUrl %>" class="rounded-full border border-ink-500 px-4 py-2 text-sm text-gray-400 hover:text-gold-light">清除</a>
         </div>
         <% if (minPrice != null || maxPrice != null || inStockOnly) { %>
           <div class="pb-2 text-xs text-gray-500">已套用篩選</div>

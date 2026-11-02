@@ -574,6 +574,7 @@ function getPaymentInfo() {
 
 // Make image proxy utility available to templates
 app.locals.toProxyUrl = toProxyUrl;
+app.locals.buildFacetClearUrl = require('./utils/productFilters').buildFacetClearUrl;
 
 const categoriesCache = { at: 0, value: null };
 const categoriesCacheTtlMs = 30 * 1000;
