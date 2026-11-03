@@ -9,6 +9,7 @@
   <%- include('partials/theme-head') %>
   <link rel="stylesheet" href="/css/mzakka-theme.css">
   <link rel="stylesheet" href="/css/interactions.css">
+  <link rel="stylesheet" href="/css/guide-content.css">
   <meta name="csrf-token" content="<%= csrfToken || '' %>">
 </head>
 <body class="mz-body min-h-screen text-gray-200" data-logged-in="<%= user ? '1' : '0' %>">
@@ -65,8 +66,8 @@
             </div>
           <% } %>
 
-          <div class="info-card rounded-2xl border border-ink-600 bg-ink-850 p-5 sm:p-8 text-[15px] leading-relaxed text-gray-200 shadow-card">
-            <%- post.content %>
+          <div class="guide-content info-card rounded-2xl border border-ink-600 bg-ink-850 p-5 sm:p-8 text-[15px] leading-relaxed text-gray-200 shadow-card">
+            <%- renderGuideContent(post.content) %>
           </div>
 
           <div class="mt-6 rounded-2xl border border-ink-600 bg-ink-850 p-5">

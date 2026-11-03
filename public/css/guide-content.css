@@ -1,0 +1,69 @@
+/* Long-form guide typography. Scope all rules to avoid Tailwind preflight resets. */
+.guide-content {
+  color: #d1d5db;
+  font-size: 16px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+
+.guide-content > :first-child { margin-top: 0; }
+.guide-content > :last-child { margin-bottom: 0; }
+.guide-content p { margin: 0 0 1.25em; }
+.guide-content h1,
+.guide-content h2,
+.guide-content h3,
+.guide-content h4 {
+  color: #fff;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.guide-content h1 { margin: 1.75em 0 .75em; font-size: 1.5rem; }
+.guide-content h2 { margin: 2em 0 .75em; font-size: 1.375rem; }
+.guide-content h3 { margin: 1.75em 0 .625em; font-size: 1.125rem; }
+.guide-content h4 { margin: 1.5em 0 .5em; font-size: 1rem; }
+.guide-content strong { color: #f3f4f6; font-weight: 700; }
+.guide-content a {
+  color: #e0c084;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+  overflow-wrap: anywhere;
+}
+.guide-content a:hover { color: #f3d69f; }
+.guide-content ul,
+.guide-content ol { margin: 0 0 1.5em; padding-left: 1.5rem; }
+.guide-content ul { list-style: disc; }
+.guide-content ol { list-style: decimal; }
+.guide-content li { margin: .45em 0; padding-left: .25rem; }
+.guide-content li::marker { color: #c8a45d; }
+.guide-content blockquote {
+  margin: 1.5em 0;
+  padding: .75rem 1rem;
+  border-left: 3px solid #c8a45d;
+  background: #16161d;
+  color: #d1d5db;
+}
+.guide-content table {
+  display: block;
+  width: 100%;
+  margin: 1.5em 0;
+  border-collapse: collapse;
+  overflow-x: auto;
+  font-size: .9375rem;
+}
+.guide-content th,
+.guide-content td {
+  padding: .75rem;
+  border: 1px solid #3a3a47;
+  text-align: left;
+  vertical-align: top;
+}
+.guide-content th { color: #fff; background: #1e1e27; font-weight: 700; }
+.guide-content img { max-width: 100%; height: auto; margin: 1.5em auto; }
+.guide-content hr { margin: 2em 0; border-color: #3a3a47; }
+
+@media (min-width: 640px) {
+  .guide-content { font-size: 17px; }
+  .guide-content h2 { font-size: 1.5rem; }
+  .guide-content h3 { font-size: 1.25rem; }
+}
