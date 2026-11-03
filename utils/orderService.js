@@ -12,6 +12,7 @@
  */
 
 const sm = require('./orderStateMachine');
+const { writeOrderStatusAudit } = require('./orderStatusAudit');
 
 /** 建立包裹喺一個 client/transaction 內嘅 order service。傳 pg Pool 或 Client 均可。 */
 function createOrderService(db) {
@@ -24,12 +25,13 @@ function createOrderService(db) {
   }
 
   async function writeHistory(orderId, fromStatus, toStatus, note, processedBy) {
-    await db.query(
-      `INSERT INTO order_status_history
-         (order_id, from_status, to_status, note, processed_by, created_at)
-       VALUES ($1,$2,$3,$4,$5,NOW())`,
-      [orderId, fromStatus, toStatus, note || null, processedBy || null]
-    );
+    await writeOrderStatusAudit(db, {
+      orderId,
+      fromStatus,
+      toStatus,
+      note: note || null,
+      processedBy: processedBy || null,
+    });
   }
 
   /** 內部：依新子狀態重算並持久化 order.status，必要時寫 history。 */

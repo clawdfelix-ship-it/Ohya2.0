@@ -1,6 +1,7 @@
 module.exports = function (app, pool) {
   const { requirePermission } = require('./middleware/auth');
   const { computePaymentStatusAfterRefund } = require('../utils/refundsLogic');
+  const { writeOrderStatusAudit } = require('../utils/orderStatusAudit');
 
   app.get('/api/admin/refunds', requirePermission('refunds:read'), async (req, res) => {
     try {
@@ -46,11 +47,12 @@ module.exports = function (app, pool) {
         [order_id, reason, amount, type]
       );
 
-      await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, 'refund_requested', $2, $3)`,
-        [order_id, `退款申請：${type} ${amount}`, req.user.id]
-      );
+      await writeOrderStatusAudit(pool, {
+        orderId: order_id,
+        toStatus: 'refund_requested',
+        note: `退款申請：${type} ${amount}`,
+        processedBy: req.user.id,
+      });
 
       res.json({ success: true, refund: out.rows[0] });
     } catch (err) {
@@ -71,11 +73,12 @@ module.exports = function (app, pool) {
       );
       if (r.rows.length === 0) return res.status(404).json({ error: '退款單不存在' });
 
-      await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, 'refund_approved', $2, $3)`,
-        [r.rows[0].order_id, `退款已批准：${r.rows[0].amount}`, req.user.id]
-      );
+      await writeOrderStatusAudit(pool, {
+        orderId: r.rows[0].order_id,
+        toStatus: 'refund_approved',
+        note: `退款已批准：${r.rows[0].amount}`,
+        processedBy: req.user.id,
+      });
 
       res.json({ success: true, refund: r.rows[0] });
     } catch (err) {
@@ -98,11 +101,12 @@ module.exports = function (app, pool) {
       );
       if (r.rows.length === 0) return res.status(404).json({ error: '退款單不存在' });
 
-      await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, 'refund_rejected', $2, $3)`,
-        [r.rows[0].order_id, `退款被拒絕：${note}`, req.user.id]
-      );
+      await writeOrderStatusAudit(pool, {
+        orderId: r.rows[0].order_id,
+        toStatus: 'refund_rejected',
+        note: `退款被拒絕：${note}`,
+        processedBy: req.user.id,
+      });
 
       res.json({ success: true, refund: r.rows[0] });
     } catch (err) {
@@ -140,11 +144,12 @@ module.exports = function (app, pool) {
         [paymentStatus, refund.order_id]
       );
 
-      await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, 'refund_completed', $2, $3)`,
-        [refund.order_id, `退款完成：${refund.amount}（憑證：${refund_transaction_id}）`, req.user.id]
-      );
+      await writeOrderStatusAudit(pool, {
+        orderId: refund.order_id,
+        toStatus: 'refund_completed',
+        note: `退款完成：${refund.amount}（憑證：${refund_transaction_id}）`,
+        processedBy: req.user.id,
+      });
 
       res.json({ success: true });
     } catch (err) {

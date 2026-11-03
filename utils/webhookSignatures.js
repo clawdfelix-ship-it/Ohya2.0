@@ -24,5 +24,8 @@ function verifyShipanySignature({ secret, rawBody, headerValue }) {
   return timingSafeEqualHex(provided, expected);
 }
 
-module.exports = { verifyShipanySignature };
+function verifyHmacSignature({ secret, rawBody, headerValue }) {
+  return verifyShipanySignature({ secret, rawBody, headerValue });
+}
 
+module.exports = { verifyShipanySignature, verifyHmacSignature };

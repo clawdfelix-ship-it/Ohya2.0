@@ -298,7 +298,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
       }
 
       const order = orderCheck.rows[0];
-      if (!['pending', 'paid'].includes(order.status)) {
+      if (order.status !== 'pending' || order.payment_status === 'paid') {
         return res.status(400).json({ error: '此訂單無法取消' });
       }
 
@@ -308,11 +308,14 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         await client.query('BEGIN');
 
         // 預購模式：取消訂單不退還庫存
-        // Update order status
-        await client.query('UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2', ['cancelled', id]);
+        const svc = createOrderService(client);
+        const derived = await svc.cancelOrder(id, {
+          note: '買家自行取消訂單',
+          processedBy: userId,
+        });
 
         await client.query('COMMIT');
-        res.json({ success: true });
+        res.json({ success: true, status: derived });
       } catch (txErr) {
         await client.query('ROLLBACK');
         throw txErr;

@@ -19,3 +19,14 @@ test('verifyShipanySignature: rejects invalid signature', () => {
   );
 });
 
+test('verifyHmacSignature: accepts prefixed sha256 signatures', () => {
+  const { verifyHmacSignature } = require('../utils/webhookSignatures');
+  const secret = 'pay-secret';
+  const rawBody = Buffer.from('{"order":"A100"}', 'utf8');
+  const sig = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+
+  assert.equal(
+    verifyHmacSignature({ secret, rawBody, headerValue: `sha256=${sig}` }),
+    true
+  );
+});

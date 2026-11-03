@@ -9,8 +9,9 @@ module.exports = function(app, pool) {
   const requireAuth = require('./middleware/auth').requireAuth;
   const requireAdmin = require('./middleware/auth').requireAdmin;
   const { requirePermission } = require('./middleware/auth');
-  const { verifyShipanySignature } = require('../utils/webhookSignatures');
+  const { verifyShipanySignature, verifyHmacSignature } = require('../utils/webhookSignatures');
   const { parseAllowedIps, extractClientIp, isIpAllowed } = require('../utils/ipAllowlist');
+  const { writeOrderStatusAudit } = require('../utils/orderStatusAudit');
 
   // ===========================================
   // Returns & Refunds (After-sales)
@@ -141,11 +142,12 @@ module.exports = function(app, pool) {
         return res.status(404).json({ error: '售後單不存在' });
       }
 
-      await pool.query(
-        `INSERT INTO order_status_histories (order_id, status, notes, created_by)
-         VALUES ($1, $2, $3, $4)`,
-        [updateResult.rows[0].order_id, `return_${status}`, admin_note || null, req.user.id]
-      );
+      await writeOrderStatusAudit(pool, {
+        orderId: updateResult.rows[0].order_id,
+        toStatus: `return_${status}`,
+        note: admin_note || null,
+        processedBy: req.user.id,
+      });
 
       res.json({ success: true });
     } catch (err) {
@@ -619,10 +621,12 @@ module.exports = function(app, pool) {
               );
 
               // Save to order history
-              await pool.query(`
-                INSERT INTO order_status_histories (order_id, status, notes, created_by)
-                VALUES ($1, 'shipping', $2, $3)
-              `, [order_id, `ShipAny 標籤已生成：${trackingNumber}`, req.user.id]);
+              await writeOrderStatusAudit(pool, {
+                orderId: order_id,
+                toStatus: 'shipping',
+                note: `ShipAny 標籤已生成：${trackingNumber}`,
+                processedBy: req.user.id,
+              });
 
               res.json({
                 success: true,
@@ -878,15 +882,67 @@ module.exports = function(app, pool) {
     `, [orderId, payment_method_code, transaction_id, amount, status, raw ? JSON.stringify(raw) : null]);
   }
 
+  function getHeaderValue(req, names) {
+    const headers = (req && req.headers) || {};
+    for (const name of names) {
+      const value = headers[name];
+      if (value) return value;
+    }
+    return '';
+  }
+
+  function verifyPaymentWebhook(req, res, { secretEnvKey, headerNames, invalidResponse, missingResponse }) {
+    const secret = process.env[secretEnvKey];
+    if (!secret) {
+      if (typeof missingResponse === 'function') {
+        missingResponse();
+      } else {
+        res.status(503).json({ success: false, error: 'Webhook secret not configured' });
+      }
+      return false;
+    }
+    if (!Buffer.isBuffer(req.rawBody)) {
+      res.status(400).json({ success: false, error: 'Raw body unavailable' });
+      return false;
+    }
+    const signature = getHeaderValue(req, [
+      ...headerNames,
+      'x-webhook-signature',
+      'x-signature',
+    ]);
+    const ok = verifyHmacSignature({ secret, rawBody: req.rawBody, headerValue: signature });
+    if (ok) return true;
+    if (typeof invalidResponse === 'function') {
+      invalidResponse();
+    } else {
+      res.status(403).json({ success: false, error: 'Invalid signature' });
+    }
+    return false;
+  }
+
   // FPS / PayMe webhook
   app.post('/webhooks/fps-payme', async (req, res) => {
     try {
+      if (!verifyPaymentWebhook(req, res, {
+        secretEnvKey: 'FPS_PAYME_WEBHOOK_SECRET',
+        headerNames: ['x-fps-payme-signature', 'x-payme-signature', 'x-fps-signature'],
+      })) {
+        return;
+      }
       const { transaction_id, order_id, amount, status } = req.body;
+      const nextPaymentStatus = status === 'success' ? 'paid' : 'failed';
 
       // Update order payment status
-      await pool.query(
-        'UPDATE orders SET payment_status = $1, payment_transaction_id = $2, paid_at = NOW() WHERE id = $3',
-        [status === 'success' ? 'paid' : 'failed', transaction_id, order_id]
+      const orderUpdate = await pool.query(
+        `UPDATE orders
+         SET payment_status = $1,
+             payment_transaction_id = $2,
+             paid_at = CASE WHEN $1 = 'paid' THEN COALESCE(paid_at, NOW()) ELSE paid_at END,
+             status = CASE WHEN $1 = 'paid' AND status = 'pending' THEN 'paid' ELSE status END,
+             updated_at = NOW()
+         WHERE id = $3
+         RETURNING id`,
+        [nextPaymentStatus, transaction_id, order_id]
       );
 
       await upsertPaymentTransaction(pool, {
@@ -898,11 +954,12 @@ module.exports = function(app, pool) {
         raw: req.body,
       });
 
-      if (status === 'success') {
-        await pool.query(`
-          INSERT INTO order_status_histories (order_id, status, notes)
-          VALUES ($1, 'paid', $2)
-        `, [order_id, 'FPS/PayMe 付款成功']);
+      if (status === 'success' && orderUpdate.rows.length > 0) {
+        await writeOrderStatusAudit(pool, {
+          orderId: order_id,
+          toStatus: 'paid',
+          note: 'FPS/PayMe 付款成功',
+        });
       }
 
       res.json({ success: true });
@@ -915,20 +972,30 @@ module.exports = function(app, pool) {
   // AlipayHK webhook
   app.post('/webhooks/alipayhk', async (req, res) => {
     try {
+      if (!verifyPaymentWebhook(req, res, {
+        secretEnvKey: 'ALIPAYHK_WEBHOOK_SECRET',
+        headerNames: ['x-alipayhk-signature', 'x-alipay-signature'],
+      })) {
+        return;
+      }
       const { out_trade_no, trade_no, trade_status } = req.body;
 
       // AlipayHK: trade_status = TRADE_SUCCESS means paid
       if (trade_status === 'TRADE_SUCCESS') {
-        await pool.query(
-          'UPDATE orders SET payment_status = $1, payment_transaction_id = $2, paid_at = NOW() WHERE order_number = $3',
-          ['paid', trade_no, out_trade_no]
+        const orderResult = await pool.query(
+          `UPDATE orders
+           SET payment_status = 'paid',
+               payment_transaction_id = $1,
+               paid_at = COALESCE(paid_at, NOW()),
+               status = CASE WHEN status = 'pending' THEN 'paid' ELSE status END,
+               updated_at = NOW()
+           WHERE order_number = $2
+           RETURNING id, total_amount`,
+          [trade_no, out_trade_no]
         );
-
-        const orderResult = await pool.query('SELECT id FROM orders WHERE order_number = $1', [out_trade_no]);
         if (orderResult.rows.length > 0) {
           const orderId = orderResult.rows[0].id;
-          const amountResult = await pool.query('SELECT total_amount FROM orders WHERE id = $1', [orderId]);
-          const amount = amountResult.rows.length > 0 ? amountResult.rows[0].total_amount : null;
+          const amount = orderResult.rows[0].total_amount || null;
 
           await upsertPaymentTransaction(pool, {
             orderId,
@@ -939,10 +1006,11 @@ module.exports = function(app, pool) {
             raw: req.body,
           });
 
-          await pool.query(`
-            INSERT INTO order_status_histories (order_id, status, notes)
-            VALUES ($1, 'paid', $2)
-          `, [orderId, 'AlipayHK 付款成功']);
+          await writeOrderStatusAudit(pool, {
+            orderId,
+            toStatus: 'paid',
+            note: 'AlipayHK 付款成功',
+          });
         }
       }
 
@@ -956,19 +1024,31 @@ module.exports = function(app, pool) {
   // WeChat Pay HK webhook
   app.post('/webhooks/wechatpay', async (req, res) => {
     try {
+      if (!verifyPaymentWebhook(req, res, {
+        secretEnvKey: 'WECHATPAY_WEBHOOK_SECRET',
+        headerNames: ['x-wechatpay-signature', 'wechatpay-signature'],
+        invalidResponse: () => res.send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[INVALID SIGNATURE]]></return_msg></xml>'),
+        missingResponse: () => res.status(503).send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[MISCONFIGURED]]></return_msg></xml>'),
+      })) {
+        return;
+      }
       const { out_trade_no, transaction_id, trade_state } = req.body;
 
       if (trade_state === 'SUCCESS') {
-        await pool.query(
-          'UPDATE orders SET payment_status = $1, payment_transaction_id = $2, paid_at = NOW() WHERE order_number = $3',
-          ['paid', transaction_id, out_trade_no]
+        const orderResult = await pool.query(
+          `UPDATE orders
+           SET payment_status = 'paid',
+               payment_transaction_id = $1,
+               paid_at = COALESCE(paid_at, NOW()),
+               status = CASE WHEN status = 'pending' THEN 'paid' ELSE status END,
+               updated_at = NOW()
+           WHERE order_number = $2
+           RETURNING id, total_amount`,
+          [transaction_id, out_trade_no]
         );
-
-        const orderResult = await pool.query('SELECT id FROM orders WHERE order_number = $1', [out_trade_no]);
         if (orderResult.rows.length > 0) {
           const orderId = orderResult.rows[0].id;
-          const amountResult = await pool.query('SELECT total_amount FROM orders WHERE id = $1', [orderId]);
-          const amount = amountResult.rows.length > 0 ? amountResult.rows[0].total_amount : null;
+          const amount = orderResult.rows[0].total_amount || null;
 
           await upsertPaymentTransaction(pool, {
             orderId,
@@ -979,10 +1059,11 @@ module.exports = function(app, pool) {
             raw: req.body,
           });
 
-          await pool.query(`
-            INSERT INTO order_status_histories (order_id, status, notes)
-            VALUES ($1, 'paid', $2)
-          `, [orderId, 'WeChat Pay HK 付款成功']);
+          await writeOrderStatusAudit(pool, {
+            orderId,
+            toStatus: 'paid',
+            note: 'WeChat Pay HK 付款成功',
+          });
         }
       }
 
