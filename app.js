@@ -27,6 +27,7 @@ const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch
 const { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
 const { normalizeCspReports } = require('./utils/security/cspReport');
 const { storeInfo } = require('./utils/storeInfo');
+const { buildProductSearchCondition, productSearchLike } = require('./utils/productSearch');
 
 let cachedSharp;
 function getSharp() {
@@ -1081,8 +1082,8 @@ app.use(async (req, res, next) => {
                    AND (1 - p.price / NULLIF(p.original_price,0)) >= 0.30`;
       }
       if (q) {
-        where += ` AND (COALESCE(p.name_zh_hk, p.name) ILIKE $${paramIndex} OR COALESCE(NULLIF(p.description_zh_hk, ''), NULLIF(p.description, '')) ILIKE $${paramIndex})`;
-        params.push(`%${q}%`);
+        where += ` AND (COALESCE(p.name_zh_hk, p.name) ILIKE $${paramIndex} OR COALESCE(NULLIF(p.description_zh_hk, ''), NULLIF(p.description, '')) ILIKE $${paramIndex} OR ${buildProductSearchCondition(paramIndex)})`;
+        params.push(productSearchLike(q));
         paramIndex++;
       }
       if (minPrice > 0) {
@@ -1271,7 +1272,7 @@ app.use(async (req, res, next) => {
       if (!connectionString || term.length < 1 || term.length > 64) {
         return res.json({ products: [], categories: [] });
       }
-      const like = `%${term.replace(/[%_]/g, m => '\\' + m)}%`;
+      const like = productSearchLike(term);
 
       const [prodRes, catRes] = await Promise.all([
         pool.query(
@@ -1282,7 +1283,7 @@ app.use(async (req, res, next) => {
            FROM products p
            WHERE p.status = 'active'
              AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
-             AND COALESCE(p.name_zh_hk, p.name) ILIKE $1
+             AND (COALESCE(p.name_zh_hk, p.name) ILIKE $1 ESCAPE '\\' OR ${buildProductSearchCondition(1)})
            ORDER BY p.id DESC
            LIMIT 8`,
           [like]

@@ -1,4 +1,5 @@
 module.exports = function(app, pool, requireAdmin) {
+  const { buildProductSearchCondition, productSearchLike } = require('../utils/productSearch');
 
   async function assertLeafSubcategory(categoryId) {
     const r = await pool.query(
@@ -33,8 +34,8 @@ module.exports = function(app, pool, requireAdmin) {
       }
 
       if (search) {
-        where += ` AND (p.name_zh_hk ILIKE $${paramIndex} OR p.description_zh_hk ILIKE $${paramIndex})`;
-        params.push(`%${search}%`);
+        where += ` AND (p.name_zh_hk ILIKE $${paramIndex} OR p.description_zh_hk ILIKE $${paramIndex} OR ${buildProductSearchCondition(paramIndex)})`;
+        params.push(productSearchLike(search));
         paramIndex++;
       }
 
