@@ -17,13 +17,12 @@ function getCsrfToken() {
   return meta ? String(meta.getAttribute('content') || '') : '';
 }
 
-async function adminApiRequest(path, { method = 'GET', json, formData } = {}) {
-  const init = { method, headers: { Accept: 'application/json' } };
+async function adminApiRequest(path, { method = 'GET', json, formData, responseType } = {}) {
+  const init = { method, credentials: 'same-origin', headers: { Accept: 'application/json' } };
   const m = String(method || 'GET').toUpperCase();
-  if (m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS') {
-    const t = getCsrfToken();
-    if (t) init.headers['X-CSRF-Token'] = t;
-  }
+  if (responseType === 'blob') init.headers.Accept = '*/*';
+  const t = getCsrfToken();
+  if (t) init.headers['X-CSRF-Token'] = t;
   if (json !== undefined) {
     init.headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(json);
@@ -34,6 +33,15 @@ async function adminApiRequest(path, { method = 'GET', json, formData } = {}) {
 
   const r = await fetch(path, init);
   const isJson = (r.headers.get('content-type') || '').includes('application/json');
+  if (r.ok && responseType === 'blob') {
+    if (isJson) {
+      const e = new Error('HTTP 200: 預期下載檔案，但伺服器回傳 JSON');
+      e.status = r.status;
+      throw e;
+    }
+    const blob = await r.blob();
+    return { blob, response: r };
+  }
   const body = isJson ? await r.json() : await r.text();
   if (!r.ok) {
     const msg = typeof body === 'string' ? body : (body && body.error ? body.error : JSON.stringify(body));

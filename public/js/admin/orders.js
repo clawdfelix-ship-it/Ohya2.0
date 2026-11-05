@@ -5,6 +5,7 @@
     q: $('#orders-q'),
     status: $('#orders-status'),
     refresh: $('#orders-refresh'),
+    export: $('#orders-export'),
     bulkShipany: $('#orders-bulk-shipany'),
     selectAll: $('#orders-select-all'),
     bulkResult: $('#orders-bulk-result'),
@@ -42,6 +43,35 @@
     const x = Number(n);
     if (Number.isNaN(x)) return String(n);
     return 'HK$ ' + x.toFixed(2);
+  }
+
+  async function downloadOrderExcel(path, button) {
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '正在匯出…';
+    setError('');
+    let downloadUrl = null;
+    try {
+      // adminApiRequest sends the session cookie and CSRF token required by
+      // the global middleware. Raw fetch GETs are rejected before the route.
+      const { blob, response } = await adminApiRequest(path, { responseType: 'blob' });
+      const disposition = response.headers.get('content-disposition') || '';
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1] || 'orders.xlsx';
+      downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showSuccess(document.getElementById('orders-toolbar') || els.tbody.parentNode, 'Excel 已匯出');
+    } catch (error) {
+      setError(error.message || '匯出 Excel 失敗，請稍後再試');
+    } finally {
+      if (downloadUrl) setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
+      button.disabled = false;
+      button.textContent = originalText;
+    }
   }
 
   const statusLabel = {
@@ -566,6 +596,10 @@
     els.detail.textContent = '';
     els.detail.appendChild(el('div', { class: 'space-y-2' }, [
       el('div', { class: 'font-bold', text: `訂單 #${order.id}` }),
+      el('button', {
+        class: 'admin-btn-secondary', type: 'button', text: '一鍵匯出 Excel',
+        onclick: (event) => downloadOrderExcel(`/api/admin/orders/${encodeURIComponent(order.id)}/export.xlsx`, event.currentTarget),
+      }),
       timelineBox,
       el('div', { text: `客戶：${order.username || ''} ${order.contact ? '(' + order.contact + ')' : ''}` }),
       el('div', { text: `金額：${money(order.total_amount)}` }),
@@ -627,6 +661,15 @@
     if (e.key === 'Escape' && els.modal && !els.modal.classList.contains('hidden')) closeModal();
   });
   els.refresh.addEventListener('click', () => loadOrders().catch((e) => setError(e.message)));
+  if (els.export) {
+    els.export.addEventListener('click', () => {
+      const params = new URLSearchParams();
+      const search = (els.q.value || '').trim();
+      if (search) params.set('search', search);
+      if (els.status.value) params.set('status', els.status.value);
+      downloadOrderExcel('/api/admin/orders/export.xlsx?' + params.toString(), els.export);
+    });
+  }
   els.q.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') loadOrders().catch((e) => setError(e.message));
   });

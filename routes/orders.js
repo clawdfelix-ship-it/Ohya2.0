@@ -3,6 +3,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
   const multer = require('multer');
   const { requirePermission } = require('./middleware/auth');
   const { createOrderService } = require('../utils/orderService');
+  const { buildOrderWorkbook, safeOrderFilename } = require('../utils/orderExcelExport');
 
   // 入數證明：memory storage，只收圖片，上限 8MB
   const proofUpload = multer({
@@ -324,6 +325,91 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
       res.status(500).json({ error: '服務器錯誤' });
     }
   });
+
+  // Admin: export every matching order (not only the currently visible page).
+  // Keep these static routes before /:id so Express does not read "export.xlsx" as an ID.
+  async function exportOrders(req, res, singleOrderId) {
+    try {
+      const params = [];
+      const where = ['1=1'];
+      if (singleOrderId !== undefined) {
+        const id = Number(singleOrderId);
+        if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: '訂單 ID 唔正確' });
+        params.push(id);
+        where.push(`o.id = $${params.length}`);
+      } else {
+        const status = String(req.query.status || '').trim();
+        const search = String(req.query.search || '').trim();
+        if (status) {
+          if (!['pending', 'paid', 'shipping', 'delivered', 'completed', 'cancelled'].includes(status)) {
+            return res.status(400).json({ error: '無效訂單狀態' });
+          }
+          params.push(status);
+          where.push(`o.status = $${params.length}`);
+        }
+        if (search) {
+          params.push(`%${search}%`);
+          where.push(`(o.contact_name ILIKE $${params.length} OR o.contact_phone ILIKE $${params.length} OR o.id::text ILIKE $${params.length})`);
+        }
+      }
+      // Fetch all matching orders before setting download headers. This keeps a
+      // missing order a real 404 and avoids sending a truncated XLSX on DB errors.
+      const orders = [];
+      const items = [];
+      let cursor = null;
+      do {
+        const pageParams = [...params];
+        let cursorSql = '';
+        if (cursor) {
+          pageParams.push(cursor.createdAt, cursor.id);
+          cursorSql = ` AND (o.created_at, o.id) < ($${pageParams.length - 1}, $${pageParams.length})`;
+        }
+        const page = (await pool.query(`
+          SELECT o.*, u.username
+          FROM orders o
+          LEFT JOIN users u ON o.user_id = u.id
+          WHERE ${where.join(' AND ')}${cursorSql}
+          ORDER BY o.created_at DESC, o.id DESC
+          LIMIT 500
+        `, pageParams)).rows;
+        if (!page.length) break;
+        orders.push(...page);
+        const ids = page.map(order => order.id);
+        // Old checkout rows may lack name/subtotal snapshots. Fall back to the
+        // current product name and quantity × unit price only for those fields.
+        const pageItems = (await pool.query(`
+          SELECT oi.*, ps.sku, ps.barcode,
+                 COALESCE(NULLIF(oi.product_name, ''), p.name) AS product_name,
+                 COALESCE(oi.subtotal, oi.quantity * oi.unit_price) AS subtotal
+          FROM order_items oi
+          LEFT JOIN products p ON p.id = oi.product_id
+          LEFT JOIN product_skus ps ON ps.id = oi.sku_id
+          WHERE oi.order_id = ANY($1::int[])
+          ORDER BY array_position($1::int[], oi.order_id), oi.id
+        `, [ids])).rows;
+        items.push(...pageItems);
+        const last = page[page.length - 1];
+        cursor = { createdAt: last.created_at, id: last.id };
+        if (page.length < 500) break;
+      } while (true);
+      if (singleOrderId !== undefined && !orders.length) return res.status(404).json({ error: '訂單不存在' });
+      const workbook = await buildOrderWorkbook(orders, items);
+      const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+      const filename = singleOrderId === undefined ? safeOrderFilename() : safeOrderFilename(singleOrderId);
+      res.status(200);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.send(buffer);
+    } catch (err) {
+      console.error('Admin order Excel export error:', err);
+      if (!res.headersSent) res.status(500).json({ error: '匯出 Excel 失敗，請稍後再試' });
+    }
+  }
+
+  app.get('/api/admin/orders/export.xlsx', requirePermission('orders:read'), (req, res) => exportOrders(req, res));
+  app.get('/api/admin/orders/:id/export.xlsx', requirePermission('orders:read'), (req, res) => exportOrders(req, res, req.params.id));
 
   // Admin: Get all orders
   app.get('/api/admin/orders', requirePermission('orders:read'), async (req, res) => {
