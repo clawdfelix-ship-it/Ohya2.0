@@ -4,6 +4,7 @@ const express = require('express');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const ExcelJS = require('exceljs');
 const { buildOrderWorkbook, safeOrderFilename } = require('../utils/orderExcelExport');
 
@@ -68,6 +69,8 @@ test('one-click admin order export returns a real XLSX with orders and item deta
     const buffer = Buffer.from(await response.arrayBuffer());
     assert.equal(buffer.subarray(0, 2).toString(), 'PK');
     fs.writeFileSync(output, buffer);
+    const archive = execFileSync('unzip', ['-Z1', output], { encoding: 'utf8' });
+    assert.doesNotMatch(archive, /(^|\/)xl\/(media|drawings)\//, 'Excel export must contain no embedded images or drawings');
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(output);
     assert.deepEqual(workbook.worksheets.map(sheet => sheet.name), ['訂單總覽', '商品明細']);
@@ -135,6 +138,13 @@ test('order export has a protected single-order route and visible UI buttons', (
   assert.match(view, /id="orders-export"/);
   assert.match(js, /一鍵匯出 Excel/);
   assert.match(js, /export\.xlsx/);
+});
+
+test('workbook has no image or drawing parts even when items have image URLs', async () => {
+  const workbook = await buildOrderWorkbook([order], [{ ...item, image_url: 'https://example.com/product.jpg' }]);
+  assert.equal(typeof workbook.addImage, 'function');
+  for (const sheet of workbook.worksheets) assert.deepEqual(sheet.getImages(), []);
+  assert.deepEqual(workbook.media, []);
 });
 
 test('workbook treats customer text as text rather than executable formulas', async () => {
