@@ -371,15 +371,37 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         if (!page.length) break;
         orders.push(...page);
         const ids = page.map(order => order.id);
-        // Old checkout rows may lack name/subtotal snapshots. Fall back to the
-        // current product name and quantity × unit price only for those fields.
+        // Match the purchased variant first. Legacy rows without sku_id fall
+        // back to their saved attributes; a single-SKU product is unambiguous.
         const pageItems = (await pool.query(`
-          SELECT oi.*, ps.sku, ps.barcode,
+          SELECT oi.*,
+                 COALESCE(exact_sku.sku, fallback_sku.sku) AS sku,
+                 COALESCE(exact_sku.barcode, fallback_sku.barcode) AS barcode,
                  COALESCE(NULLIF(oi.product_name, ''), p.name) AS product_name,
                  COALESCE(oi.subtotal, oi.quantity * oi.unit_price) AS subtotal
           FROM order_items oi
           LEFT JOIN products p ON p.id = oi.product_id
-          LEFT JOIN product_skus ps ON ps.id = oi.sku_id
+          LEFT JOIN LATERAL (
+            SELECT ps.sku, ps.barcode
+            FROM product_skus ps
+            WHERE ps.id = oi.sku_id
+              AND ps.product_id = oi.product_id
+            LIMIT 1
+          ) exact_sku ON true
+          LEFT JOIN LATERAL (
+            WITH attribute_matches AS (
+              SELECT ps.sku, ps.barcode
+              FROM product_skus ps
+              WHERE ps.product_id = oi.product_id
+                AND (
+                  oi.sku_attributes IS NULL
+                  OR ps.attributes::jsonb = oi.sku_attributes::jsonb
+                )
+            )
+            SELECT MIN(sku) AS sku, MIN(barcode) AS barcode
+            FROM attribute_matches
+            HAVING COUNT(*) = 1
+          ) fallback_sku ON oi.sku_id IS NULL
           WHERE oi.order_id = ANY($1::int[])
           ORDER BY array_position($1::int[], oi.order_id), oi.id
         `, [ids])).rows;
