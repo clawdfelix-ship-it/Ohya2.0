@@ -55,16 +55,16 @@ function harness() {
   return { app, calls };
 }
 
-test('one-click admin order export returns a real XLSX with orders and item details', async () => {
+test('selected-order export returns a real XLSX with orders and item details', async () => {
   const { app, calls } = harness();
   const server = app.listen(0);
   const output = path.join(os.tmpdir(), `ohya-orders-export-${process.pid}.xlsx`);
   try {
-    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/admin/orders/export.xlsx?status=paid&search=Chan`);
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/admin/orders/export.xlsx?ids=42&status=paid&search=Chan`);
     if (response.status !== 200) assert.fail(await response.text());
     assert.equal(response.status, 200);
     assert.match(response.headers.get('content-type'), /application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/);
-    assert.match(response.headers.get('content-disposition'), /attachment; filename="orders-/);
+    assert.match(response.headers.get('content-disposition'), /attachment; filename="selected-orders-1-/);
     assert.match(response.headers.get('cache-control'), /private, no-store/);
     const buffer = Buffer.from(await response.arrayBuffer());
     assert.equal(buffer.subarray(0, 2).toString(), 'PK');
@@ -78,8 +78,8 @@ test('one-click admin order export returns a real XLSX with orders and item deta
     assert.equal(workbook.getWorksheet('商品明細').getCell('F2').value, '4562349710881');
     assert.equal(workbook.getWorksheet('商品明細').getCell('F2').numFmt, '@');
     assert.equal(workbook.getWorksheet('商品明細').getCell('H2').value, 2);
-    assert.equal(calls[0].params[0], 'paid');
-    assert.equal(calls[0].params[1], '%Chan%');
+    assert.deepEqual(calls[0].params, [[42]]);
+    assert.doesNotMatch(calls[0].sql, /o\.status =|ILIKE/);
     assert.match(calls[1].sql, /oi\.order_id = ANY\(\$1::int\[\]\)/);
   } finally {
     await new Promise(resolve => server.close(resolve));

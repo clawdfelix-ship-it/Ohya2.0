@@ -171,8 +171,12 @@
   let orderCacheById = new Map();
 
   function setBulkButtonEnabled() {
-    if (!els.bulkShipany) return;
-    els.bulkShipany.disabled = selectedIds.size === 0;
+    const hasSelection = selectedIds.size > 0;
+    if (els.bulkShipany) els.bulkShipany.disabled = !hasSelection;
+    if (els.export) {
+      els.export.disabled = !hasSelection;
+      els.export.textContent = hasSelection ? `匯出已選 ${selectedIds.size} 張訂單 Excel` : '匯出已選訂單 Excel';
+    }
   }
 
   function setSelectAllChecked() {
@@ -663,10 +667,13 @@
   els.refresh.addEventListener('click', () => loadOrders().catch((e) => setError(e.message)));
   if (els.export) {
     els.export.addEventListener('click', () => {
+      const ids = Array.from(selectedIds).filter(id => Number.isInteger(id) && id > 0);
+      if (!ids.length) {
+        setError('請先勾選要匯出嘅訂單');
+        return;
+      }
       const params = new URLSearchParams();
-      const search = (els.q.value || '').trim();
-      if (search) params.set('search', search);
-      if (els.status.value) params.set('status', els.status.value);
+      for (const id of ids) params.append('ids', String(id));
       downloadOrderExcel('/api/admin/orders/export.xlsx?' + params.toString(), els.export);
     });
   }

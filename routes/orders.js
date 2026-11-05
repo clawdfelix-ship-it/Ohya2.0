@@ -4,6 +4,7 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
   const { requirePermission } = require('./middleware/auth');
   const { createOrderService } = require('../utils/orderService');
   const { buildOrderWorkbook, safeOrderFilename } = require('../utils/orderExcelExport');
+  const { buildOrderExportQuery } = require('../lib/orderExportQuery');
 
   // 入數證明：memory storage，只收圖片，上限 8MB
   const proofUpload = multer({
@@ -326,33 +327,28 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
     }
   });
 
-  // Admin: export every matching order (not only the currently visible page).
+  // Admin: bulk export is restricted to explicitly selected order IDs.
   // Keep these static routes before /:id so Express does not read "export.xlsx" as an ID.
   async function exportOrders(req, res, singleOrderId) {
     try {
       const params = [];
-      const where = ['1=1'];
+      let where;
+      let selectedIds = null;
       if (singleOrderId !== undefined) {
         const id = Number(singleOrderId);
         if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: '訂單 ID 唔正確' });
         params.push(id);
-        where.push(`o.id = $${params.length}`);
+        where = 'o.id = $1';
       } else {
-        const status = String(req.query.status || '').trim();
-        const search = String(req.query.search || '').trim();
-        if (status) {
-          if (!['pending', 'paid', 'shipping', 'delivered', 'completed', 'cancelled'].includes(status)) {
-            return res.status(400).json({ error: '無效訂單狀態' });
-          }
-          params.push(status);
-          where.push(`o.status = $${params.length}`);
+        try {
+          selectedIds = buildOrderExportQuery(req.query.ids).ids;
+        } catch (error) {
+          return res.status(error.status || 400).json({ error: error.message });
         }
-        if (search) {
-          params.push(`%${search}%`);
-          where.push(`(o.contact_name ILIKE $${params.length} OR o.contact_phone ILIKE $${params.length} OR o.id::text ILIKE $${params.length})`);
-        }
+        params.push(selectedIds);
+        where = 'o.id = ANY($1::int[])';
       }
-      // Fetch all matching orders before setting download headers. This keeps a
+      // Fetch selected orders before setting download headers. This keeps a
       // missing order a real 404 and avoids sending a truncated XLSX on DB errors.
       const orders = [];
       const items = [];
@@ -368,9 +364,9 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
           SELECT o.*, u.username
           FROM orders o
           LEFT JOIN users u ON o.user_id = u.id
-          WHERE ${where.join(' AND ')}${cursorSql}
+          WHERE ${where}${cursorSql}
           ORDER BY o.created_at DESC, o.id DESC
-          LIMIT 500
+          ${selectedIds ? '' : 'LIMIT 500'}
         `, pageParams)).rows;
         if (!page.length) break;
         orders.push(...page);
@@ -390,12 +386,15 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         items.push(...pageItems);
         const last = page[page.length - 1];
         cursor = { createdAt: last.created_at, id: last.id };
-        if (page.length < 500) break;
+        if (selectedIds || page.length < 500) break;
       } while (true);
       if (singleOrderId !== undefined && !orders.length) return res.status(404).json({ error: '訂單不存在' });
+      if (selectedIds && !orders.length) return res.status(404).json({ error: '搵唔到所選訂單，請刷新後再試' });
       const workbook = await buildOrderWorkbook(orders, items);
       const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
-      const filename = singleOrderId === undefined ? safeOrderFilename() : safeOrderFilename(singleOrderId);
+      const filename = singleOrderId !== undefined
+        ? safeOrderFilename(singleOrderId)
+        : `selected-orders-${selectedIds.length}-${new Date().toISOString().slice(0, 10)}.xlsx`;
       res.status(200);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
