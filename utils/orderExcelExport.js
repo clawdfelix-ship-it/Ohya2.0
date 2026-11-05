@@ -1,4 +1,4 @@
-const ExcelJS = require('exceljs');
+const ExcelJS = require('exceljs/lib/exceljs.nodejs');
 
 const MONEY = '#,##0.00;(#,##0.00);-';
 const ORDER_STATUS = { pending: '待付款', paid: '已付款', shipping: '派送中', delivered: '已送達', completed: '已完成', cancelled: '已取消' };

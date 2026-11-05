@@ -1,6 +1,11 @@
 {
   "version": 2,
   "installCommand": "npm install --omit=dev",
+  "functions": {
+    "api/index.js": {
+      "excludeFiles": "node_modules/exceljs/dist/**,node_modules/exceljs/excel.js,node_modules/exceljs/index.d.ts,node_modules/exceljs/index.ts,node_modules/exceljs/README*.md"
+    }
+  },
   "crons": [
     {
       "path": "/api/internal/jobs/daily-sync/refresh",
