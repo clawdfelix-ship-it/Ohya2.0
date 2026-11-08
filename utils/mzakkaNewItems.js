@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const sanitizeHtml = require('sanitize-html');
 const { extractBreadcrumbCategoryNames } = require('./mzakkaBreadcrumb');
 
 function decodeHtmlEntities(s) {
@@ -23,6 +24,16 @@ function stripScriptsAndStyles(s) {
   return String(s || '')
     .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style\b[\s\S]*?<\/style>/gi, ' ');
+}
+
+function sanitizeDetailHtml(html) {
+  // Source HTML is inserted into the storefront, so keep formatting only.
+  // Product images are imported separately into the gallery/media tables.
+  return sanitizeHtml(String(html || ''), {
+    allowedTags: ['p', 'br', 'strong', 'b', 'em', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+    allowedAttributes: { th: ['colspan', 'rowspan'], td: ['colspan', 'rowspan'] },
+    allowedSchemes: [],
+  }).trim();
 }
 
 function normalizeText(s) {
@@ -181,9 +192,25 @@ function extractProductInfoRows(html) {
   return rows;
 }
 
-function extractDetailSections(html, description) {
+function extractModernDescriptionHtml(html) {
+  // Newer M-ZAKKA pages no longer use item_p04. Their product copy lives in a
+  // sibling <p> of 商品情報 (PC) or 商品説明 (SP), not in the item_info summary.
+  const source = String(html || '');
+  const headingRe = /<h2[^>]*>\s*商品(?:情報|説明)\s*<\/h2>/gi;
+  for (const match of source.matchAll(headingRe)) {
+    const following = source.slice(match.index + match[0].length);
+    const paragraph = following.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i);
+    if (!paragraph) continue;
+    const content = sanitizeDetailHtml(paragraph[1]);
+    if (!normalizeText(stripTags(content))) continue;
+    return content;
+  }
+  return null;
+}
+
+function extractDetailSections(html, description, modernDescriptionHtml = null) {
   const sections = [];
-  if (description) {
+  if (description && !modernDescriptionHtml) {
     sections.push({
       sectionType: 'description',
       title: '商品介紹',
@@ -195,12 +222,24 @@ function extractDetailSections(html, description) {
     });
   }
 
+  if (modernDescriptionHtml) {
+    sections.push({
+      sectionType: 'description',
+      title: '商品介紹',
+      sortOrder: 20,
+      contentHtml: modernDescriptionHtml,
+      contentText: normalizeText(stripTags(modernDescriptionHtml)),
+      contentJson: null,
+      sourceAnchor: 'item_info',
+    });
+  }
+
   const sectionRe = /<div[^>]+id="(item_p\d+(?:_\d+)?)"[^>]*>([\s\S]*?)<\/div>/gi;
   let match;
   let nextSortOrder = 30;
   while ((match = sectionRe.exec(String(html || '')))) {
     const sectionId = String(match[1] || '').trim();
-    const innerHtml = stripScriptsAndStyles(match[2] || '').trim();
+    const innerHtml = sanitizeDetailHtml(match[2]);
     if (!innerHtml) continue;
 
     const titleMatch =
@@ -299,9 +338,13 @@ function parseMzakkaDetailPage(html, options = {}) {
   const originalPriceYen = parseYenValue(originalField);
   const images = extractDetailImages(html, itemId);
   const category = extractCategoryPath(html);
-  const description = options.extractDescription ? options.extractDescription(html) : '';
+  const modernDescriptionHtml = extractModernDescriptionHtml(html);
+  const legacyDescription = options.extractDescription ? options.extractDescription(html) : '';
+  const description = modernDescriptionHtml
+    ? normalizeText(stripTags(modernDescriptionHtml))
+    : legacyDescription;
   const productInfo = extractProductInfoRows(html);
-  const sections = extractDetailSections(html, description);
+  const sections = extractDetailSections(html, description, modernDescriptionHtml);
 
   return {
     id: itemId,
