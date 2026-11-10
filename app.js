@@ -93,6 +93,7 @@ function shouldSkipCsrf(req) {
   const p = String(req.path || '');
   if (p.startsWith('/webhooks/')) return true;
   if (p.startsWith('/api/internal/')) return true; // 內部 jobs 用 x-sync-secret 認證，唔使 CSRF token
+  if (p.startsWith('/api/agent/')) return true; // 獨立 DB-backed Bearer credential，絕不使用 Admin session
   if (p === cspReportPath) return true;
   return false;
 }
@@ -483,6 +484,7 @@ try {
   require('./routes/brands')(app, pool, requireAdmin);
   require('./routes/products')(app, pool, requireAdmin);
   require('./routes/products-full')(app, pool);
+  require('./routes/agent-products')(app, pool);
   require('./routes/cart')(app, pool, requireAuth);
   require('./routes/orders')(app, pool, requireAuth, requireAdmin);
   require('./routes/admin-order-edit')(app, pool);

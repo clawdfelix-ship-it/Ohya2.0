@@ -40,4 +40,17 @@ function cspReportLimiter() {
   });
 }
 
-module.exports = { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter };
+// Conservative first-line abuse control for machine writes. This is process-local:
+// serverless instances do not share counters, so it is not a global quota.
+function agentWriteLimiter() {
+  return rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    keyGenerator: (req) => req.agentCredential ? req.agentCredential.id : 'unauthenticated',
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many agent writes; retry later', code: 'AGENT_RATE_LIMITED' },
+  });
+}
+
+module.exports = { loginLimiter, adminWriteLimiter, agentWriteLimiter, webhookLimiter, cspReportLimiter };
