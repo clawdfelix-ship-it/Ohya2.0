@@ -9,6 +9,7 @@ function createRouteCapturingApp() {
     get: record('GET'),
     post: record('POST'),
     put: record('PUT'),
+    patch: record('PATCH'),
     delete: record('DELETE'),
     use: () => {},
   };

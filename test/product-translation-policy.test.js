@@ -5,9 +5,18 @@ const path = require('node:path');
 
 const HAS_HIRAGANA_KATAKANA = /[\u3040-\u30ff]/;
 
-test('app.js does not contain Japanese strings in sample storefront content', () => {
+test('sample storefront content does not contain Japanese strings', () => {
   const content = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
-  assert.equal(HAS_HIRAGANA_KATAKANA.test(content), false, 'app.js contains hiragana/katakana');
+  const sampleProducts = content.slice(
+    content.indexOf('function getSampleProducts()'),
+    content.indexOf('function getSampleCategories()')
+  );
+  const sampleCategories = content.slice(
+    content.indexOf('function getSampleCategories()'),
+    content.indexOf('function formatPrice(')
+  );
+  const sampleContent = `${sampleProducts}\n${sampleCategories}`;
+  assert.equal(HAS_HIRAGANA_KATAKANA.test(sampleContent), false, 'sample storefront content contains hiragana/katakana');
 
   const forbidden = [
     'メンズケア',

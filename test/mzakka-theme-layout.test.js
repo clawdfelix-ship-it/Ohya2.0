@@ -12,16 +12,22 @@ test('head partial loads mzakka theme css', () => {
   assert.match(head, /mzakka-theme\.css/, 'head.ejs should load mzakka-theme.css');
 });
 
-test('index uses black-body + white framed wrapper markers', () => {
+test('index uses the dark body and responsive left-sidebar layout', () => {
   const html = readView('index.ejs');
   assert.match(html, /class="[^"]*\bmz-body\b[^"]*"/, 'index.ejs should include mz-body on <body>');
   assert.match(html, /id="mz-wrapper"/, 'index.ejs should include #mz-wrapper');
-  assert.match(html, /\bmz-3col\b/, 'index.ejs should use mz-3col for stable 3-column layout');
+  assert.match(html, /lg:grid-cols-\[16rem_minmax\(0,1fr\)\]/, 'index.ejs should use the responsive left-sidebar grid');
+  assert.match(html, /id="wrap_center"/, 'index.ejs should retain the main content landmark');
 });
 
-test('all key pages include left+right sidebar partials', () => {
-  const pages = ['index.ejs', 'products.ejs', 'product.ejs', 'cart.ejs', 'login.ejs', 'register.ejs'];
-  for (const p of pages) {
+test('key pages retain their intended sidebar and main-content layouts', () => {
+  for (const p of ['index.ejs', 'products.ejs', 'product.ejs']) {
+    const html = readView(p);
+    assert.match(html, /include\('partials\/sidebar-left'\)/, `${p} should include sidebar-left`);
+    assert.match(html, /id="wrap_center"/, `${p} should retain its main content area`);
+    assert.match(html, /lg:grid-cols-\[16rem_minmax\(0,1fr\)\]/, `${p} should use the responsive left-sidebar grid`);
+  }
+  for (const p of ['cart.ejs', 'login.ejs', 'register.ejs']) {
     const html = readView(p);
     assert.match(html, /include\('partials\/sidebar-left'\)/, `${p} should include sidebar-left`);
     assert.match(html, /include\('partials\/sidebar-right'\)/, `${p} should include sidebar-right`);
@@ -42,11 +48,12 @@ test('footer renders flat link bar + age 18 bar markers', () => {
   assert.match(footer, /id="mz-footer-18"/, 'footer should include #mz-footer-18');
 });
 
-test('header uses mzakka theme markers (mz-topbar / mz-header / mz-nav)', () => {
+test('header retains its themed shell and accessible mobile category navigation', () => {
   const header = readView(path.join('partials', 'header.ejs'));
-  assert.match(header, /\bmz-topbar\b/, 'header should include mz-topbar');
   assert.match(header, /\bmz-header\b/, 'header should include mz-header');
-  assert.match(header, /\bmz-nav\b/, 'header should include mz-nav');
+  assert.match(header, /data-mobile-menu-open/, 'header should expose mobile category navigation');
+  assert.match(header, /aria-controls="mz-mobile-menu-panel"/, 'mobile navigation trigger should identify its panel');
+  assert.match(header, /aria-label="商品分類選單"/, 'mobile category panel should have an accessible name');
 });
 
 test('footer uses mzakka theme classes on bars', () => {

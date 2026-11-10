@@ -15,10 +15,11 @@ test('header matches mzakka-like dense layout (search category + q input)', () =
   assert.match(html, />商品分類</);
 });
 
-test('homepage has ranking section marker', () => {
+test('homepage has the new-arrivals ranking section marker', () => {
   const html = readView('index.ejs');
   assert.match(html, /id="mzakka-ranking"/);
-  assert.match(html, />排行榜</);
+  assert.match(html, />新到推介</);
+  assert.match(html, /新商品排行榜/);
 });
 
 test('homepage renders DB-driven home modules', () => {
