@@ -1,9 +1,30 @@
+function mapCategoryTags(value) {
+  let rows = value;
+  if (typeof rows === 'string') {
+    try { rows = JSON.parse(rows); } catch (_) { rows = []; }
+  }
+  if (!Array.isArray(rows)) return [];
+
+  const seen = new Set();
+  const tags = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const name = typeof row.name === 'string' ? row.name.trim() : '';
+    const slug = typeof row.slug === 'string' ? row.slug.trim() : '';
+    if (!name || !slug || seen.has(slug)) continue;
+    seen.add(slug);
+    tags.push({ name, slug });
+  }
+  return tags;
+}
+
 function mapDbProductToStorefrontProduct(row, { toProxyUrl }) {
   const id = row && row.id != null ? Number(row.id) : null;
   const name = row && row.name != null ? String(row.name) : '';
   const description = row && row.description != null ? String(row.description) : '';
   const category = row && row.category_name ? String(row.category_name) : '未分類';
   const categorySlug = row && row.category_slug ? String(row.category_slug) : null;
+  const categoryTags = mapCategoryTags(row && row.storefront_categories);
 
   const price = row && row.price_cents != null ? Number(row.price_cents) : 0;
   const originalPrice = row && row.original_price_cents != null ? Number(row.original_price_cents) : null;
@@ -57,6 +78,7 @@ function mapDbProductToStorefrontProduct(row, { toProxyUrl }) {
     description,
     category,
     categorySlug,
+    categoryTags,
     price,
     originalPrice,
     stock,

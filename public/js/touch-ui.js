@@ -381,6 +381,9 @@
       // 觸控：點擊切換選中；未選中時先攔截導航
       group.addEventListener('click', (ev) => {
         if (!window.matchMedia('(hover: none)').matches) return;
+        // Category disclosures are explicit controls, not deferred product links.
+        // Let their first tap reach the button/link instead of only selecting the card.
+        if (ev.target.closest('[data-category-stack]')) return;
         const item = ev.target.closest('[data-focus-item]');
         if (!item) {
           items().forEach(it => it.classList.remove('is-dim', 'is-spotlit'));

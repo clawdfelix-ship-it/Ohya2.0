@@ -520,9 +520,9 @@ try {
 function getSampleProducts() {
   // Use actual M-ZAKKA image hashes from our 235k+ image library
   return [
-    { id: 1, name: 'PRO-E 經典系列', category: 'PRO-E 系列', price: yenToHkdCents(29900), originalPrice: yenToHkdCents(39900), description: '獨特滑動設計，帶來更細緻的觸感體驗；適合追求層次感的用家。', stock: 50, image: toProxyUrl('https://i.mzakka.com/imgs/00004013e83868c1ba4bf965a46f181f.jpg') },
-    { id: 2, name: '狂也 極限刺激系列', category: '男士護理', price: yenToHkdCents(39900), originalPrice: yenToHkdCents(49900), description: '狂也系列代表作之一，刺激感更強，適合有經驗的用家。', stock: 30, image: toProxyUrl('https://i.mzakka.com/imgs/0000f651ca7f5f465c73eca0e513e5f0.jpg') },
-    { id: 3, name: 'PRO-E 專用潤滑液', category: '護理配件', price: yenToHkdCents(15900), originalPrice: yenToHkdCents(19900), description: '清爽易沖，黏膩感較低；日常搭配使用更順暢。', stock: 100, image: toProxyUrl('https://i.mzakka.com/imgs/0001c2100c5594aedb8c69799e0fa98b.jpg') },
+    { id: 1, name: 'PRO-E 經典系列', category: 'PRO-E 系列', categoryTags: [{ name: 'PRO-E 系列', slug: 'PRO-E 系列' }, { name: '新手推薦', slug: '新手推薦' }], price: yenToHkdCents(29900), originalPrice: yenToHkdCents(39900), description: '獨特滑動設計，帶來更細緻的觸感體驗；適合追求層次感的用家。', stock: 50, image: toProxyUrl('https://i.mzakka.com/imgs/00004013e83868c1ba4bf965a46f181f.jpg') },
+    { id: 2, name: '狂也 極限刺激系列', category: '男士護理', categoryTags: [{ name: '男士護理', slug: '男士護理' }, { name: '進階系列', slug: '進階系列' }, { name: '人氣排行榜', slug: '人氣排行榜' }], price: yenToHkdCents(39900), originalPrice: yenToHkdCents(49900), description: '狂也系列代表作之一，刺激感更強，適合有經驗的用家。', stock: 30, image: toProxyUrl('https://i.mzakka.com/imgs/0000f651ca7f5f465c73eca0e513e5f0.jpg') },
+    { id: 3, name: 'PRO-E 專用潤滑液', category: '護理配件', categoryTags: [{ name: '護理配件', slug: '護理配件' }, { name: '潤滑液', slug: '潤滑液' }], price: yenToHkdCents(15900), originalPrice: yenToHkdCents(19900), description: '清爽易沖，黏膩感較低；日常搭配使用更順暢。', stock: 100, image: toProxyUrl('https://i.mzakka.com/imgs/0001c2100c5594aedb8c69799e0fa98b.jpg') },
     { id: 4, name: 'PRO-E BACK 專用護理霜', category: '男士護理', price: yenToHkdCents(18900), originalPrice: yenToHkdCents(23900), description: '溫和配方，保濕力更持久；適合需要加強護理的用家。', stock: 60, image: toProxyUrl('https://i.mzakka.com/imgs/0001ee8b3058d246cab65138d1cb19a3.jpg') },
     { id: 5, name: 'PRO-E UNO 新手系列', category: '新手推薦', price: yenToHkdCents(34900), originalPrice: yenToHkdCents(44900), description: '入門取向，易上手；性價比高，適合第一次購買的用家。', stock: 45, image: toProxyUrl('https://i.mzakka.com/imgs/000273d1a908c0cd7437e3bb265ad99f.jpg') },
     { id: 6, name: 'PRO-E DUE 雙效系列', category: '進階系列', price: yenToHkdCents(44900), originalPrice: yenToHkdCents(54900), description: '雙重體驗設計，一次滿足兩種需求；適合想升級體驗的用家。', stock: 25, image: toProxyUrl('https://i.mzakka.com/imgs/00027bfc21304a695458d96b403fb7c2.jpg') },
@@ -964,11 +964,15 @@ app.use(async (req, res, next) => {
         const categories = getSampleCategories();
         const selectedCategorySlug = (categoryFilter && categoryFilter !== 'all') ? categoryFilter : 'all';
         const selectedCategory = selectedCategorySlug !== 'all'
-          ? (categories.find(c => c.slug === selectedCategorySlug)?.name || '全部商品')
+          ? (categories.find(c => c.slug === selectedCategorySlug)?.name
+            || products.flatMap(p => Array.isArray(p.categoryTags) ? p.categoryTags : [])
+              .find(tag => tag.slug === selectedCategorySlug)?.name
+            || '全部商品')
           : '全部商品';
 
         if (selectedCategorySlug !== 'all') {
-          products = products.filter(p => p.category === selectedCategory);
+          products = products.filter(p => p.category === selectedCategory
+            || (Array.isArray(p.categoryTags) && p.categoryTags.some((tag) => tag.slug === selectedCategorySlug)));
         }
         if (q) {
           const qLower = q.toLowerCase();
@@ -1146,7 +1150,8 @@ app.use(async (req, res, next) => {
                 (p.price * 100)::int as price_cents,
                 CASE WHEN p.original_price IS NULL THEN NULL ELSE (p.original_price * 100)::int END as original_price_cents,
                 p.image_url,
-                COALESCE(s.total_stock, 0)::int as stock
+                COALESCE(s.total_stock, 0)::int as stock,
+                COALESCE(category_tags.storefront_categories, '[]'::json) as storefront_categories
          FROM products p
          LEFT JOIN categories c ON p.category_id = c.id
          LEFT JOIN categories pc ON c.parent_id = pc.id
@@ -1157,6 +1162,32 @@ app.use(async (req, res, next) => {
            WHERE is_active = true
            GROUP BY product_id
          ) s ON s.product_id = p.id
+         LEFT JOIN LATERAL (
+           WITH RECURSIVE storefront_ancestry AS (
+             SELECT sc.id, sc.parent_id, sc.slug,
+                    COALESCE(sc.name_zh_hk, sc.name) AS name, 0 AS depth
+             FROM product_storefront ps
+             JOIN categories sc ON sc.id = ps.storefront_category_id
+             WHERE ps.product_id = p.id
+               AND sc.status = 'active' AND sc.source = 'storefront'
+             UNION ALL
+             SELECT parent.id, parent.parent_id, parent.slug,
+                    COALESCE(parent.name_zh_hk, parent.name), child.depth + 1
+             FROM categories parent
+             JOIN storefront_ancestry child ON parent.id = child.parent_id
+             WHERE parent.status = 'active' AND parent.source = 'storefront'
+               AND child.depth < 2
+           )
+           SELECT json_agg(
+             json_build_object('name', category.name, 'slug', category.slug)
+             ORDER BY category.depth
+           ) AS storefront_categories
+           FROM (
+             SELECT DISTINCT ON (slug) slug, name, depth
+             FROM storefront_ancestry
+             ORDER BY slug, depth DESC
+           ) category
+         ) category_tags ON true
          WHERE ${where}
          ORDER BY ${orderBy}
          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,

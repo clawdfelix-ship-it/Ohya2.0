@@ -1,0 +1,180 @@
+/*
+ * Ohya2.0 product category stack — independently implemented.
+ * Uses the existing ink / wine / gold theme; no external fonts, icons or code.
+ */
+.mz-category-stack {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.mz-category-stack__trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: -4px 0;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: #e5e7eb;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mz-category-stack__chips {
+  position: relative;
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  margin-right: 7px;
+}
+
+.mz-category-stack__chip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - 12px);
+  max-width: 100%;
+  height: 28px;
+  overflow: hidden;
+  padding: 5px 9px;
+  border: 1px solid #454553;
+  border-radius: 8px;
+  background: #17171e;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 22%);
+  color: #c8a45d;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translate(
+    calc(var(--chip-index) * 5px),
+    calc(var(--chip-index) * 3px)
+  );
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.mz-category-stack__chip:first-child {
+  z-index: 3;
+  border-color: #6f3a43;
+  background: #2b1a21;
+}
+
+.mz-category-stack__chip:nth-child(2) { z-index: 2; color: transparent; }
+.mz-category-stack__chip:nth-child(3) { z-index: 1; color: transparent; }
+
+.mz-category-stack__more {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-top: -3px;
+  color: #c8a45d;
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+.mz-category-stack__trigger:hover .mz-category-stack__chip:first-child,
+.mz-category-stack__trigger:focus-visible .mz-category-stack__chip:first-child {
+  border-color: #c8a45d;
+}
+
+.mz-category-stack__links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  max-width: 100%;
+  padding: 7px 0 3px;
+}
+
+.mz-category-stack__links[hidden] { display: none; }
+
+.mz-category-stack__links a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+  border: 1px solid #373743;
+  border-radius: 9px;
+  background: #17171e;
+  color: #e5e7eb;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.mz-category-stack__links a:hover,
+.mz-category-stack__links a:focus-visible {
+  border-color: #c8a45d;
+  background: #2b1a21;
+  color: #f5d76e;
+}
+
+.mz-category-stack.is-expanded .mz-category-stack__chips {
+  height: 30px;
+}
+
+.mz-category-stack.is-expanded .mz-category-stack__chip {
+  transform: translate(0, 0);
+}
+
+.mz-category-stack.is-expanded .mz-category-stack__chip:not(:first-child) {
+  opacity: 0;
+}
+
+.mz-category-stack.is-expanded .mz-category-stack__more { transform: rotate(180deg); }
+
+/* Desktop hover expands within the card's normal flow, never over name/price/CTA. */
+@media (hover: hover) and (pointer: fine) {
+  .mz-category-stack:hover .mz-category-stack__chip:first-child { border-color: #c8a45d; }
+}
+
+/* Compact density keeps the browsing control and all purchase details visible. */
+[data-density="compact"] .mz-category-stack {
+  flex: 0 0 auto;
+  width: min(100%, 300px);
+}
+
+[data-density="compact"] .mz-category-stack__trigger { min-height: 44px; }
+[data-density="compact"] .mz-category-stack__links {
+  flex-flow: row wrap;
+  gap: 5px;
+}
+[data-density="compact"] .mz-category-stack__links a {
+  width: auto;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .mz-category-stack__chip { font-size: 10px; padding-inline: 7px; }
+  .mz-category-stack__links a { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mz-category-stack__chip,
+  .mz-category-stack__more {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .mz-category-stack__chip,
+  .mz-category-stack.is-expanded .mz-category-stack__chip {
+    transform: none;
+  }
+}
