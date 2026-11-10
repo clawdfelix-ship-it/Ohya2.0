@@ -6,6 +6,7 @@ const {
   toProductMediaRows,
   toProductSectionRows,
   toSkuUpsertInput,
+  makeProductSlug,
 } = require('../utils/mzakkaImport');
 const { resolveItemNode, loadDbNodeMap } = require('../utils/mzakkaCategoryResolver');
 
@@ -124,8 +125,18 @@ async function runImport({ items, pool, batchSize = 200 }) {
   async function flushBatch() {
     if (batch.length === 0) return;
     const client = await pool.connect();
+    let transactionError = null;
     try {
       await client.query('BEGIN');
+      // A routine refresh must not replace a completed backfill with legacy
+      // description sections. Backfill imports still explicitly replace them.
+      const existingBackfills = await client.query(
+        `SELECT slug FROM products
+         WHERE slug = ANY($1::text[])
+           AND raw_payload->>'descriptionVersion' = 'mzakka-description-v2'`,
+        [batch.map((item) => makeProductSlug(item.id))]
+      );
+      const backfilledSlugs = new Set(existingBackfills.rows.map((row) => row.slug));
       for (const item of batch) {
         const { nodeId, via } = resolveItemNode(item);
         let categoryId = null;
@@ -150,8 +161,14 @@ async function runImport({ items, pool, batchSize = 200 }) {
            ON CONFLICT (slug) DO UPDATE SET
              name = EXCLUDED.name,
              name_zh_hk = EXCLUDED.name_zh_hk,
-             description = EXCLUDED.description,
-             description_zh_hk = EXCLUDED.description_zh_hk,
+             description = CASE
+               WHEN products.raw_payload->>'descriptionVersion' = 'mzakka-description-v2'
+                AND COALESCE(EXCLUDED.raw_payload->>'descriptionVersion', '') <> 'mzakka-description-v2'
+               THEN products.description ELSE EXCLUDED.description END,
+             description_zh_hk = CASE
+               WHEN products.raw_payload->>'descriptionVersion' = 'mzakka-description-v2'
+                AND COALESCE(EXCLUDED.raw_payload->>'descriptionVersion', '') <> 'mzakka-description-v2'
+               THEN products.description_zh_hk ELSE EXCLUDED.description_zh_hk END,
              short_description_zh_hk = EXCLUDED.short_description_zh_hk,
              price = EXCLUDED.price,
              original_price = EXCLUDED.original_price,
@@ -162,7 +179,21 @@ async function runImport({ items, pool, batchSize = 200 }) {
              source_key = EXCLUDED.source_key,
              source_url = EXCLUDED.source_url,
              sync_status = EXCLUDED.sync_status,
-             raw_payload = EXCLUDED.raw_payload,
+             raw_payload = CASE
+               WHEN EXCLUDED.raw_payload->>'descriptionVersion' = 'mzakka-description-v2'
+               THEN EXCLUDED.raw_payload
+               WHEN products.raw_payload->>'descriptionVersion' = 'mzakka-description-v2'
+               THEN jsonb_set(
+                 jsonb_set(
+                   EXCLUDED.raw_payload::jsonb,
+                   '{descriptionVersion}', '"mzakka-description-v2"'::jsonb, true
+                 ),
+                 '{descriptionLayout}',
+                 COALESCE(products.raw_payload::jsonb->'descriptionLayout', '"legacy"'::jsonb),
+                 true
+               )::json
+               ELSE EXCLUDED.raw_payload
+             END,
              status = CASE WHEN EXCLUDED.raw_payload->>'isEnded'='true' THEN 'inactive' ELSE 'active' END,
              updated_at = NOW()
            RETURNING id`,
@@ -190,7 +221,9 @@ async function runImport({ items, pool, batchSize = 200 }) {
         const productId = pr.rows[0].id;
 
         await replaceProductMedia(client, item, productId);
-        await replaceProductSections(client, item, productId);
+        if (item.descriptionVersion === 'mzakka-description-v2' || !backfilledSlugs.has(p.slug)) {
+          await replaceProductSections(client, item, productId);
+        }
 
         const s = toSkuUpsertInput(item, productId);
         await client.query(
@@ -208,11 +241,18 @@ async function runImport({ items, pool, batchSize = 200 }) {
         skusUpserted++;
       }
       await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
+    } catch (error) {
+      transactionError = error;
+      // A dead socket can also fail ROLLBACK. Preserve the original failure
+      // and tell pg to discard the client rather than returning it to the pool.
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        // The transaction cannot be reused after its connection has failed.
+      }
+      throw error;
     } finally {
-      client.release();
+      client.release(transactionError || undefined);
       batch = [];
     }
   }
