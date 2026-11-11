@@ -65,6 +65,30 @@ module.exports = function registerAgentProducts(app, pool, options = {}) {
   const allowedImageHosts = options.allowedImageHosts || String(process.env.AGENT_ALLOWED_IMAGE_HOSTS || 'i.mzakka.com')
     .split(',').map((host) => host.trim().toLowerCase()).filter(Boolean);
 
+  app.get('/api/agent/skus/lookup', requireScope('products:read'), async (req, res) => {
+    try {
+      const barcode = typeof req.query.barcode === 'string' ? req.query.barcode.trim() : '';
+      if (!/^\d{8,14}$/.test(barcode)) {
+        throw new AgentValidationError(422, 'INVALID_BARCODE', 'barcode must contain 8 to 14 digits');
+      }
+      const result = await pool.query(
+        `SELECT s.id, s.product_id, s.barcode, s.stock,
+          to_char(p.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS version
+           FROM product_skus s
+           JOIN products p ON p.id = s.product_id
+          WHERE s.barcode = $1 AND p.deleted_at IS NULL
+          ORDER BY s.id LIMIT 2`, [barcode]
+      );
+      if (result.rows.length > 1) {
+        return res.status(409).json({ error: 'Barcode matches multiple active products; reconcile it before updating stock', code: 'BARCODE_AMBIGUOUS' });
+      }
+      const sku = result.rows[0];
+      if (!sku) return res.status(404).json({ error: 'Barcode not found', code: 'BARCODE_NOT_FOUND' });
+      res.setHeader('Cache-Control', 'private, no-store');
+      return res.json({ product_sku_id: sku.id, product_id: sku.product_id, barcode: sku.barcode, stock_qty: sku.stock, version: sku.version });
+    } catch (error) { return errorResponse(res, error); }
+  });
+
   app.get('/api/agent/products/:id', requireScope('products:read'), async (req, res) => {
     try {
       const id = positiveId(req.params.id);

@@ -58,6 +58,15 @@ test('isolated PostgreSQL: product/SKU partial updates, inventory, concurrency, 
   assert.equal(initial.status, 200);
   const initialBody = await initial.json();
   assert.equal(initialBody.skus[0].barcode, '00123');
+  const invalidLookup = await request('GET', '/api/agent/skus/lookup?barcode=00123');
+  assert.equal(invalidLookup.status, 422);
+  await pool.query(`UPDATE product_skus SET barcode = '4547691719270' WHERE id = 8`);
+  const lookup = await request('GET', '/api/agent/skus/lookup?barcode=4547691719270');
+  assert.equal(lookup.status, 200, await lookup.clone().text());
+  assert.deepEqual(await lookup.json(), {
+    product_sku_id: 8, product_id: 7, barcode: '4547691719270', stock_qty: 10,
+    version: initialBody.version,
+  });
   const stale = await request('PATCH', '/api/agent/products/7', { price: '200.00' }, '2026-01-01T00:00:00Z');
   assert.equal(stale.status, 409);
   const first = await request('PATCH', '/api/agent/products/7', { name_zh_hk: '新名稱', price: '200.00', gallery_images: ['https://i.mzakka.com/new.jpg'] });

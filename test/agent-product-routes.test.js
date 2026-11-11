@@ -36,6 +36,7 @@ function createFixture() {
     transactions: [], costHistory: [], audits: [], idempotency: [],
     category: { id: 11, status: 'active', source: 'storefront', parent_id: 1, hasChildren: false },
     credential: { id: credentialId, name: 'fixture-agent', token_prefix: credential.prefix, token_hash: credentialDigest(credential.secret), scopes: allScopes, expires_at: '2099-01-01T00:00:00.000Z', revoked_at: null },
+    barcodeLookupRows: [],
     lastUsed: 0, commits: 0, rollbacks: 0, failAudit: false, failCommit: false,
   };
 
@@ -45,6 +46,9 @@ function createFixture() {
         return { rows: state.credential.token_prefix === values[0] ? [clone(state.credential)] : [] };
       }
       if (/UPDATE agent_api_credentials/.test(sql)) { state.lastUsed++; return { rows: [] }; }
+      if (/^\s*SELECT[\s\S]*FROM product_skus s[\s\S]*JOIN products p/.test(sql)) {
+        return { rows: clone(state.barcodeLookupRows.filter((row) => row.barcode === values[0])) };
+      }
       // Read-only endpoint and post-rollback idempotency lookup use the pool.
       if (/^\s*SELECT[\s\S]*FROM products\s/.test(sql) && !/FOR UPDATE/.test(sql)) return { rows: [productRow(state.product)] };
       if (/^\s*SELECT[\s\S]*FROM product_skus/.test(sql) && !/FOR UPDATE/.test(sql)) return { rows: state.sku ? [clone(state.sku)] : [] };
@@ -194,6 +198,38 @@ test('GET reads product, SKUs and exact version with credential only', async (t)
   assert.equal(res.headers.get('set-cookie'), null);
   const invalid = await fetch(`${local.url}/api/agent/products/nope`, options('GET'));
   assert.equal(invalid.status, 422);
+});
+
+test('barcode lookup returns SKU identity and product version for safe inventory writes', async (t) => {
+  const fixture = createFixture();
+  fixture.state.barcodeLookupRows = [{ ...clone(fixture.state.sku), barcode: '4547691719270', version: timestamp }];
+  const local = await makeApp(fixture); t.after(local.close);
+  const res = await fetch(`${local.url}/api/agent/skus/lookup?barcode=4547691719270`, options('GET'));
+  assert.equal(res.status, 200, await res.clone().text());
+  assert.equal(res.headers.get('cache-control'), 'private, no-store');
+  assert.deepEqual(await res.json(), {
+    product_sku_id: 8, product_id: 7, barcode: '4547691719270', stock_qty: 10,
+    version: timestamp,
+  });
+});
+
+test('barcode lookup rejects ambiguous, missing or invalid JAN codes without writes', async (t) => {
+  const fixture = createFixture();
+  fixture.state.barcodeLookupRows = [
+    { ...clone(fixture.state.sku), barcode: '4547691719270', version: timestamp },
+    { ...clone(fixture.state.sku), id: 9, sku: 'FIXTURE-002', barcode: '4547691719270', version: timestamp },
+  ];
+  const local = await makeApp(fixture); t.after(local.close);
+  const duplicate = await fetch(`${local.url}/api/agent/skus/lookup?barcode=4547691719270`, options('GET'));
+  assert.equal(duplicate.status, 409);
+  assert.equal((await duplicate.json()).code, 'BARCODE_AMBIGUOUS');
+  const missing = await fetch(`${local.url}/api/agent/skus/lookup?barcode=4901234567894`, options('GET'));
+  assert.equal(missing.status, 404);
+  assert.equal((await missing.json()).code, 'BARCODE_NOT_FOUND');
+  const invalid = await fetch(`${local.url}/api/agent/skus/lookup?barcode=abc`, options('GET'));
+  assert.equal(invalid.status, 422);
+  assert.equal(fixture.state.sku.stock, 10);
+  assert.equal(fixture.state.audits.length, 0);
 });
 
 test('content PATCH preserves omitted fields and creates safe audit', async (t) => {
