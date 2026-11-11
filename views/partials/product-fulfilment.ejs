@@ -1,7 +1,13 @@
-<%# 全站現行預購模式：只重用現有寄出區間，不以舊 SKU 庫存推斷現貨／缺貨。 %>
+<%# 預設保留預購模式；只有後台已確認 stock > 0 嘅現貨專區傳入 inStock。 %>
 <% const fulfilmentClass = typeof className === 'string' ? className : ''; %>
-<span class="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs leading-5 text-sky-300 <%= fulfilmentClass %>">
+<% if (typeof inStock !== 'undefined' && inStock === true) { %>
+<span data-fulfilment="in-stock" class="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs leading-5 text-emerald-300 <%= fulfilmentClass %>">
+  <span class="font-semibold">現貨</span>
+</span>
+<% } else { %>
+<span data-fulfilment="preorder" class="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs leading-5 text-sky-300 <%= fulfilmentClass %>">
   <span class="font-semibold">預購</span>
   <span aria-hidden="true">·</span>
   <span>10–14 日寄出</span>
 </span>
+<% } %>

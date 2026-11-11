@@ -28,6 +28,12 @@ const { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter } = re
 const { normalizeCspReports } = require('./utils/security/cspReport');
 const { storeInfo } = require('./utils/storeInfo');
 const { buildProductSearchCondition, productSearchLike } = require('./utils/productSearch');
+const {
+  isInStockCategory,
+  inStockSqlCondition,
+  withInStockSpecial,
+  sampleInStockProducts,
+} = require('./utils/inStock');
 
 let cachedSharp;
 function getSharp() {
@@ -585,7 +591,7 @@ const categoriesCacheTtlMs = 30 * 1000;
 
 function getSampleCategoryData() {
   const sampleCategories = getSampleCategories();
-  return {
+  return withInStockSpecial({
     flat: sampleCategories,
     tree: sampleCategories
       .filter((category) => Number(category.id) !== 0)
@@ -597,7 +603,7 @@ function getSampleCategoryData() {
         parentId: null,
         children: [],
       })),
-  };
+  }, sampleInStockProducts().length);
 }
 
 function parseJsonObject(value, fallback) {
@@ -697,7 +703,14 @@ async function loadStorefrontCategories() {
     // 按專區自身 sort_order 排（最新上架→新到推介→特價區），唔跟 category id
     .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
 
-  return { ...buildCategoryTree(mainRows, { totalCount }), specials };
+  const stockResult = await pool.query(
+    `SELECT COUNT(*)::int as total FROM products p
+      WHERE p.status = 'active' AND p.deleted_at IS NULL
+        AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
+        AND ${inStockSqlCondition('p')}`
+  );
+  const stockCount = stockResult.rows[0] ? Number(stockResult.rows[0].total) : 0;
+  return withInStockSpecial({ ...buildCategoryTree(mainRows, { totalCount }), specials }, stockCount);
 }
 
 function getFallbackHomeModules() {
@@ -780,6 +793,7 @@ app.use(async (req, res, next) => {
     const sampleCategoryData = getSampleCategoryData();
     res.locals.categories = sampleCategoryData.flat;
     res.locals.categoriesTree = sampleCategoryData.tree;
+    res.locals.categorySpecials = sampleCategoryData.specials;
   }
 
   next();
@@ -838,6 +852,7 @@ app.use(async (req, res, next) => {
           homeModules,
           rankingProducts: [],
           newProducts: featuredProducts.slice(0, 20),
+          inStockProducts: sampleInStockProducts().slice(0, 12),
           hasRanking: false,
           holidaysMap,
           seo: homeSeo,
@@ -876,6 +891,33 @@ app.use(async (req, res, next) => {
       );
 
       const newProducts = mapRowsToRankingProducts(listResult.rows, { toProxyUrl: app.locals.toProxyUrl });
+
+      // 現貨區由即時 SKU 庫存組成，唔需要另建或人手維護分類。
+      const stockResult = await pool.query(
+        `SELECT p.id,
+                COALESCE(p.name_zh_hk, p.name) as name,
+                COALESCE(NULLIF(p.description_zh_hk, ''), NULLIF(p.description, '')) as description,
+                COALESCE(pc.name_zh_hk, pc.name, c.name_zh_hk, c.name) as category_name,
+                (p.price * 100)::int as price_cents,
+                CASE WHEN p.original_price IS NULL THEN NULL ELSE (p.original_price * 100)::int END as original_price_cents,
+                p.image_url,
+                COALESCE(s.total_stock, 0)::int as stock
+         FROM products p
+         LEFT JOIN categories c ON p.category_id = c.id
+         LEFT JOIN categories pc ON c.parent_id = pc.id
+         LEFT JOIN (
+           SELECT product_id, SUM(stock)::int as total_stock
+           FROM product_skus
+           WHERE is_active = true
+           GROUP BY product_id
+         ) s ON s.product_id = p.id
+         WHERE p.status = 'active' AND p.deleted_at IS NULL
+           AND COALESCE(p.name_zh_hk, p.name) NOT ILIKE '%販売終了%'
+           AND ${inStockSqlCondition('p')}
+         ORDER BY s.total_stock DESC, p.created_at DESC, p.id DESC
+         LIMIT 12`
+      );
+      const inStockProducts = mapRowsToRankingProducts(stockResult.rows, { toProxyUrl: app.locals.toProxyUrl });
 
       // 首頁「新到推介」：跟 mzakka 1789 排行榜頭 6 名（文檔次序）
       const rankingResult = await pool.query(
@@ -927,6 +969,7 @@ app.use(async (req, res, next) => {
         homeModules,
         rankingProducts,
         newProducts,
+        inStockProducts,
         hasRanking,
         holidaysMap,
         seo: homeSeo,
@@ -941,6 +984,7 @@ app.use(async (req, res, next) => {
         homeModules: getFallbackHomeModules(),
         rankingProducts: [],
         newProducts: getSampleProducts().slice(0, 20),
+        inStockProducts: sampleInStockProducts().slice(0, 12),
         hasRanking: false,
         holidaysMap,
         seo: homeSeo,
@@ -963,14 +1007,17 @@ app.use(async (req, res, next) => {
         let products = getSampleProducts();
         const categories = getSampleCategories();
         const selectedCategorySlug = (categoryFilter && categoryFilter !== 'all') ? categoryFilter : 'all';
-        const selectedCategory = selectedCategorySlug !== 'all'
+        const selectedCategory = isInStockCategory(selectedCategorySlug) ? '現貨'
+          : selectedCategorySlug !== 'all'
           ? (categories.find(c => c.slug === selectedCategorySlug)?.name
             || products.flatMap(p => Array.isArray(p.categoryTags) ? p.categoryTags : [])
               .find(tag => tag.slug === selectedCategorySlug)?.name
             || '全部商品')
           : '全部商品';
 
-        if (selectedCategorySlug !== 'all') {
+        if (isInStockCategory(selectedCategorySlug)) {
+          products = products.filter((product) => Number(product.stock) > 0);
+        } else if (selectedCategorySlug !== 'all') {
           products = products.filter(p => p.category === selectedCategory
             || (Array.isArray(p.categoryTags) && p.categoryTags.some((tag) => tag.slug === selectedCategorySlug)));
         }
@@ -1026,14 +1073,18 @@ app.use(async (req, res, next) => {
       const minPrice = Math.max(0, parseFloat(req.query.min_price) || 0);
       const maxPriceParsed = parseFloat(req.query.max_price);
       const maxPrice = Number.isFinite(maxPriceParsed) && maxPriceParsed > 0 ? maxPriceParsed : null;
-      const inStockOnly = req.query.in_stock === '1';
+      const inStockOnly = req.query.in_stock === '1' || isInStockCategory(req.query.category);
 
       let categoryId = null;
-      let dynamicSection = null;           // 'new' | 'latest' | 'sale' | null（動態專區）
+      let dynamicSection = null;           // 'new' | 'latest' | 'sale' | 'stock' | null（動態專區）
       let selectedCategory = '全部商品';
       let selectedCategorySlug = 'all';
 
-      if (categoryFilter === 'storefront-new') {
+      if (isInStockCategory(categoryFilter)) {
+        dynamicSection = 'stock';
+        selectedCategory = '現貨';
+        selectedCategorySlug = 'storefront-stock';
+      } else if (categoryFilter === 'storefront-new') {
         dynamicSection = 'new';
         selectedCategory = '新到推介';
         selectedCategorySlug = 'storefront-new';
@@ -1086,6 +1137,8 @@ app.use(async (req, res, next) => {
         // 真正抵買：相對建議零售價折讓 ≥30%
         where += ` AND p.original_price IS NOT NULL AND p.original_price > p.price
                    AND (1 - p.price / NULLIF(p.original_price,0)) >= 0.30`;
+      } else if (dynamicSection === 'stock') {
+        where += ' AND p.deleted_at IS NULL';
       }
       if (q) {
         where += ` AND (COALESCE(p.name_zh_hk, p.name) ILIKE $${paramIndex} OR COALESCE(NULLIF(p.description_zh_hk, ''), NULLIF(p.description, '')) ILIKE $${paramIndex} OR ${buildProductSearchCondition(paramIndex)})`;
@@ -1104,7 +1157,7 @@ app.use(async (req, res, next) => {
       }
       // 現貨：任一 active SKU 庫存 > 0。用 EXISTS 令 count SQL 同 list SQL 可以共用 where
       if (inStockOnly) {
-        where += ` AND EXISTS (SELECT 1 FROM product_skus ps WHERE ps.product_id = p.id AND ps.is_active = true AND ps.stock > 0)`;
+        where += ` AND ${inStockSqlCondition('p')}`;
       }
 
       const countResult = await pool.query(`SELECT COUNT(*)::int as total FROM products p WHERE ${where}`, params);

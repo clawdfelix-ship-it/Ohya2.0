@@ -23,6 +23,14 @@ test('fulfilment partial does not fabricate stock status or hard dates in render
   assert.ok(!/\d{4}-\d{2}-\d{2}/.test(html), 'should not fabricate a hard date');
 });
 
+test('fulfilment partial labels only confirmed positive-stock products as in stock', () => {
+  const file = path.join(__dirname, '..', 'views', 'partials', 'product-fulfilment.ejs');
+  const html = ejs.render(readView('partials/product-fulfilment.ejs'), { inStock: true }, { filename: file });
+  assert.match(html, /data-fulfilment="in-stock"/);
+  assert.match(html, /現貨/);
+  assert.ok(!/預購/.test(html));
+});
+
 test('homepage latest-products card includes fulfilment partial', () => {
   const html = readView('index.ejs');
   assert.match(html, /product-fulfilment/);
