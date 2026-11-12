@@ -10,6 +10,7 @@
     selectAll: $('#orders-select-all'),
     bulkResult: $('#orders-bulk-result'),
     error: $('#orders-error'),
+    orderError: $('#order-error'),
     tbody: $('#orders-tbody'),
     detail: $('#order-detail'),
     modal: $('#order-modal'),
@@ -34,8 +35,11 @@
       els.error.textContent = '';
       return;
     }
-    els.error.classList.remove('hidden');
-    els.error.textContent = msg;
+    const target = els.modal && !els.modal.classList.contains('hidden') && els.orderError
+      ? els.orderError
+      : els.error;
+    target.classList.remove('hidden');
+    target.textContent = msg;
   }
 
   function money(n) {
@@ -352,6 +356,10 @@
 
   async function openOrder(id) {
     setError('');
+    if (els.orderError) {
+      els.orderError.classList.add('hidden');
+      els.orderError.textContent = '';
+    }
     openModal();
     els.detail.textContent = '載入中…';
     const data = await adminApiRequest('/api/admin/orders/' + encodeURIComponent(id));
@@ -415,6 +423,7 @@
           });
           await loadOrders();
           await openOrder(id);
+          showSuccess(els.detail, '訂單狀態已更新');
         } catch (e) {
           setError(e && e.message ? e.message : String(e));
         } finally {

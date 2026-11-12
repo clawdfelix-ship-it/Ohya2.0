@@ -20,6 +20,16 @@ function adminWriteLimiter() {
   });
 }
 
+function createAdminWriteMiddleware() {
+  // express-rate-limit must be created at app initialization, not per request.
+  const limiter = adminWriteLimiter();
+  return function adminWriteGate(req, res, next) {
+    const method = String(req.method || 'GET').toUpperCase();
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
+    return limiter(req, res, next);
+  };
+}
+
 function webhookLimiter() {
   return rateLimit({
     windowMs: 60 * 1000,
@@ -53,4 +63,4 @@ function agentWriteLimiter() {
   });
 }
 
-module.exports = { loginLimiter, adminWriteLimiter, agentWriteLimiter, webhookLimiter, cspReportLimiter };
+module.exports = { loginLimiter, adminWriteLimiter, createAdminWriteMiddleware, agentWriteLimiter, webhookLimiter, cspReportLimiter };

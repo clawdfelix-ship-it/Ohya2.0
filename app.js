@@ -24,7 +24,7 @@ const { resolveStorefrontCategoryName } = require('./utils/categoryTranslations'
 const { getProductsOrderBy, normalizeProductsSort } = require('./lib/productsSort');
 const { buildTimeline, attachTimeline } = require('./lib/orderTimeline');
 const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch-mzakka-description');
-const { loginLimiter, adminWriteLimiter, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
+const { loginLimiter, createAdminWriteMiddleware, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
 const { normalizeCspReports } = require('./utils/security/cspReport');
 const { storeInfo } = require('./utils/storeInfo');
 const { buildProductSearchCondition, productSearchLike } = require('./utils/productSearch');
@@ -198,11 +198,7 @@ app.use('/api/auth/login', loginLimiter());
 app.use('/webhooks', webhookLimiter());
 app.use(cspReportPath, cspReportLimiter());
 app.use(cspReportPath, express.json({ type: ['application/csp-report', 'application/reports+json', 'application/json'] }));
-app.use('/api/admin', (req, res, next) => {
-  const m = String(req.method || 'GET').toUpperCase();
-  if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return next();
-  return adminWriteLimiter()(req, res, next);
-});
+app.use('/api/admin', createAdminWriteMiddleware());
 app.use(express.json({
   limit: '4mb',
   verify: (req, res, buf) => {
