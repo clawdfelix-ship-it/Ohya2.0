@@ -29,6 +29,12 @@ WITH targets AS (
   WHERE status = 'active'
     AND source = 'mzakka'
     AND raw_payload->>'isEnded' = 'true'
+    AND NOT EXISTS (
+      SELECT 1 FROM product_skus
+      WHERE product_skus.product_id = products.id
+        AND product_skus.is_active = true
+        AND product_skus.stock > 0
+    )
   ORDER BY id ASC
   LIMIT $1
 )
@@ -52,10 +58,16 @@ async function main() {
   try {
     const countResult = await pool.query(
       `SELECT COUNT(*)::int AS total
-       FROM products
-       WHERE status = 'active'
+       FROM products p
+       WHERE p.status = 'active'
          AND source = 'mzakka'
-         AND raw_payload->>'isEnded' = 'true'`
+         AND raw_payload->>'isEnded' = 'true'
+         AND NOT EXISTS (
+           SELECT 1 FROM product_skus s
+           WHERE s.product_id = p.id
+             AND s.is_active = true
+             AND s.stock > 0
+         )`
     );
     const total = countResult.rows[0] ? Number(countResult.rows[0].total) : 0;
 

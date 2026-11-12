@@ -130,6 +130,32 @@ test('parseMzakkaDetailPage extracts item fields, cleans categories and keeps sa
   assert.equal(out.isEnded, false);
 });
 
+test('parseMzakkaDetailPage keeps images under numeric item id path when sku differs', () => {
+  const html = `
+    <div id="item_image"><img src="https://i.mzakka.com/item/815/main.jpg" alt="タフブラック" /></div>
+    <div id="item_data"><table>
+      <tr><th>商品名</th><td>タフブラック</td></tr>
+      <tr><th>商品番号</th><td>L0450</td></tr>
+      <tr><th>出荷</th><td>販売終了</td></tr>
+    </table></div>
+    <img src="https://i.mzakka.com/item/815/tahu.jpg" />
+    <img src="https://i.mzakka.com/item/815/L0450-2.jpg" />
+    <img src="https://i.mzakka.com/item/815/L0450-1.jpg" />
+    <a href="https://mzakka.com/pc/detail/item.php?item_id=L6281"><img src="https://i.mzakka.com/item/L6281/list.jpg" /></a>
+  `;
+  const out = parseMzakkaDetailPage(html, {
+    productUrl: 'https://mzakka.com/pc/detail/item.php?item_id=815&category=2290',
+  });
+  assert.equal(out.id, 'L0450');
+  assert.equal(out.isEnded, true);
+  assert.deepEqual(out.images, [
+    'https://i.mzakka.com/item/815/main.jpg',
+    'https://i.mzakka.com/item/815/tahu.jpg',
+    'https://i.mzakka.com/item/815/L0450-2.jpg',
+    'https://i.mzakka.com/item/815/L0450-1.jpg',
+  ]);
+});
+
 test('parseMzakkaHomePage extracts linked image modules from homepage html', () => {
   const html = `
     <html><body>

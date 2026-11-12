@@ -46,6 +46,18 @@ test('product detail page reuses fulfilment partial (single source)', () => {
   assert.match(html, /product-fulfilment/);
 });
 
+test('product detail page labels positive stock as in stock with available quantity', () => {
+  const html = readView('product.ejs');
+  assert.match(html, /inStock:\s*Number\(product\.stock\)\s*>\s*0/);
+  assert.match(html, /product\.stock/);
+  assert.ok(!/♾️ 數量不限<\/span>\s*<span class="bg-blue-500\/15 px-3 py-1 rounded-full font-medium">\s*<%- include\('partials\/product-fulfilment', \{ className:/.test(html) || /inStock/.test(html));
+});
+
+test('product detail page hides supplier shipping status from product info', () => {
+  const html = readView('product.ejs');
+  assert.match(html, /HIDDEN_INFO_LABELS\s*=\s*\[[^\]]*'出荷'/);
+});
+
 test('cart page links freight-collect text to shipping info', () => {
   const html = readView('cart.ejs');
   // 運費到付旁應有 /shipping 連結

@@ -194,7 +194,15 @@ async function runImport({ items, pool, batchSize = 200 }) {
                )::json
                ELSE EXCLUDED.raw_payload
              END,
-             status = CASE WHEN EXCLUDED.raw_payload->>'isEnded'='true' THEN 'inactive' ELSE 'active' END,
+             status = CASE
+               WHEN EXCLUDED.raw_payload->>'isEnded' = 'true'
+                AND NOT EXISTS (
+                  SELECT 1 FROM product_skus
+                  WHERE product_skus.product_id = products.id
+                    AND product_skus.is_active = true
+                    AND product_skus.stock > 0
+                )
+               THEN 'inactive' ELSE 'active' END,
              updated_at = NOW()
            RETURNING id`,
           [
@@ -232,7 +240,9 @@ async function runImport({ items, pool, batchSize = 200 }) {
            ON CONFLICT (sku) DO UPDATE SET
              product_id = EXCLUDED.product_id,
              attributes = EXCLUDED.attributes,
-             stock = EXCLUDED.stock,
+             stock = CASE
+               WHEN product_skus.stock > 0 THEN product_skus.stock
+               ELSE EXCLUDED.stock END,
              is_active = EXCLUDED.is_active,
              updated_at = NOW()
            RETURNING id`,

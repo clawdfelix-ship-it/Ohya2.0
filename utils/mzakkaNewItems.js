@@ -157,11 +157,16 @@ function extractTableField(html, label) {
   return m ? m[1] : '';
 }
 
-function extractDetailImages(html, itemId) {
-  const normalizedId = String(itemId || '').trim();
-  if (!normalizedId) return [];
-  const imageRe = new RegExp(`https://i\\.mzakka\\.com/item/${normalizedId}/[^"'\\s>]+\\.(?:jpg|jpeg|png|gif|webp)`, 'gi');
-  const images = [...String(html || '').matchAll(imageRe)].map((m) => String(m[0]));
+function extractDetailImages(html, itemId, itemIdFromUrl) {
+  const imageKeys = Array.from(new Set([itemId, itemIdFromUrl]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)));
+  const images = [];
+  for (const imageKey of imageKeys) {
+    const escapedKey = imageKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const imageRe = new RegExp(`https://i\\.mzakka\\.com/item/${escapedKey}/[^"'\\s>]+\\.(?:jpg|jpeg|png|gif|webp)`, 'gi');
+    images.push(...[...String(html || '').matchAll(imageRe)].map((match) => String(match[0])));
+  }
   return Array.from(new Set(images));
 }
 
@@ -336,7 +341,7 @@ function parseMzakkaDetailPage(html, options = {}) {
   }
 
   const originalPriceYen = parseYenValue(originalField);
-  const images = extractDetailImages(html, itemId);
+  const images = extractDetailImages(html, itemId, itemIdFromUrl);
   const category = extractCategoryPath(html);
   const modernDescriptionHtml = extractModernDescriptionHtml(html);
   const legacyDescription = options.extractDescription ? options.extractDescription(html) : '';

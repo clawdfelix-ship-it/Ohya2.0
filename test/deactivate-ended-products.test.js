@@ -17,3 +17,12 @@ test('deactivate ended products script: uses the synced ended flag with a bound 
   assert.deepEqual(params, [5]);
 });
 
+test('deactivate ended products script: keeps products with positive local stock on sale', () => {
+  const { buildDeactivateSql } = require('../scripts/deactivate-ended-products');
+  const { sql } = buildDeactivateSql({ limit: 5 });
+  assert.match(sql, /NOT EXISTS/i);
+  assert.match(sql, /product_skus/i);
+  assert.match(sql, /stock\s*>\s*0/i);
+  assert.match(sql, /is_active\s*=\s*true/i);
+});
+
