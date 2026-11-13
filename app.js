@@ -21,7 +21,7 @@ const { yenToHkdCents } = require('./utils/currency');
 const { buildCategoryTree } = require('./utils/storefrontCategories');
 const { partitionHomeModules } = require('./utils/storefrontHomeModules');
 const { resolveStorefrontCategoryName } = require('./utils/categoryTranslations');
-const { getProductsOrderBy, normalizeProductsSort } = require('./lib/productsSort');
+const { getProductsOrderBy, normalizeProductsSort, withStockPriority } = require('./lib/productsSort');
 const { buildTimeline, attachTimeline } = require('./lib/orderTimeline');
 const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch-mzakka-description');
 const { loginLimiter, createAdminWriteMiddleware, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
@@ -1035,6 +1035,9 @@ app.use(async (req, res, next) => {
           products = products.slice().sort((a, b) => (a.price || 0) - (b.price || 0));
         } else if (sort === 'price_desc') {
           products = products.slice().sort((a, b) => (b.price || 0) - (a.price || 0));
+        } else if (sort === 'stock_first') {
+          products = products.slice().sort((a, b) => Number(Number(b.stock) > 0) - Number(Number(a.stock) > 0)
+            || (b.id || 0) - (a.id || 0));
         } else {
           products = products.slice().sort((a, b) => (b.id || 0) - (a.id || 0));
         }
@@ -1164,8 +1167,8 @@ app.use(async (req, res, next) => {
       // 一個 storefront 分類可對多個 mzakka 分類（如配件雜貨對 3 個），
       // 用聚合子查詢取商品喺任一對應分類嘅最佳（最細）rank。
       const useMzakkaRank = sort === 'recommend' && categoryId;
-      // 排行榜專區：用戶顯式揀「推介」、或者冇顯式揀排序（行默認）時跟榜
-      const useNewRank = (sort === 'recommend' || !explicitSort) &&
+      // 新到專區：推介保留原榜；現貨優先將有貨排前，同組仍跟原榜。
+      const useNewRank = (sort === 'recommend' || sort === 'stock_first') &&
         (dynamicSection === 'new' || dynamicSection === 'latest');
       const rankJoin = useMzakkaRank
         ? `LEFT JOIN (
@@ -1186,7 +1189,9 @@ app.use(async (req, res, next) => {
         orderBy = 'mzrank.mr NULLS LAST, p.id DESC';
       } else if (useNewRank) {
         // 跟 mzakka 新商品節點 1789 嘅真實次序；未有 rank 嘅墊底
-        orderBy = 'nar.rank NULLS LAST, p.id DESC';
+        orderBy = sort === 'stock_first'
+          ? withStockPriority('nar.rank NULLS LAST, p.id DESC')
+          : 'nar.rank NULLS LAST, p.id DESC';
       } else {
         orderBy = getProductsOrderBy(sort);
       }
@@ -1336,7 +1341,7 @@ app.use(async (req, res, next) => {
         total: getSampleProducts().length,
         perPage: getSampleProducts().length,
         q: '',
-        sort: 'recommend',
+        sort: 'stock_first',
         minPrice: null,
         maxPrice: null,
         inStockOnly: false,
