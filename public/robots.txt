@@ -36,4 +36,4 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
-Sitemap: https://www.ohyagroups.net/sitemap.xml
+Sitemap: https://www.ohyagroups.com/sitemap.xml

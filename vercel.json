@@ -48,6 +48,11 @@
     }
   ],
   "routes": [
+    {
+      "src": "/(.*)",
+      "has": [{ "type": "host", "value": "^(?:(?:www\\.)?ohyagroups\\.net|ohyagroups\\.com)$" }],
+      "dest": "/api/index.js"
+    },
     { "src": "/images/(.*)", "dest": "/public/images/$1" },
     { "src": "/css/(.*)", "dest": "/public/css/$1" },
     { "src": "/js/(.*)", "dest": "/public/js/$1" },

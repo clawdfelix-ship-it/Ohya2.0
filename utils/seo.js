@@ -1,7 +1,7 @@
 // SEO/GEO 統一 helper：canonical、description escape、JSON-LD 輸出
 // 原則：預設安全（escape），開頁者可 override；唔好俾 template 直接砌 raw HTML。
 
-const CANONICAL_BASE = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+const CANONICAL_BASE = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.com';
 
 function escapeHtml(s) {
   if (s == null) return '';

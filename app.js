@@ -56,17 +56,10 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-// SEO canonical host: 301 apex ohyagroups.net -> www.ohyagroups.net (preserve path + query).
-// Scoped to ohyagroups.net only; vercel.app preview deployments and other domains are untouched.
-// Registered before any other middleware so bare-host requests never hit the app or set cookies.
-app.use((req, res, next) => {
-  const host = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim().toLowerCase();
-  if (host === 'ohyagroups.net') {
-    const target = 'https://www.ohyagroups.net' + req.originalUrl;
-    return res.redirect(301, target);
-  }
-  next();
-});
+// Custom-domain SEO migration only: .net + .com apex -> www.com (308; path + query retained).
+// Sensitive endpoints, vercel.app/preview deployments, and other hosts remain untouched.
+const { createDomainRedirectMiddleware } = require('./utils/domainMigration');
+app.use(createDomainRedirectMiddleware());
 
 const cspMode = String(process.env.CSP_MODE || 'report').toLowerCase();
 const cspReportOnly = cspMode !== 'enforce';
@@ -220,13 +213,13 @@ app.use((req, res, next) => {
   res.locals.t = createTranslator({ locale: 'zh-HK', dict: dictZhHK });
   res.locals.store = storeInfo;
   // SEO canonical base（www 係 canonical host；apex 已 301 過嚟）
-  res.locals.seoCanonicalBase = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+  res.locals.seoCanonicalBase = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.com';
   next();
 });
 
 // 動態 sitemap.xml：靜態頁 + 全部 active 產品
 app.get('/sitemap.xml', async (req, res) => {
-  const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+  const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.com';
   const staticPages = [
     { loc: '/', changefreq: 'daily', priority: '1.0' },
     { loc: '/products', changefreq: 'daily', priority: '0.9' },
@@ -811,8 +804,8 @@ app.use(async (req, res, next) => {
         '@context': 'https://schema.org',
         '@type': 'Organization',
         name: 'OHYA2.0',
-        url: 'https://www.ohyagroups.net',
-        logo: 'https://www.ohyagroups.net/img/logo.png',
+        url: 'https://www.ohyagroups.com',
+        logo: 'https://www.ohyagroups.com/img/logo.png',
         description: '日本正貨成人用品入口・批發分銷，香港倉庫現貨，順豐保密包裝到付。東京池袋設有實體店「トゥインクル池袋」。',
         contactPoint: [{
           '@type': 'ContactPoint',
@@ -826,10 +819,10 @@ app.use(async (req, res, next) => {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         name: 'OHYA2.0',
-        url: 'https://www.ohyagroups.net',
+        url: 'https://www.ohyagroups.com',
         potentialAction: {
           '@type': 'SearchAction',
-          target: { '@type': 'EntryPoint', urlTemplate: 'https://www.ohyagroups.net/products?q={search_term_string}' },
+          target: { '@type': 'EntryPoint', urlTemplate: 'https://www.ohyagroups.com/products?q={search_term_string}' },
           'query-input': 'required name=search_term_string',
         },
       };
@@ -1404,7 +1397,7 @@ app.use(async (req, res, next) => {
   // 商品詳情頁
   // Product 頁 SEO helper：Product schema + BreadcrumbList + canonical
   function buildProductSeo(product) {
-    const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+    const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.com';
     const { getCategoryContent } = require('./utils/categoryContent');
     // product.categorySlug 可能係子分類（sf-onahole-69905）→ 由前綴推導頂層 storefront 類
     let topSlug = null;
@@ -1725,7 +1718,7 @@ app.use(async (req, res, next) => {
   };
 
   // About 頁 AboutPage schema（E-E-A-T：公司實體資料）
-  const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+  const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.com';
   const aboutSchema = {
     '@context': 'https://schema.org',
     '@type': 'AboutPage',
@@ -1855,7 +1848,7 @@ app.use(async (req, res, next) => {
       );
       if (!r.rows[0]) return res.redirect('/guide');
       const post = r.rows[0];
-      const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.net';
+      const base = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.com';
       const postUrl = base + '/guide/' + post.slug;
       const desc = post.meta_description || post.excerpt || String(post.content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 155);
       const articleSchema = {
