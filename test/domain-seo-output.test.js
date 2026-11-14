@@ -16,9 +16,17 @@ function trackedFiles(patterns) {
   return result.stdout.split('\n').filter(Boolean);
 }
 
-test('no live SEO source still contains ohyagroups.net', () => {
-  const offenders = trackedFiles('ohyagroups\\.net');
-  assert.deepEqual(offenders, []);
+test('SEO output sources no longer advertise the retired host', () => {
+  const seoOutputFiles = [
+    'app.js', 'utils/seo.js', 'views/partials/seo-meta.ejs',
+    'public/robots.txt', 'public/llms.txt', 'vercel.json',
+  ];
+  for (const file of seoOutputFiles) {
+    const source = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.doesNotMatch(source, /ohyagroups\.net/, file);
+  }
+  // Redirect and host-allowlist sources must retain the legacy hostname.
+  assert.deepEqual(trackedFiles('ohyagroups\\.net'), ['utils/domainMigration.js']);
 });
 
 test('canonical helper and EJS standalone fallback use www.com', () => {
@@ -64,6 +72,17 @@ test('legacy .env.example documents the new SEO canonical origin', () => {
   if (/^SEO_CANONICAL_BASE=/m.test(example)) {
     assert.match(example, /^SEO_CANONICAL_BASE=https:\/\/www\.ohyagroups\.com$/m);
   }
+});
+
+test('Vercel serves the Google verification file on the canonical host', () => {
+  const verificationFile = 'google8d861a919472c73d.html';
+  const { routes } = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+  const route = routes.find((entry) => entry.src === `/${verificationFile}`);
+  assert.ok(route, 'verification file must bypass the Express catch-all');
+  assert.equal(route.dest, `/public/${verificationFile}`);
+  assert.equal(route.has, undefined, 'must also serve after following the legacy-host redirect');
+  assert.equal(fs.readFileSync(path.join(root, 'public', verificationFile), 'utf8').trim(),
+    'google-site-verification: google8d861a919472c73d.html');
 });
 
 test('Vercel routes send only migration hosts through the app before static rewrites', () => {
