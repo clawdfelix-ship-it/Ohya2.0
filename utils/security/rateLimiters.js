@@ -63,4 +63,23 @@ function agentWriteLimiter() {
   });
 }
 
-module.exports = { loginLimiter, adminWriteLimiter, createAdminWriteMiddleware, agentWriteLimiter, webhookLimiter, cspReportLimiter };
+// 前台事件收集（public、fail-open）。process-local：serverless 唔係 global quota。
+function createAnalyticsEventLimiter() {
+  return rateLimit({
+    windowMs: 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'too many analytics events' },
+  });
+}
+
+module.exports = {
+  loginLimiter,
+  adminWriteLimiter,
+  createAdminWriteMiddleware,
+  agentWriteLimiter,
+  webhookLimiter,
+  cspReportLimiter,
+  createAnalyticsEventLimiter,
+};

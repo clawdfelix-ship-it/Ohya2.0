@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/guide-content.css">
   <meta name="csrf-token" content="<%= csrfToken || '' %>">
 </head>
-<body class="mz-body min-h-screen text-gray-200" data-logged-in="<%= user ? '1' : '0' %>">
+<body class="mz-body min-h-screen text-gray-200" data-logged-in="<%= user ? '1' : '0' %>" data-analytics-page="guide">
   <%- include('partials/age-modal') %>
   <%- include('partials/header') %>
 
@@ -39,7 +39,7 @@
           <% if (typeof relatedProduct !== 'undefined' && relatedProduct) { %>
             <div class="mb-6 rounded-2xl border border-gold/40 bg-ink-800 p-4">
               <div class="mb-3 text-xs font-semibold text-gold-light">📦 本文產品</div>
-              <a href="/product/<%= relatedProduct.id %>" class="group flex gap-4 items-center">
+              <a href="/product/<%= relatedProduct.id %>" data-analytics-guide-cta="<%= relatedProduct.id %>" class="group flex gap-4 items-center">
                 <% if (relatedProduct.image) { %>
                   <div class="w-24 h-24 rounded-xl overflow-hidden bg-ink-900 flex-shrink-0">
                     <img src="<%= relatedProduct.image %>" alt="<%= relatedProduct.name %>" loading="lazy" class="w-full h-full object-contain p-1 group-hover:scale-105 transition">

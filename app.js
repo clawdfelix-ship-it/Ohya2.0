@@ -93,6 +93,7 @@ function shouldSkipCsrf(req) {
   if (p.startsWith('/webhooks/')) return true;
   if (p.startsWith('/api/internal/')) return true; // 內部 jobs 用 x-sync-secret 認證，唔使 CSRF token
   if (p.startsWith('/api/agent/')) return true; // 獨立 DB-backed Bearer credential，絕不使用 Admin session
+  if (p.startsWith('/api/analytics/')) return true; // 前台事件收集：public、fail-open、只寫非識別資料
   if (p === cspReportPath) return true;
   return false;
 }
@@ -490,6 +491,7 @@ try {
   require('./routes/refunds')(app, pool);
   require('./routes/reconciliation')(app, pool);
   require('./routes/reports')(app, pool);
+  require('./routes/analytics')(app, pool);
   require('./routes/mzakka-sync')(app, pool);
   require('./routes/daily-sync')(app, pool);
   require('./routes/daily-article')(app, pool);

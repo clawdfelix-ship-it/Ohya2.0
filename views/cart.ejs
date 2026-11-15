@@ -26,7 +26,7 @@
     }
   </style>
 </head>
-<body class="mz-body min-h-screen text-gray-200" data-logged-in="<%= user ? '1' : '0' %>">
+<body class="mz-body min-h-screen text-gray-200" data-logged-in="<%= user ? '1' : '0' %>" data-analytics-page="cart">
 
   <%- include('partials/age-modal') %>
 
@@ -582,6 +582,14 @@
       }
 
       try {
+        // P3-a 埋點：checkout 開始（只送非識別 metadata，唔影響落單）
+        let analyticsMeta = {};
+        try {
+          if (window.OHAnalytics && typeof window.OHAnalytics.orderMetadata === 'function') {
+            analyticsMeta = window.OHAnalytics.orderMetadata();
+          }
+        } catch (e) {}
+
         const data = await requestJson('/api/orders', {
           method: 'POST',
           body: JSON.stringify({
@@ -591,8 +599,19 @@
             note,
             payment_method: selectedPayment,
             points_redeem: appliedRedeemPts > 0 ? appliedRedeemPts : 0,
+            analytics: analyticsMeta,
           }),
         });
+
+        try {
+          if (window.OHAnalytics && typeof window.OHAnalytics.track === 'function') {
+            window.OHAnalytics.track('checkout_start', {
+              step: 'checkout_click',
+              page_type: 'cart',
+              context: { item_count: (typeof cart !== 'undefined' && Array.isArray(cart) ? cart.length : 0) },
+            });
+          }
+        } catch (e) {}
 
         // 跳轉訂單確認頁（顯示收款指示）
         window.location.href = '/order/' + data.orderId;

@@ -151,7 +151,10 @@
         body: JSON.stringify({ product_id: product.id, quantity: quantity }),
       }).then(function () {
         return refreshCount();
-      }).then(function () { return true; });
+      }).then(function () {
+        trackAddToCart(product.id, quantity);
+        return true;
+      });
     }
 
     // 訪客：localStorage
@@ -171,7 +174,26 @@
       });
     }
     writeGuestCart(cart);
-    return refreshCount().then(function () { return true; });
+    return refreshCount().then(function () {
+      trackAddToCart(product.id, quantity);
+      return true;
+    });
+  }
+
+  // P3-a 埋點：加購成功後追一個 add_to_cart（fail-open，唔影響加購流程）
+  function trackAddToCart(productId, quantity) {
+    try {
+      if (window.OHAnalytics && typeof window.OHAnalytics.track === 'function') {
+        window.OHAnalytics.track('add_to_cart', {
+          step: 'add_to_cart',
+          page_type: 'listing',
+          product_id: productId,
+          context: { quantity: Number(quantity) || 1 }
+        });
+      }
+    } catch (e) {
+      // fail-open
+    }
   }
 
   // --- Toast ---

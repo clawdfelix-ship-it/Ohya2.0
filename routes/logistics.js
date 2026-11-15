@@ -12,6 +12,22 @@ module.exports = function(app, pool) {
   const { verifyShipanySignature } = require('../utils/webhookSignatures');
   const { parseAllowedIps, extractClientIp, isIpAllowed } = require('../utils/ipAllowlist');
 
+  // P3-a 埋點：付款成功事件（fail-open，唔影響 webhook 流程）
+  async function recordPaidAnalytics(orderId) {
+    try {
+      const analytics = app.locals && app.locals.analytics;
+      if (!analytics || typeof analytics.recordOrderEvent !== 'function') return;
+      const attribution = await analytics.lookupOrderAttribution(orderId);
+      analytics.recordOrderEvent({
+        orderId,
+        event: 'paid',
+        step: 'payment_confirmed',
+        sessionId: attribution.session_id,
+        referrerType: attribution.referrer_type,
+      });
+    } catch (_) { /* fail-open */ }
+  }
+
   // ===========================================
   // Returns & Refunds (After-sales)
   // ===========================================
@@ -903,6 +919,7 @@ module.exports = function(app, pool) {
           INSERT INTO order_status_histories (order_id, status, notes)
           VALUES ($1, 'paid', $2)
         `, [order_id, 'FPS/PayMe 付款成功']);
+        await recordPaidAnalytics(order_id);
       }
 
       res.json({ success: true });
@@ -943,6 +960,7 @@ module.exports = function(app, pool) {
             INSERT INTO order_status_histories (order_id, status, notes)
             VALUES ($1, 'paid', $2)
           `, [orderId, 'AlipayHK 付款成功']);
+          await recordPaidAnalytics(orderId);
         }
       }
 
@@ -983,6 +1001,7 @@ module.exports = function(app, pool) {
             INSERT INTO order_status_histories (order_id, status, notes)
             VALUES ($1, 'paid', $2)
           `, [orderId, 'WeChat Pay HK 付款成功']);
+          await recordPaidAnalytics(orderId);
         }
       }
 

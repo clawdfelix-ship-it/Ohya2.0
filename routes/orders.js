@@ -271,6 +271,23 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
 
       await client.query('COMMIT');
 
+      // P3-a 埋點：checkout 開始（server-side，order_ref = HMAC(order_id)）。
+      // 完全 fail-open，唔影響落單流程。只記非識別 metadata（session_id / referrer_type）。
+      try {
+        const analytics = app.locals && app.locals.analytics;
+        const meta = (req.body && req.body.analytics) || {};
+        if (analytics && typeof analytics.recordOrderEvent === 'function') {
+          analytics.recordOrderEvent({
+            orderId,
+            event: 'checkout_start',
+            step: 'order_created',
+            sessionId: meta.session_id,
+            referrerType: meta.referrer_type,
+            context: { item_count: cartResult.rows.length },
+          });
+        }
+      } catch (_) { /* fail-open */ }
+
       // Best-effort：warm 實例即場試發（成功即時到，失敗由 cron 補發，唔阻塞回應）。
       try {
         const { flushOutbox } = require('../utils/outboxWorker');
@@ -647,6 +664,22 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
         note: '入數證明已審批確認收款', processedBy: reviewerId,
       });
       await client.query('COMMIT');
+
+      // P3-a 埋點：付款完成（order_ref join checkout_start）。fail-open，唔影響收款流程。
+      try {
+        const analytics = app.locals && app.locals.analytics;
+        if (analytics && typeof analytics.recordOrderEvent === 'function') {
+          const attribution = await analytics.lookupOrderAttribution(id);
+          analytics.recordOrderEvent({
+            orderId: id,
+            event: 'paid',
+            step: 'payment_confirmed',
+            sessionId: attribution.session_id,
+            referrerType: attribution.referrer_type,
+          });
+        }
+      } catch (_) { /* fail-open */ }
+
       res.json({ ok: true, payment_status: 'paid', status: derived });
     } catch (err) {
       await client.query('ROLLBACK').catch(()=>{});
@@ -712,6 +745,21 @@ module.exports = function(app, pool, requireAuth, requireAdmin) {
       `, [id, userId, req.file.originalname, req.file.mimetype, req.file.size, req.file.buffer]);
 
       await pool.query("UPDATE orders SET payment_status='proof_pending', updated_at=NOW() WHERE id=$1", [id]);
+
+      // P3-a 埋點：上傳入數證明（order_ref join）。fail-open，唔影響上傳流程。
+      try {
+        const analytics = app.locals && app.locals.analytics;
+        if (analytics && typeof analytics.recordOrderEvent === 'function') {
+          const attribution = await analytics.lookupOrderAttribution(id);
+          analytics.recordOrderEvent({
+            orderId: id,
+            event: 'payment_proof',
+            step: 'proof_uploaded',
+            sessionId: attribution.session_id,
+            referrerType: attribution.referrer_type,
+          });
+        }
+      } catch (_) { /* fail-open */ }
 
       res.json({ ok: true, proof_id: ins.rows[0].id, payment_status: 'proof_pending' });
     } catch (err) {
