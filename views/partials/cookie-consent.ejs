@@ -1,0 +1,44 @@
+<%#
+  Cookie consent banner（GA4 流量層專用）
+
+  設計（Felix 2026-11-15 批准）：
+  - 預設拒絕：未表態前 **GA4 完全唔會載入**（同意狀態由 public/js/consent-manager.js 管理）
+  - 「接受分析」→ 撳完即載入 gtag.js；「只用必要」→ 永遠唔載入任何第三方追蹤
+  - footer 有「Cookie 設定」可以隨時重新開呢個選擇畫面 / 撤回同意
+  - 自建埋點（storefront_events）**唔受呢個 banner 影響**：佢零 PII、零第三方、唔用 cookie
+  - 簡潔低調、唔阻內容、唔用第三方 UI 庫
+
+  注意：呢個 banner 嘅 root 元素唔可以用 Tailwind display utility（.flex / .block 等），
+  因為要靠 HTML `hidden` attribute 控制顯示；內層先用 flex 排版。
+%>
+<div
+  data-consent-banner
+  hidden
+  class="fixed inset-x-0 bottom-0 z-[60] px-3 pb-3 pt-2"
+  role="region"
+  aria-label="Cookie 設定"
+>
+  <div class="mx-auto max-w-4xl rounded-2xl border border-ink-600 bg-ink-900/95 px-4 py-3 shadow-xl backdrop-blur">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-xs leading-relaxed text-gray-300 sm:max-w-xl">
+        我哋用 Cookie 同類似技術維持購物車同登入狀態，另外用<strong>自建、冇第三方</strong>嘅統計系統
+        了解邊啲頁面有用（只記商品編號，唔記姓名／電話／電郵）。
+        如果你同意，我哋另外會載入 Google Analytics 做<strong>流量統計</strong>（只係頁面瀏覽同來源，唔會記你買過咩），
+        你可以隨時喺頁尾撳「Cookie 設定」撤回。
+        <a href="/privacy" class="underline hover:text-gold-light">私隱政策</a>
+      </p>
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
+        <button
+          type="button"
+          data-consent-accept
+          class="rounded-full bg-gold px-4 py-2 text-xs font-bold text-ink-950 transition hover:bg-gold-light"
+        >接受分析</button>
+        <button
+          type="button"
+          data-consent-reject
+          class="rounded-full border border-ink-500 px-4 py-2 text-xs font-semibold text-gray-300 transition hover:border-gold/60 hover:text-gold-light"
+        >只用必要</button>
+      </div>
+    </div>
+  </div>
+</div>

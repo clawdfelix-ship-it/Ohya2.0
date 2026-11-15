@@ -1,0 +1,20 @@
+<%#
+  GA4 初始化片段（流量層）
+
+  設計（Felix 2026-11-15 批准）：
+  - GA4 只做流量層（page_view／流量來源／頁面類型），**唔送任何交易事件**
+  - Measurement ID 只可以由 server 注入（res.locals.ga4MeasurementId ← env GA_MEASUREMENT_ID）
+  - **防禦兩重**：app.js 用 lib/ga4.js 驗證過一次；呢度再自己驗一次
+    （萬一有其他 render 路徑直接塞未驗證嘅值落嚟，都唔會漏出去）
+  - 未設定／格式唔啱 → 完全唔輸出任何 script，GA4 靜默 no-op
+  - 呢度只輸出一個 id 賦值；gtag.js 本身由 public/js/ga4.js 動態載入，
+    而且**只有使用者在 consent banner 撳咗「接受分析」先會載入**
+%>
+<%
+  const _rawGa4 = (typeof ga4MeasurementId !== 'undefined' && ga4MeasurementId) ? String(ga4MeasurementId).trim() : '';
+  const _ga4Ok = /^G-[A-Z0-9]{4,20}$/.test(_rawGa4);
+  const _ga4Id = _ga4Ok ? _rawGa4 : '';
+%>
+<% if (_ga4Id) { %>
+<script>window.OH_GA4_ID = "<%= _ga4Id %>";</script>
+<% } %>

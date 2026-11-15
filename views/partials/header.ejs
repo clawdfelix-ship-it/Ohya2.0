@@ -98,3 +98,8 @@
   <script src="/js/interactions.js" defer></script>
   <script src="/js/search-autocomplete.js" defer></script>
   <script src="/js/storefront-analytics.js" defer></script>
+  <%# GA4（流量層）：Measurement ID 由 server 注入；未設定就完全唔輸出 %>
+  <%- include('ga4-init') %>
+  <%# Consent manager 必須喺 ga4.js 之前載入（ga4.js 靠佢決定係咪載入 gtag.js） %>
+  <script src="/js/consent-manager.js" defer></script>
+  <script src="/js/ga4.js" defer></script>

@@ -23,6 +23,7 @@ const { partitionHomeModules } = require('./utils/storefrontHomeModules');
 const { resolveStorefrontCategoryName } = require('./utils/categoryTranslations');
 const { getProductsOrderBy, normalizeProductsSort, withStockPriority } = require('./lib/productsSort');
 const { registerSitemapRoutes } = require('./routes/sitemap');
+const { normalizeMeasurementId } = require('./lib/ga4');
 const { buildTimeline, attachTimeline } = require('./lib/orderTimeline');
 const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch-mzakka-description');
 const { loginLimiter, createAdminWriteMiddleware, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
@@ -216,6 +217,8 @@ app.use((req, res, next) => {
   res.locals.store = storeInfo;
   // SEO canonical base（www 係 canonical host；apex 已 301 過嚟）
   res.locals.seoCanonicalBase = process.env.SEO_CANONICAL_BASE || 'https://www.ohyagroups.com';
+  // GA4 Measurement ID（流量層）。未設定／格式唔啱 → 空字串 → 頁面完全唔會出現 GA4 script。
+  res.locals.ga4MeasurementId = normalizeMeasurementId(process.env.GA_MEASUREMENT_ID);
   next();
 });
 

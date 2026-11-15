@@ -47,8 +47,15 @@
     page_number: 1,
     position: 1,
     list_name: 1,
-    query_len: 1
+    query_len: 1,
+    // 流量來源（逐來源漏斗）：非識別、只准有限字元
+    utm_source: 1,
+    utm_medium: 1,
+    utm_campaign: 1
   };
+  var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign'];
+  var UTM_STORAGE_KEY = '***';
+  var UTM_VALUE_RE = /[^A-Za-z0-9_\-.]/g;
 
   function randomId() {
     try {
@@ -116,6 +123,65 @@
     return 'other';
   }
 
+  /**
+   * utm 消毒：只留 [A-Za-z0-9_\-.]，上限 64 字元；清完變空 → null（唔記）。
+   */
+  function sanitizeUtm(value) {
+    if (typeof value !== 'string') return null;
+    var cleaned = value.replace(UTM_VALUE_RE, '').slice(0, 64);
+    return cleaned ? cleaned : null;
+  }
+
+  /**
+   * 讀取並記住 utm 來源（landing page 讀 URL 之後存 sessionStorage，跨頁沿用）。
+   * 只記非識別嘅來源名，唔關聯任何帳戶。
+   */
+  function utmParams() {
+    var out = {};
+    var stored = null;
+    try {
+      stored = window.sessionStorage.getItem(UTM_STORAGE_KEY);
+    } catch (e) {
+      stored = null;
+    }
+    if (stored) {
+      try {
+        var parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'object') {
+          for (var i = 0; i < UTM_KEYS.length; i++) {
+            var k = UTM_KEYS[i];
+            var v = sanitizeUtm(parsed[k]);
+            if (v) out[k] = v;
+          }
+          return out;
+        }
+      } catch (e) {
+        // 壞咗 → 當冇
+      }
+    }
+    // 未有記錄 → 由當前 URL 讀（landing page）
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var found = {};
+      for (var j = 0; j < UTM_KEYS.length; j++) {
+        var key = UTM_KEYS[j];
+        var raw = params.get(key);
+        var clean = sanitizeUtm(raw == null ? '' : raw);
+        if (clean) found[key] = clean;
+      }
+      if (Object.keys(found).length) {
+        try {
+          window.sessionStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(found));
+        } catch (e) {
+          // sessionStorage 被封 → 唔影響功能
+        }
+      }
+      return found;
+    } catch (e) {
+      return out;
+    }
+  }
+
   function sanitizeContext(ctx) {
     var out = {};
     if (!ctx || typeof ctx !== 'object') return out;
@@ -125,13 +191,26 @@
       var v = ctx[key];
       if (typeof v === 'number' && isFinite(v)) out[key] = v;
       else if (typeof v === 'boolean') out[key] = v;
-      else if (typeof v === 'string') out[key] = v.slice(0, 64);
+      else if (typeof v === 'string') {
+        if (UTM_KEYS.indexOf(key) !== -1) {
+          var clean = sanitizeUtm(v);
+          if (clean) out[key] = clean;
+          continue;
+        }
+        out[key] = v.slice(0, 64);
+      }
     }
     return out;
   }
 
   function buildPayload(event, props) {
     props = props || {};
+    // utm 來源：每個事件都帶上（landing page 讀 URL 之後跨頁沿用）
+    var ctx = sanitizeContext(props.context);
+    var utm = utmParams();
+    for (var uk in utm) {
+      if (Object.prototype.hasOwnProperty.call(utm, uk) && ctx[uk] === undefined) ctx[uk] = utm[uk];
+    }
     var payload = {
       event: event,
       product_id: null,
@@ -140,7 +219,7 @@
       category: null,
       referrer_type: props.referrer_type && REFERRER_TYPES[props.referrer_type] ? props.referrer_type : classifyReferrer(),
       session_id: sessionId(),
-      context: sanitizeContext(props.context)
+      context: ctx
     };
 
     if (props.product_id != null && props.product_id !== '') {
