@@ -53,7 +53,8 @@ const sql = fs.readFileSync(sqlPath, 'utf8');
       console.log('--dry-run：唔會執行任何寫入');
       console.log('Migration file:', sqlPath);
       console.log('Would execute:', sql.split('\n').length, 'lines');
-      await pool.end();
+      // 唔喺呢度 pool.end()：finally 會統一收（之前雙重 end 會報
+      // "Called end on pool more than once" 並令 exit code 變 1）
       return;
     }
 
@@ -71,7 +72,7 @@ const sql = fs.readFileSync(sqlPath, 'utf8');
       SELECT
         (SELECT count(*) FROM information_schema.tables WHERE table_name = 'storefront_events')::int AS has_table,
         (SELECT count(*) FROM information_schema.columns WHERE table_name = 'storefront_events' AND column_name = 'order_ref')::int AS has_order_ref,
-        (SELECT count(*) FROM information_schema.indexes WHERE table_name = 'storefront_events')::int AS index_count
+        (SELECT count(*) FROM pg_indexes WHERE tablename = 'storefront_events')::int AS index_count
     `);
     console.log('After:', after.rows[0]);
 

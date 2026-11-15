@@ -49,3 +49,6 @@ tmp/*.log
 *.bak.*
 state/
 tmp/
+
+# Review artifacts from other agents (not deployed, not committed)
+review-artifacts/

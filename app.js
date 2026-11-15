@@ -22,7 +22,7 @@ const { buildCategoryTree } = require('./utils/storefrontCategories');
 const { partitionHomeModules } = require('./utils/storefrontHomeModules');
 const { resolveStorefrontCategoryName } = require('./utils/categoryTranslations');
 const { getProductsOrderBy, normalizeProductsSort, withStockPriority } = require('./lib/productsSort');
-const sitemapLib = require('./lib/sitemap');
+const { registerSitemapRoutes } = require('./routes/sitemap');
 const { buildTimeline, attachTimeline } = require('./lib/orderTimeline');
 const { fetchHtml, extractDescriptionFromDetailHtml } = require('./scripts/fetch-mzakka-description');
 const { loginLimiter, createAdminWriteMiddleware, webhookLimiter, cspReportLimiter } = require('./utils/security/rateLimiters');
@@ -219,88 +219,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// 動態 sitemap.xml：靜態頁 + 全部 active 產品
 // P3-b 動態 sitemap：index + 分片（分批放量，唔會一次過全開 18,000+ URL）
 // - /sitemap.xml              -> sitemap index
 // - /sitemap-pages.xml        -> 靜態頁 + 已發佈指南
 // - /sitemap-products-N.xml   -> 產品分片（每片 <= 5,000）
-app.get('/sitemap.xml', async (req, res) => {
-  const base = res.locals.seoCanonicalBase || 'https://www.ohyagroups.com';
-  const lastmod = new Date().toISOString().slice(0, 10);
-  const sitemaps = [
-    { loc: base + '/sitemap-pages.xml', lastmod },
-  ];
-  let productShards = 0;
-  if (connectionString) {
-    try {
-      const idsRes = await pool.query(sitemapLib.buildSitemapProductsSql(), [sitemapLib.maxProductUrls()]);
-      const ids = (idsRes.rows || []).map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
-      productShards = sitemapLib.shardProductIds(ids).length;
-    } catch (e) {
-      console.error('sitemap products query failed:', e.message);
-    }
-  }
-  for (let i = 1; i <= productShards; i += 1) {
-    sitemaps.push({ loc: base + '/sitemap-products-' + i + '.xml', lastmod });
-  }
-  res.set('Content-Type', 'application/xml; charset=utf-8');
-  res.set('Cache-Control', 'public, max-age=3600');
-  res.send(sitemapLib.buildSitemapIndexXml(sitemaps));
-});
-
-// sitemap 分頁：靜態頁 + 指南
-app.get('/sitemap-pages.xml', async (req, res) => {
-  const base = res.locals.seoCanonicalBase || 'https://www.ohyagroups.com';
-  const guides = [];
-  if (connectionString) {
-    try {
-      const r = await pool.query(
-        `SELECT slug, updated_at, publish_at FROM blog_posts WHERE status = 'published' ORDER BY publish_at DESC NULLS LAST LIMIT 500`
-      );
-      guides.push(...(r.rows || []));
-    } catch (e) {
-      console.error('sitemap blog query failed:', e.message);
-    }
-  }
-  const entries = sitemapLib.buildPagesEntries(guides, base);
-  res.set('Content-Type', 'application/xml; charset=utf-8');
-  res.set('Cache-Control', 'public, max-age=3600');
-  res.send(sitemapLib.buildUrlSetXml(entries));
-});
-
-// sitemap 分頁：產品分片
-app.get('/sitemap-products-:shard(\d+).xml', async (req, res) => {
-  const base = res.locals.seoCanonicalBase || 'https://www.ohyagroups.com';
-  const shardNo = parseInt(req.params.shard, 10);
-  let entries = [];
-  if (connectionString && shardNo >= 1) {
-    try {
-      const idsRes = await pool.query(sitemapLib.buildSitemapProductsSql(), [sitemapLib.maxProductUrls()]);
-      const ids = (idsRes.rows || []).map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
-      const shards = sitemapLib.shardProductIds(ids);
-      const shard = shards.find((s) => s.index === shardNo);
-      if (shard) {
-        const rowsRes = await pool.query(
-          `SELECT id, updated_at FROM products WHERE id = ANY($1::int[])`,
-          [shard.ids]
-        );
-        const byId = new Map((rowsRes.rows || []).map((r) => [Number(r.id), r]));
-        entries = shard.ids
-          .map((id) => {
-            const row = byId.get(id);
-            const lastmod = row && row.updated_at ? new Date(row.updated_at).toISOString().slice(0, 10) : null;
-            return { loc: base + '/product/' + id, lastmod, changefreq: 'weekly', priority: '0.8' };
-          });
-      }
-    } catch (e) {
-      console.error('sitemap product shard query failed:', e.message);
-    }
-  }
-  if (!entries.length) return res.status(404).type('application/xml; charset=utf-8').send(sitemapLib.buildUrlSetXml([]));
-  res.set('Content-Type', 'application/xml; charset=utf-8');
-  res.set('Cache-Control', 'public, max-age=3600');
-  res.send(sitemapLib.buildUrlSetXml(entries));
-});
+//
+// Route pattern 放喺 routes/sitemap.js，production 同測試用同一份
+// （避免出現「測試全綠但 live route 404」嘅 escape bug）。
+registerSitemapRoutes(app, { pool, connectionString });
 
 app.get('/@vite/*', (req, res) => {
   res.status(204).end();

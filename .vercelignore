@@ -12,3 +12,6 @@ data/*
 *.sql
 node_modules/@img
 node_modules/sharp/vendor
+
+# Review artifacts (screenshots/logs from other agents)
+review-artifacts/
