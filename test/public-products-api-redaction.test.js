@@ -79,8 +79,12 @@ function createPool() {
     for (const col of PUBLIC_PRODUCT_COLUMNS) {
       if (new RegExp(`p\\.${col}\\b`).test(selectPart)) out[col] = row[col];
     }
-    if (/b\.name as brand_name/.test(selectPart)) out.brand_name = row.brand_name;
+    // products.js 會用 alias 覆蓋 name／description
+    if (/p\.name_zh_hk as name/.test(selectPart)) out.name = row.name_zh_hk;
+    if (/p\.description_zh_hk as description/.test(selectPart)) out.description = row.description_zh_hk;
+    if (/c\.name_zh_hk as category_name/.test(selectPart)) out.category_name = '情趣服飾';
     if (/c\.name as category_name/.test(selectPart)) out.category_name = row.category_name;
+    if (/b\.name as brand_name/.test(selectPart)) out.brand_name = row.brand_name;
     return out;
   }
   return {
@@ -207,8 +211,7 @@ test('匿名 GET /api/products/:slug：product 同 skus 都無敏感欄位', asy
   }
 });
 
-test('admin 專用查詢唔受公開白名單影響（仍可用完整欄位）', () => {
-  const fs = require('node:fs');
+test('admin 專用查詢唔受公開白名單影響（仍可用完整欄位）', () => {  const fs = require('node:fs');
   const path = require('node:path');
   const src = fs.readFileSync(path.join(__dirname, '..', 'routes', 'products-full.js'), 'utf8');
   // 三條公開 endpoint 必須用白名單
@@ -217,4 +220,72 @@ test('admin 專用查詢唔受公開白名單影響（仍可用完整欄位）',
   // admin low-stock 仍然保留 p.*（職員權限需要成本等欄位）
   const adminSection = src.slice(src.indexOf("app.get('/api/admin/products/low-stock'"));
   assert.ok(/SELECT p\.\*/.test(adminSection), 'admin low-stock 應保留完整欄位');
+});
+
+// ---------------------------------------------------------------------------
+// routes/products.js 係 app.js:437 先 mount，所以 /api/products 同
+// /api/products/:id（數字）實際由佢處理，唔係 products-full.js。
+// 唔測呢個檔案就會出現「改咗碼但 production 照漏」嘅假象。
+// ---------------------------------------------------------------------------
+const registerLegacyProducts = require('../routes/products');
+
+async function startLegacyAnonymousApp() {
+  const app = express();
+  app.use(express.json());
+  const pool = createPool();
+  registerLegacyProducts(app, pool, () => { throw new Error('requireAdmin not expected'); });
+  const server = await new Promise((resolve) => {
+    const s = app.listen(0, '127.0.0.1', () => resolve(s));
+  });
+  return {
+    pool,
+    url: `http://127.0.0.1:${server.address().port}`,
+    close: () => new Promise((resolve) => server.close(resolve)),
+  };
+}
+
+test('匿名 GET /api/products（products.js 先 mount 版本）：無敏感欄位', async () => {
+  const local = await startLegacyAnonymousApp();
+  try {
+    const res = await fetch(`${local.url}/api/products?page=1`);
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    assertNoSensitiveFields(text, 'products.js /api/products');
+    const body = JSON.parse(text);
+    assert.equal(body.products[0].price, '278.67');
+    assert.equal(body.products[0].name, '測試商品'); // name_zh_hk alias
+    const q = local.pool.calls.find((c) => /ORDER BY p\.created_at DESC/.test(c.sql));
+    assert.ok(q && !/SELECT p\.\*/.test(q.sql), 'products.js 列表唔應該用 SELECT p.*');
+  } finally {
+    await local.close();
+  }
+});
+
+test('匿名 GET /api/products/:id 數字（products.js 版本）：無敏感欄位', async () => {
+  const local = await startLegacyAnonymousApp();
+  try {
+    const res = await fetch(`${local.url}/api/products/106703`);
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    assertNoSensitiveFields(text, 'products.js /api/products/:id');
+    const body = JSON.parse(text);
+    assert.equal(body.product.price, '278.67');
+    assert.equal(body.product.description, '描述');
+    assert.equal(body.product.category_name, '情趣服飾');
+    const q = local.pool.calls.find((c) => /WHERE p\.id = \$1/.test(c.sql));
+    assert.ok(q && !/SELECT p\.\*/.test(q.sql), 'products.js 單品唔應該用 SELECT p.*');
+  } finally {
+    await local.close();
+  }
+});
+
+test('products.js 非數字 id 會 next()，唔會攔截 /featured', async () => {
+  const local = await startLegacyAnonymousApp();
+  try {
+    const res = await fetch(`${local.url}/api/products/featured`);
+    // 冇後續 route，Express 會 404，證明非數字 id 有正確交畀下一個 handler
+    assert.equal(res.status, 404);
+  } finally {
+    await local.close();
+  }
 });

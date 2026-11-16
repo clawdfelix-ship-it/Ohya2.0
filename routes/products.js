@@ -1,5 +1,8 @@
 module.exports = function(app, pool, requireAdmin) {
   const { buildProductSearchCondition, productSearchLike } = require('../utils/productSearch');
+  // 公開 endpoint 同樣用欄位白名單；products.js 先於 products-full.js mount，
+  // 所以 /api/products 同 /api/products/:id 實際由呢個檔案處理（P0 2026-11-16）。
+  const { PUBLIC_PRODUCT_SELECT } = require('../utils/publicProductColumns');
 
   async function assertLeafSubcategory(categoryId) {
     const r = await pool.query(
@@ -45,7 +48,7 @@ module.exports = function(app, pool, requireAdmin) {
 
       // Get products
       const result = await pool.query(`
-        SELECT p.*, p.name_zh_hk as name, p.description_zh_hk as description, c.name_zh_hk as category_name
+        SELECT ${PUBLIC_PRODUCT_SELECT}, p.name_zh_hk as name, p.description_zh_hk as description, c.name_zh_hk as category_name
         FROM products p
         LEFT JOIN categories c ON p.category_id = c.id
         WHERE ${where}
@@ -79,7 +82,7 @@ module.exports = function(app, pool, requireAdmin) {
       // and Postgres throws 22P02 invalid input syntax for integer.
       if (!/^\d+$/.test(id)) return next();
       const result = await pool.query(`
-        SELECT p.*, p.name_zh_hk as name, p.description_zh_hk as description, c.name_zh_hk as category_name
+        SELECT ${PUBLIC_PRODUCT_SELECT}, p.name_zh_hk as name, p.description_zh_hk as description, c.name_zh_hk as category_name
         FROM products p
         LEFT JOIN categories c ON p.category_id = c.id
         WHERE p.id = $1 AND p.status = 'active' AND p.name_zh_hk IS NOT NULL AND p.description_zh_hk IS NOT NULL
