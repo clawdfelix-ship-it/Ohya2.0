@@ -140,9 +140,11 @@ test('公開欄位白名單本身唔可以含敏感欄位', () => {
   }
   assert.ok(!/p\.\*/.test(PUBLIC_PRODUCT_SELECT), 'SELECT 唔應該用 p.*');
   // 必要零售欄位一定要保留
-  for (const needed of ['id', 'name', 'slug', 'price', 'original_price', 'image_url', 'stock', 'description']) {
+  for (const needed of ['id', 'name', 'slug', 'price', 'original_price', 'image_url', 'description']) {
     assert.ok(PUBLIC_PRODUCT_COLUMNS.includes(needed), `白名單缺少必要欄位 ${needed}`);
   }
+  // products 表冇 stock 欄位（庫存喺 product_skus），加入會令真 DB 直接 500
+  assert.ok(!PUBLIC_PRODUCT_COLUMNS.includes('stock'), 'products 表冇 stock 欄位，唔好加入 SELECT');
 });
 
 test('匿名 GET /api/products 列表：無成本／會員價／上游 payload', async () => {
@@ -181,6 +183,23 @@ test('匿名 GET /api/products/featured：無敏感欄位', async () => {
   } finally {
     await local.close();
   }
+});
+
+test('白名單欄位必須全部存在於真實 products schema', () => {
+  // 防止「加咗個唔存在嘅欄位 → 全站 API 500」再次發生。
+  // 2026-11-16 用 information_schema 核對嘅 products 欄位清單。
+  const realDbColumns = new Set([
+    'id', 'name', 'name_zh_hk', 'slug', 'description', 'description_zh_hk',
+    'short_description', 'short_description_zh_hk', 'brand_id', 'category_id',
+    'cost_price', 'price', 'original_price', 'member_price', 'status', 'is_featured',
+    'publish_at', 'unpublish_at', 'meta_title', 'meta_description', 'meta_keywords',
+    'image_url', 'gallery_images', 'video_url', 'product_type', 'is_digital',
+    'digital_file_url', 'has_batch_expiry', 'enable_reviews', 'average_rating',
+    'review_count', 'created_at', 'updated_at', 'deleted_at', 'source', 'source_key',
+    'source_url', 'sync_status', 'raw_payload',
+  ]);
+  const unknown = PUBLIC_PRODUCT_COLUMNS.filter((c) => !realDbColumns.has(c));
+  assert.deepEqual(unknown, [], `白名單含資料庫唔存在嘅欄位: ${unknown.join(', ')}`);
 });
 
 test('對照組：如果 route 用返 SELECT p.*，測試一定要變紅', async () => {

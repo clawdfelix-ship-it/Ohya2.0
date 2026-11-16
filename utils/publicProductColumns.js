@@ -37,7 +37,6 @@ const PUBLIC_PRODUCT_COLUMNS = Object.freeze([
   'enable_reviews',
   'average_rating',
   'review_count',
-  'stock',
   'status',
   'source',
   'meta_title',
@@ -47,6 +46,10 @@ const PUBLIC_PRODUCT_COLUMNS = Object.freeze([
   'updated_at',
 ]);
 
+// 注意：products 表**冇 stock 欄位**，庫存喺 product_skus（見 app.js SSR 用
+// LEFT JOIN (SELECT product_id, SUM(stock) ... ) s）。將 p.stock 放入 SELECT
+// 會即時觸發 PostgreSQL "column p.stock does not exist" 並令 API 回 500。
+// 2026-11-16 已用 information_schema 核對真實欄位。
 // `p.id, p.name, ...` 形式，配合 LEFT JOIN brands/categories 使用。
 const PUBLIC_PRODUCT_SELECT = PUBLIC_PRODUCT_COLUMNS.map((c) => `p.${c}`).join(', ');
 
