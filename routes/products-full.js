@@ -7,6 +7,8 @@ module.exports = function(app, pool) {
 
   const { requireAdmin, requirePermission } = require('./middleware/auth');
   const { computeNewStock } = require('../lib/inventory');
+  // 公開 endpoint 用欄位白名單，避免 `p.*` 將成本／上游 payload 洩露（P0 2026-11-16）
+  const { PUBLIC_PRODUCT_SELECT } = require('../utils/publicProductColumns');
 
   async function assertLeafSubcategory(db, categoryId) {
     const categoryIdNum = Number(categoryId);
@@ -160,7 +162,7 @@ module.exports = function(app, pool) {
 
       // Get products
       let query = `
-        SELECT p.*, b.name as brand_name, c.name as category_name
+        SELECT ${PUBLIC_PRODUCT_SELECT}, b.name as brand_name, c.name as category_name
         FROM products p
         LEFT JOIN brands b ON p.brand_id = b.id
         LEFT JOIN categories c ON p.category_id = c.id
@@ -216,7 +218,7 @@ module.exports = function(app, pool) {
     try {
       const limit = parseInt(req.query.limit) || 8;
       const result = await pool.query(`
-        SELECT p.*, b.name as brand_name, c.name as category_name
+        SELECT ${PUBLIC_PRODUCT_SELECT}, b.name as brand_name, c.name as category_name
         FROM products p
         LEFT JOIN brands b ON p.brand_id = b.id
         LEFT JOIN categories c ON p.category_id = c.id
@@ -236,7 +238,7 @@ module.exports = function(app, pool) {
     try {
       const { slug } = req.params;
       const productResult = await pool.query(`
-        SELECT p.*, b.name as brand_name, c.name as category_name
+        SELECT ${PUBLIC_PRODUCT_SELECT}, b.name as brand_name, c.name as category_name
         FROM products p
         LEFT JOIN brands b ON p.brand_id = b.id
         LEFT JOIN categories c ON p.category_id = c.id
