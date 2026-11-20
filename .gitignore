@@ -52,3 +52,6 @@ tmp/
 
 # Review artifacts from other agents (not deployed, not committed)
 review-artifacts/
+
+# Trash/backup dirs (one-off temp scripts, not deployable source)
+.trash-*/

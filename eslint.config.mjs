@@ -19,6 +19,7 @@ export default [
       "state/**",
       "data/**",
       "review-artifacts/**",
+      ".trash-*/**",
       "migrations/**",
       "eslint.config.mjs",
       "**/eslint.config.*",
