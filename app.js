@@ -755,39 +755,44 @@ app.use(async (req, res, next) => {
 
   // 首頁 - 電商首頁
   app.get('/', async (req, res) => {
+    // Hoisted above the try block: the catch handler below also renders
+    // `seo: homeSeo`, and a block-scoped const declared inside try is not
+    // visible there (ReferenceError: homeSeo is not defined on any
+    // homepage error).
+    // Organization + WebSite schema：畀 Google/AI search 認住品牌
+    const orgSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'OHYA2.0',
+      url: 'https://www.ohyagroups.com',
+      logo: 'https://www.ohyagroups.com/img/logo.png',
+      description: '日本正貨成人用品入口・批發分銷，香港倉庫現貨，順豐保密包裝到付。東京池袋設有實體店「トゥインクル池袋」。',
+      contactPoint: [{
+        '@type': 'ContactPoint',
+        telephone: '+852-9551-4133',
+        contactType: 'customer service',
+        availableLanguage: ['zh-HK', 'zh-Hant', 'en', 'ja'],
+      }],
+      sameAs: [],
+    };
+    const websiteSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'OHYA2.0',
+      url: 'https://www.ohyagroups.com',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: { '@type': 'EntryPoint', urlTemplate: 'https://www.ohyagroups.com/products?q={search_term_string}' },
+        'query-input': 'required name=search_term_string',
+      },
+    };
+    const homeSeo = {
+      description: '香港成人用品、情趣用品網店。日本正貨飛機杯、潤滑液、震動棒、避孕套、情趣內衣、SM用品直送入港，香港倉庫現貨，順豐保密包裝到付，7–10 個工作天到貨。14 年日本入口經驗，池袋實店每週直飛。',
+      jsonLd: [orgSchema, websiteSchema],
+    };
+
     try {
       let homeModules = getFallbackHomeModules();
-      // Organization + WebSite schema：畀 Google/AI search 認住品牌
-      const orgSchema = {
-        '@context': 'https://schema.org',
-        '@type': 'Organization',
-        name: 'OHYA2.0',
-        url: 'https://www.ohyagroups.com',
-        logo: 'https://www.ohyagroups.com/img/logo.png',
-        description: '日本正貨成人用品入口・批發分銷，香港倉庫現貨，順豐保密包裝到付。東京池袋設有實體店「トゥインクル池袋」。',
-        contactPoint: [{
-          '@type': 'ContactPoint',
-          telephone: '+852-9551-4133',
-          contactType: 'customer service',
-          availableLanguage: ['zh-HK', 'zh-Hant', 'en', 'ja'],
-        }],
-        sameAs: [],
-      };
-      const websiteSchema = {
-        '@context': 'https://schema.org',
-        '@type': 'WebSite',
-        name: 'OHYA2.0',
-        url: 'https://www.ohyagroups.com',
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: { '@type': 'EntryPoint', urlTemplate: 'https://www.ohyagroups.com/products?q={search_term_string}' },
-          'query-input': 'required name=search_term_string',
-        },
-      };
-      const homeSeo = {
-        description: '香港成人用品、情趣用品網店。日本正貨飛機杯、潤滑液、震動棒、避孕套、情趣內衣、SM用品直送入港，香港倉庫現貨，順豐保密包裝到付，7–10 個工作天到貨。14 年日本入口經驗，池袋實店每週直飛。',
-        jsonLd: [orgSchema, websiteSchema],
-      };
 
       if (!connectionString) {
         const featuredProducts = getSampleProducts();
