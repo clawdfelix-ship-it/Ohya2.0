@@ -113,7 +113,7 @@ function register(app, pool) {
     if (!ok) {
       return res.status(400).render('admin/login', { title: '後台登入', error: '用戶名或密碼錯誤' });
     }
-    let adminPermissions = ['*'];
+    let adminPermissions;
     if (user.is_admin) {
       adminPermissions = ['*'];
     } else {

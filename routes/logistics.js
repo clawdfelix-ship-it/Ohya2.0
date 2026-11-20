@@ -824,7 +824,7 @@ module.exports = function(app, pool) {
 
       const shipanyReq = https.request(options, (response) => {
         let data = '';
-        response.on('data', chunk => data += chunk);
+        response.on('data', chunk => { data += chunk; });
         response.on('end', async () => {
           try {
             const result = JSON.parse(data);
