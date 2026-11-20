@@ -17,7 +17,10 @@
     "gallery:cleanup:dry": "node scripts/cleanup-gallery-images.js --dry-run",
     "gallery:cleanup": "node scripts/cleanup-gallery-images.js",
     "products:deactivate-ended:dry": "node scripts/deactivate-ended-products.js --dry-run",
-    "products:deactivate-ended": "node scripts/deactivate-ended-products.js"
+    "products:deactivate-ended": "node scripts/deactivate-ended-products.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "check": "npm run lint && npm test"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -38,6 +41,8 @@
     "sanitize-html": "2.17.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.15.0",
     "nodemon": "^3.1.0"
   }
 }

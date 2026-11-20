@@ -30,7 +30,7 @@
 ```bash
 # 起一個專用 PG 16，端口 5544（避開本機可能已裝嘅 5432），數據用 named volume 持久化
 docker run -d --name ohya-pg \
-  -e POSTGRES_PASSWORD=ohya_dev_pw \
+  -e POSTGRES_PASSWORD=[REDACTED_DEV_DB_PASSWORD] \
   -e POSTGRES_DB=mzakka_ecommerce \
   -p 5544:5432 \
   -v ohya-pgdata:/var/lib/postgresql/data \
@@ -76,8 +76,8 @@ docker exec -i ohya-pg psql -U postgres -d mzakka_ecommerce < seed-data.sql
 # .env（repo 已 gitignore .env*；自己 cp .env.example .env 再改）
 NODE_ENV=development
 PORT=3000
-DATABASE_URL=postgresql://postgres:ohya_dev_pw@localhost:5544/mzakka_ecommerce
-SESSION_SECRET=dev-only-secret-not-for-prod
+DATABASE_URL=postgresql://postgres:[REDACTED_DEV_DB_PASSWORD]@localhost:5544/mzakka_ecommerce
+SESSION_SECRET=[REDACTED_DEV_SESSION_SECRET]
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 CSP_MODE=report
 CSP_REPORT_PATH=/csp-report
