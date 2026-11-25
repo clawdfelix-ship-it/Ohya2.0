@@ -12,6 +12,18 @@ module.exports = function(app, pool) {
   const { verifyShipanySignature } = require('../utils/webhookSignatures');
   const { parseAllowedIps, extractClientIp, isIpAllowed } = require('../utils/ipAllowlist');
 
+  // 舊支付整合 webhook 尚未實作付款商身份／金額／重放驗證。
+  // 現行前台只支援 FPS／銀行轉帳的人手核實流程，因此絕不能讓匿名請求
+  // 把訂單標成 paid。provider verification 完成前統一 fail closed。
+  function rejectUnverifiedPaymentWebhook(req, res) {
+    console.warn('[webhook] unverified payment integration disabled', { route: req.path });
+    return res.status(503).json({
+      success: false,
+      error: 'Payment webhook verification is not configured',
+      code: 'PAYMENT_WEBHOOK_DISABLED',
+    });
+  }
+
   // P3-a 埋點：付款成功事件（fail-open，唔影響 webhook 流程）
   async function recordPaidAnalytics(orderId) {
     try {
@@ -740,13 +752,16 @@ module.exports = function(app, pool) {
   // Webhook: ShipAny tracking status update
   app.post('/webhooks/shipany', async (req, res) => {
     try {
-      // Verify webhook signature if secret is configured
+      // 缺少 secret 時沒有任何方法核實 sender，必須 fail closed。
+      // IP allowlist 只係第二層，唔可以代替 raw-body HMAC。
       const webhookSecret = process.env.SHIPANY_WEBHOOK_SECRET;
-      if (webhookSecret) {
-        const signature = req.headers['x-shipany-signature'];
-        const ok = verifyShipanySignature({ secret: webhookSecret, rawBody: req.rawBody, headerValue: signature });
-        if (!ok) return res.status(403).json({ success: false, error: 'Invalid signature' });
+      if (!webhookSecret) {
+        console.warn('[webhook] ShipAny rejected: SHIPANY_WEBHOOK_SECRET is not configured');
+        return res.status(503).json({ success: false, error: 'Webhook verification is not configured', code: 'SHIPANY_WEBHOOK_NOT_CONFIGURED' });
       }
+      const signature = req.headers['x-shipany-signature'];
+      const ok = verifyShipanySignature({ secret: webhookSecret, rawBody: req.rawBody, headerValue: signature });
+      if (!ok) return res.status(403).json({ success: false, error: 'Invalid signature' });
 
       const allowedIps = parseAllowedIps(process.env.SHIPANY_WEBHOOK_ALLOWED_IPS);
       if (allowedIps.size > 0) {
@@ -895,121 +910,12 @@ module.exports = function(app, pool) {
   }
 
   // FPS / PayMe webhook
-  app.post('/webhooks/fps-payme', async (req, res) => {
-    try {
-      const { transaction_id, order_id, amount, status } = req.body;
-
-      // Update order payment status
-      await pool.query(
-        'UPDATE orders SET payment_status = $1, payment_transaction_id = $2, paid_at = NOW() WHERE id = $3',
-        [status === 'success' ? 'paid' : 'failed', transaction_id, order_id]
-      );
-
-      await upsertPaymentTransaction(pool, {
-        orderId: order_id,
-        payment_method_code: 'fps_payme',
-        transaction_id,
-        amount,
-        status: status === 'success' ? 'success' : 'failed',
-        raw: req.body,
-      });
-
-      if (status === 'success') {
-        await pool.query(`
-          INSERT INTO order_status_histories (order_id, status, notes)
-          VALUES ($1, 'paid', $2)
-        `, [order_id, 'FPS/PayMe 付款成功']);
-        await recordPaidAnalytics(order_id);
-      }
-
-      res.json({ success: true });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ success: false });
-    }
-  });
+  app.post('/webhooks/fps-payme', rejectUnverifiedPaymentWebhook);
 
   // AlipayHK webhook
-  app.post('/webhooks/alipayhk', async (req, res) => {
-    try {
-      const { out_trade_no, trade_no, trade_status } = req.body;
-
-      // AlipayHK: trade_status = TRADE_SUCCESS means paid
-      if (trade_status === 'TRADE_SUCCESS') {
-        await pool.query(
-          'UPDATE orders SET payment_status = $1, payment_transaction_id = $2, paid_at = NOW() WHERE order_number = $3',
-          ['paid', trade_no, out_trade_no]
-        );
-
-        const orderResult = await pool.query('SELECT id FROM orders WHERE order_number = $1', [out_trade_no]);
-        if (orderResult.rows.length > 0) {
-          const orderId = orderResult.rows[0].id;
-          const amountResult = await pool.query('SELECT total_amount FROM orders WHERE id = $1', [orderId]);
-          const amount = amountResult.rows.length > 0 ? amountResult.rows[0].total_amount : null;
-
-          await upsertPaymentTransaction(pool, {
-            orderId,
-            payment_method_code: 'alipayhk',
-            transaction_id: trade_no,
-            amount,
-            status: 'success',
-            raw: req.body,
-          });
-
-          await pool.query(`
-            INSERT INTO order_status_histories (order_id, status, notes)
-            VALUES ($1, 'paid', $2)
-          `, [orderId, 'AlipayHK 付款成功']);
-          await recordPaidAnalytics(orderId);
-        }
-      }
-
-      res.json({ success: true });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ success: false });
-    }
-  });
+  app.post('/webhooks/alipayhk', rejectUnverifiedPaymentWebhook);
 
   // WeChat Pay HK webhook
-  app.post('/webhooks/wechatpay', async (req, res) => {
-    try {
-      const { out_trade_no, transaction_id, trade_state } = req.body;
-
-      if (trade_state === 'SUCCESS') {
-        await pool.query(
-          'UPDATE orders SET payment_status = $1, payment_transaction_id = $2, paid_at = NOW() WHERE order_number = $3',
-          ['paid', transaction_id, out_trade_no]
-        );
-
-        const orderResult = await pool.query('SELECT id FROM orders WHERE order_number = $1', [out_trade_no]);
-        if (orderResult.rows.length > 0) {
-          const orderId = orderResult.rows[0].id;
-          const amountResult = await pool.query('SELECT total_amount FROM orders WHERE id = $1', [orderId]);
-          const amount = amountResult.rows.length > 0 ? amountResult.rows[0].total_amount : null;
-
-          await upsertPaymentTransaction(pool, {
-            orderId,
-            payment_method_code: 'wechatpay_hk',
-            transaction_id,
-            amount,
-            status: 'success',
-            raw: req.body,
-          });
-
-          await pool.query(`
-            INSERT INTO order_status_histories (order_id, status, notes)
-            VALUES ($1, 'paid', $2)
-          `, [orderId, 'WeChat Pay HK 付款成功']);
-          await recordPaidAnalytics(orderId);
-        }
-      }
-
-      res.send('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
-    } catch (err) {
-      console.error(err);
-      res.send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[ERROR]]></return_msg></xml>');
-    }
-  });
+  app.post('/webhooks/wechatpay', rejectUnverifiedPaymentWebhook);
 
 };
