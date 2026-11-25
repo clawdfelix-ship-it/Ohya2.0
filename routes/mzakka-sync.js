@@ -1,9 +1,20 @@
+// PRIVILEGE SEPARATION (scope A): this route now authenticates against
+//   MZAKKA_SYNC_SECRET  <- route-specific secret (dedicated to this route only)
+//   CRON_SECRET         <- LEGACY fallback, retained ONLY during the migration window.
+// After the original host is migrated and CRON_SECRET is rotated, remove the
+// CRON_SECRET entry from getRouteScopedSecret() in a follow-up change.
+//
+// KNOWN RESIDUAL RISK (deliberately NOT fixed in this change):
+//   /api/internal/jobs/db-bootstrap (admin scope) is still gated by the same
+//   MZAKKA_SYNC_SECRET as the import write path, because db-bootstrap is the
+//   highest-privilege admin surface and is excluded from scope A by decision.
+//   A separate change must give db-bootstrap its own dedicated secret.
 module.exports = function registerMzakkaSyncRoutes(app, pool) {
   const { requirePermission } = require('./middleware/auth');
   const { bootstrapCoreSchema } = require('../utils/dbBootstrap');
   const { normalizeSyncOptions, syncMzakkaNewItemsToDb } = require('../utils/mzakkaSync');
 
-  function getConfiguredSyncSecrets() {
+  function getRouteScopedSecret() {
     return Array.from(new Set(
       [process.env.MZAKKA_SYNC_SECRET, process.env.CRON_SECRET]
         .map((value) => (typeof value === 'string' ? value.trim() : ''))
@@ -47,7 +58,7 @@ module.exports = function registerMzakkaSyncRoutes(app, pool) {
   }
 
   function ensureInternalSyncAuthorized(req, res) {
-    const expectedSecrets = getConfiguredSyncSecrets();
+    const expectedSecrets = getRouteScopedSecret();
     if (expectedSecrets.length === 0) {
       res.status(503).json({ error: 'MZAKKA_SYNC_SECRET or CRON_SECRET not configured' });
       return false;

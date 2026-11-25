@@ -1,4 +1,9 @@
 'use strict';
+// PRIVILEGE SEPARATION (scope A): this route now authenticates against
+//   DAILY_ARTICLE_SECRET   <- route-specific secret (dedicated to this route only)
+//   CRON_SECRET <- LEGACY fallback, retained ONLY during the migration window.
+// After the original host is migrated and CRON_SECRET is rotated, remove the
+// CRON_SECRET entry from getRouteScopedSecret() in a follow-up change.
 
 /**
  * routes/daily-article.js
@@ -19,10 +24,10 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 module.exports = function registerDailyArticleRoutes(app, pool) {
-  function getConfiguredSecrets() {
+  function getRouteScopedSecret() {
     return Array.from(
       new Set(
-        [process.env.MZAKKA_SYNC_SECRET, process.env.CRON_SECRET]
+        [process.env.DAILY_ARTICLE_SECRET, process.env.CRON_SECRET]
           .map((v) => (typeof v === 'string' ? v.trim() : ''))
           .filter(Boolean)
       )
@@ -42,9 +47,9 @@ module.exports = function registerDailyArticleRoutes(app, pool) {
       res.status(500).json({ error: 'DATABASE_URL not configured' });
       return false;
     }
-    const expected = getConfiguredSecrets();
+    const expected = getRouteScopedSecret();
     if (expected.length === 0) {
-      res.status(503).json({ error: 'MZAKKA_SYNC_SECRET or CRON_SECRET not configured' });
+      res.status(503).json({ error: 'DAILY_ARTICLE_SECRET or CRON_SECRET not configured' });
       return false;
     }
     const provided = getProvidedSecret(req);
