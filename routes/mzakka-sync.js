@@ -4,11 +4,8 @@
 // After the original host is migrated and CRON_SECRET is rotated, remove the
 // CRON_SECRET entry from getRouteScopedSecret() in a follow-up change.
 //
-// KNOWN RESIDUAL RISK (deliberately NOT fixed in this change):
-//   /api/internal/jobs/db-bootstrap (admin scope) is still gated by the same
-//   MZAKKA_SYNC_SECRET as the import write path, because db-bootstrap is the
-//   highest-privilege admin surface and is excluded from scope A by decision.
-//   A separate change must give db-bootstrap its own dedicated secret.
+// The admin-only db-bootstrap endpoint uses DB_BOOTSTRAP_SECRET, separate
+// from the Mzakka import credential. CRON_SECRET remains a temporary fallback.
 module.exports = function registerMzakkaSyncRoutes(app, pool) {
   const { requirePermission } = require('./middleware/auth');
   const { bootstrapCoreSchema } = require('../utils/dbBootstrap');
@@ -17,6 +14,14 @@ module.exports = function registerMzakkaSyncRoutes(app, pool) {
   function getRouteScopedSecret() {
     return Array.from(new Set(
       [process.env.MZAKKA_SYNC_SECRET, process.env.CRON_SECRET]
+        .map((value) => (typeof value === 'string' ? value.trim() : ''))
+        .filter(Boolean)
+    ));
+  }
+
+  function getBootstrapSecrets() {
+    return Array.from(new Set(
+      [process.env.DB_BOOTSTRAP_SECRET, process.env.CRON_SECRET]
         .map((value) => (typeof value === 'string' ? value.trim() : ''))
         .filter(Boolean)
     ));
@@ -82,7 +87,13 @@ module.exports = function registerMzakkaSyncRoutes(app, pool) {
 
   async function handleInternalBootstrap(req, res) {
     if (!ensurePool(res)) return;
-    if (!ensureInternalSyncAuthorized(req, res)) return;
+    const expectedSecrets = getBootstrapSecrets();
+    if (expectedSecrets.length === 0) {
+      return res.status(503).json({ error: 'DB_BOOTSTRAP_SECRET or CRON_SECRET not configured' });
+    }
+    if (!expectedSecrets.includes(getSyncSecretFromRequest(req))) {
+      return res.status(401).json({ error: 'Invalid sync secret' });
+    }
     try {
       const result = await bootstrapCoreSchema(pool);
       res.json({ ok: true, source: 'internal', result });
