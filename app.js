@@ -453,6 +453,7 @@ try {
   require('./routes/daily-article')(app, pool);
   require('./routes/admin-settings')(app, pool, requireAdmin);
   require('./routes/outbox-jobs')(app, pool);
+  require('./routes/internal-overview')(app, pool);
 
   app.post(cspReportPath, (req, res) => {
     const items = normalizeCspReports(req.body);
